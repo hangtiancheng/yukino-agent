@@ -59,6 +59,12 @@ export const config = {
   fileDir: process.env.FILE_DIR ?? "./data/docs",
   // Prometheus
   prometheusBaseUrl: process.env.PROMETHEUS_BASE_URL ?? "http://127.0.0.1:9090",
+  // Langfuse observability (all three required to enable tracing).
+  langfuse: {
+    publicKey: process.env.LANGFUSE_PUBLIC_KEY ?? "",
+    secretKey: process.env.LANGFUSE_SECRET_KEY ?? "",
+    baseUrl: process.env.LANGFUSE_BASE_URL ?? "https://cloud.langfuse.com",
+  },
   // LLM provider selection: "openai" (default) | "anthropic"
   provider: (process.env.LLM_PROVIDER ?? "openai") as "openai" | "anthropic",
   // Embedding provider selection: "openai" (only)

@@ -1,5 +1,6 @@
 allowBuilds:
+  protobufjs: true
   sharp: true
   unrs-resolver: true
 minimumReleaseAgeExclude:
-  - '@yukino.js/sentry@0.0.1'
+  - "@yukino.js/sentry@0.0.1"
