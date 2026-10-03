@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
-  ArrowLeft,
+  BotMessageSquare,
   BookOpen,
   CircleDot,
   ClipboardCheck,
@@ -199,7 +199,7 @@ export default function DevflowShell({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton render={<Link href="/" />}>
-                <ArrowLeft />
+                <BotMessageSquare />
                 <span>Yukino OnCall</span>
               </SidebarMenuButton>
             </SidebarMenuItem>

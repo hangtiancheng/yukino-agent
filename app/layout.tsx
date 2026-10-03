@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { SentryProvider } from "@/components/sentry-provider";
 import { Toaster } from "@/components/ui/toast";
+import Dock from "@/components/dock";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -37,6 +38,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col">
         <SentryProvider>
           {children}
+          <Dock />
           <Toaster />
         </SentryProvider>
       </body>
