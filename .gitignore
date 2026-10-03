@@ -205,3 +205,6 @@ target
 **/.yukino/
 
 .playwright-cli/
+
+# Generated Prisma client (regenerate with `pnpm db:generate`)
+/generated/

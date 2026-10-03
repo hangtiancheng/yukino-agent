@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import {
   getCurrentTimeSchema,
-  mysqlCrudSchema,
+  postgresQuerySchema,
   queryInternalDocsSchema,
   prometheusAlertsSchema,
 } from "./schemas";
@@ -9,7 +9,7 @@ import {
   getCurrentTime,
   queryPrometheusAlerts,
   retrieveDocs,
-  execMysqlSql,
+  execPostgresSql,
 } from "./operations";
 
 // get_current_time
@@ -20,15 +20,13 @@ export const getCurrentTimeTool = tool({
   execute: async () => JSON.stringify(getCurrentTime()),
 });
 
-// mysql_crud
-export const mysqlCrudTool = tool({
+// postgres_query
+export const postgresQueryTool = tool({
   description:
-    "Execute SQL against MySQL and return JSON results. Supports query/insert/update/delete. Results are formatted as JSON for easy parsing.",
-  inputSchema: mysqlCrudSchema,
+    "Execute SQL against the PostgreSQL application database and return JSON results. Supports query/insert/update/delete. Results are formatted as JSON for easy parsing.",
+  inputSchema: postgresQuerySchema,
   execute: async (input) =>
-    JSON.stringify(
-      await execMysqlSql(input.dsn, input.sql, input.operate_type),
-    ),
+    JSON.stringify(await execPostgresSql(input.sql, input.operate_type)),
 });
 
 // query_internal_docs
@@ -50,7 +48,7 @@ export const prometheusAlertsTool = tool({
 // Built-in tool collection (excludes MCP log tools, which are fetched separately)
 export const builtinTools = {
   get_current_time: getCurrentTimeTool,
-  mysql_crud: mysqlCrudTool,
+  postgres_query: postgresQueryTool,
   query_internal_docs: queryInternalDocsTool,
   query_prometheus_alerts: prometheusAlertsTool,
 };

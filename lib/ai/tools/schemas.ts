@@ -6,14 +6,13 @@ export const getCurrentTimeSchema = z
   .object({})
   .describe("No input parameters, returns the current system time");
 
-// mysql_crud: DSN + SQL + operation type
-export const mysqlCrudSchema = z.object({
-  dsn: z
+// postgres_query: SQL + operation type (connection comes from DATABASE_URL)
+export const postgresQuerySchema = z.object({
+  sql: z
     .string()
     .describe(
-      "MySQL DSN, including username/password/host/port/database name, e.g., root:pass@tcp(host:3306)/db",
+      'PostgreSQL statement to execute against the application database (DevFlow tables: "Repository", "Issue", "PullRequest", "WorkflowRun", "AnalysisResult", "KnowledgeDocument", "ActionDraft" — quote identifiers, columns are camelCase)',
     ),
-  sql: z.string().describe("SQL statement to execute"),
   operate_type: z
     .enum(["query", "insert", "update", "delete"])
     .describe("SQL operation type"),

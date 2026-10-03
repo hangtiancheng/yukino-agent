@@ -19,6 +19,10 @@ const eslintConfig = defineConfig([
     // (upstream excludes them from linting as well).
     "catalog/components/**",
     "components/ui/**",
+    // Generated Prisma client.
+    "generated/**",
+    // Legacy DevFlow-AI source kept for reference during migration.
+    "DevFlow-AI/**",
   ]),
   {
     files: ["**/*.{ts,tsx}"],

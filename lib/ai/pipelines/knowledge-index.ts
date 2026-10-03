@@ -1,4 +1,4 @@
-// Knowledge index pipeline: FileLoader → RecursiveCharacterTextSplitter → RedisIndexer
+// Knowledge index pipeline: FileLoader → RecursiveCharacterTextSplitter → MilvusIndexer
 import { randomUUID } from "node:crypto";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
@@ -9,7 +9,7 @@ import {
   indexChunks,
   deleteBySource,
   type IndexChunk,
-} from "@/lib/redis/indexer";
+} from "@/lib/milvus/indexer";
 
 interface MarkdownChunk {
   content: string;

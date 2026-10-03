@@ -12,7 +12,7 @@ export async function register(): Promise<void> {
   try {
     await indexDataDir();
   } catch (e) {
-    // Never block server boot on indexing problems (e.g. Redis down).
+    // Never block server boot on indexing problems (e.g. Milvus down).
     console.error("[instrumentation] startup knowledge indexing failed:", e);
   }
 }

@@ -1,7 +1,7 @@
 // Pure function implementations for tools:
-// get_current_time / query_prometheus_alerts / query_internal_docs / mysql_crud
-import knex from "knex";
-import { retrieve } from "@/lib/redis/retriever";
+// get_current_time / query_prometheus_alerts / query_internal_docs / postgres_query
+import { retrieve } from "@/lib/milvus/retriever";
+import { prisma } from "@/lib/db";
 import { config } from "@/lib/config";
 import { z } from "zod/v4";
 
@@ -121,31 +121,34 @@ export async function retrieveDocs(query: string) {
   return docs;
 }
 
-// ============ mysql_crud ============
-// Executes directly without an interactive confirmation prompt.
-// DSN is compatible with both the Go format (user:pass@tcp(host:port)/db) and MySQL URL format.
-function normalizeDsn(dsn: string): string {
-  if (dsn.startsWith("mysql://")) return dsn;
-  // user:pass@tcp(host:port)/db → mysql://user:pass@host:port/db
-  return "mysql://" + dsn.replace(/@tcp\(([^)]+)\)/, "@$1");
+// ============ postgres_query ============
+// Executes directly against the configured DATABASE_URL without an
+// interactive confirmation prompt. The connection string is NOT a tool
+// parameter — the LLM only supplies SQL, so it can never redirect queries
+// to an arbitrary database.
+
+// Prisma returns BigInt for int8 columns; JSON.stringify throws on BigInt,
+// so serialize them as numbers (ids in this schema fit safely).
+function serializeRows(rows: unknown): unknown {
+  return JSON.parse(
+    JSON.stringify(rows, (_key, value) =>
+      typeof value === "bigint" ? Number(value) : value,
+    ),
+  );
 }
 
-export async function execMysqlSql(
-  dsn: string,
+export async function execPostgresSql(
   sql: string,
   operateType: string,
 ): Promise<unknown> {
-  const db = knex({ client: "mysql2", connection: normalizeDsn(dsn) });
-  try {
-    if (operateType === "query") {
-      const result = await db.raw(sql);
-      // mysql2 raw returns [rows, fields]; knex might wrap it in an extra layer
-      const rows = Array.isArray(result) ? result[0] : result;
-      return rows;
-    }
-    await db.raw(sql);
-    return { success: true, message: `Executed ${operateType} sql` };
-  } finally {
-    await db.destroy();
+  if (operateType === "query") {
+    const rows = await prisma.$queryRawUnsafe(sql);
+    return serializeRows(rows);
   }
+  const affected = await prisma.$executeRawUnsafe(sql);
+  return {
+    success: true,
+    affected_rows: affected,
+    message: `Executed ${operateType} sql`,
+  };
 }

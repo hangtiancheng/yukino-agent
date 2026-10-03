@@ -1,0 +1,200 @@
+// yukino-agent data model (PostgreSQL via Prisma driver adapter).
+// Covers the DevFlow workspace: GitHub repositories and their synced
+// issues / pull requests / CI runs, AI analysis results, the RAG knowledge
+// document registry (vectors live in Milvus), and human-confirmed action drafts.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Repository {
+  id            String    @id @default(uuid())
+  owner         String
+  name          String
+  fullName      String    @unique
+  provider      String    @default("github")
+  apiBaseUrl    String?
+  description   String?
+  defaultBranch String?
+  githubId      BigInt?
+  // AES-256-GCM encrypted personal access token (lib/devflow/crypto.ts).
+  tokenEncrypted String?
+  lastSyncAt     DateTime?
+  lastSyncError  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  issues             Issue[]
+  pullRequests       PullRequest[]
+  workflowRuns       WorkflowRun[]
+  knowledgeDocuments KnowledgeDocument[]
+  actionDrafts       ActionDraft[]
+
+  @@index([owner])
+  @@index([name])
+}
+
+model Issue {
+  id              String    @id @default(uuid())
+  repoId          String
+  githubIssueId   BigInt?
+  number          Int
+  title           String
+  body            String?
+  state           String    @default("open")
+  labels          String[]
+  author          String?
+  assignees       String[]
+  githubCreatedAt DateTime?
+  githubUpdatedAt DateTime?
+  githubClosedAt  DateTime?
+
+  repo Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@unique([repoId, githubIssueId])
+  @@index([repoId, number])
+}
+
+model PullRequest {
+  id              String    @id @default(uuid())
+  repoId          String
+  githubPrId      BigInt?
+  number          Int
+  title           String
+  body            String?
+  state           String    @default("open")
+  author          String?
+  baseBranch      String?
+  headBranch      String?
+  additions       Int       @default(0)
+  deletions       Int       @default(0)
+  changedFiles    Int       @default(0)
+  mergedAt        DateTime?
+  githubCreatedAt DateTime?
+  githubUpdatedAt DateTime?
+
+  repo           Repository        @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  files          PrFile[]
+  reviewComments PrReviewComment[]
+
+  @@unique([repoId, githubPrId])
+  @@index([repoId, number])
+}
+
+model PrFile {
+  id        String  @id @default(uuid())
+  prId      String
+  filename  String
+  status    String  @default("modified")
+  additions Int     @default(0)
+  deletions Int     @default(0)
+  patch     String?
+
+  pr PullRequest @relation(fields: [prId], references: [id], onDelete: Cascade)
+
+  @@index([prId])
+}
+
+model PrReviewComment {
+  id              String    @id @default(uuid())
+  prId            String
+  githubCommentId BigInt?
+  body            String?
+  path            String?
+  line            Int?
+  author          String?
+  githubCreatedAt DateTime?
+
+  pr PullRequest @relation(fields: [prId], references: [id], onDelete: Cascade)
+
+  @@index([prId])
+}
+
+model WorkflowRun {
+  id              String    @id @default(uuid())
+  repoId          String
+  githubRunId     BigInt?
+  name            String    @default("workflow")
+  headBranch      String?
+  status          String    @default("unknown")
+  conclusion      String?
+  htmlUrl         String?
+  // Normalized job/step list: [{ id, name, status, conclusion, html_url, steps: [...] }]
+  jobs            Json?
+  logsText        String?
+  githubCreatedAt DateTime?
+  githubUpdatedAt DateTime?
+
+  repo Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@unique([repoId, githubRunId])
+  @@index([repoId])
+}
+
+model AnalysisResult {
+  id           String   @id @default(uuid())
+  // "issue" | "pull_request" | "workflow_run"
+  targetType   String
+  targetId     String
+  // "issue_analysis" | "pr_review" | "ci_debug"
+  analysisType String
+  inputSnapshot Json?
+  resultJson   Json
+  modelName    String?
+  createdAt    DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model KnowledgeDocument {
+  id         String   @id @default(uuid())
+  repoId     String
+  name       String
+  // "upload" | "weekly_report" | "issue" | "pull_request"
+  sourceType String   @default("upload")
+  // "queued" | "indexing" | "ready" | "failed" | "skipped"
+  status     String   @default("queued")
+  contentHash String
+  charCount  Int      @default(0)
+  chunkCount Int      @default(0)
+  errorMessage String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  repo Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@unique([repoId, contentHash])
+  @@index([repoId])
+}
+
+model ActionDraft {
+  id           String   @id @default(uuid())
+  repoId       String
+  // "issue_comment" | "create_issue" | "close_issue" | "add_labels"
+  draftType    String
+  // "issue" | "pull_request" | null
+  targetType   String?
+  targetNumber Int?
+  title        String   @default("")
+  content      String?
+  labels       String[]
+  // "low" | "medium" | "high"
+  riskLevel    String   @default("medium")
+  // "pending_confirmation" | "executed" | "rejected" | "failed"
+  status       String   @default("pending_confirmation")
+  executionResult Json?
+  errorMessage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  repo Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@index([repoId, status])
+  @@index([createdAt])
+}

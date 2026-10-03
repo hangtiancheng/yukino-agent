@@ -1,6 +1,13 @@
 "use client";
+import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { MessageSquare, Plus, Sparkles, Trash2 } from "lucide-react";
+import {
+  FolderGit2,
+  MessageSquare,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import type { ChatHistory } from "@/hooks/use-chat";
 import {
   Sidebar as SidebarPrimitive,
@@ -101,6 +108,21 @@ export default function Sidebar({
                   </motion.li>
                 ))}
               </AnimatePresence>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup className="mt-auto">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="DevFlow workspace"
+                  render={<Link href="/devflow" />}
+                >
+                  <FolderGit2 />
+                  <span>DevFlow Workspace</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

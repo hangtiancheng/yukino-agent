@@ -16,7 +16,7 @@ import {
 } from "../a2ui/extract";
 import { builtinTools } from "../tools";
 import { getLogMcpTools } from "../tools/query-log";
-import { retrieve } from "@/lib/redis/retriever";
+import { retrieve } from "@/lib/milvus/retriever";
 import { getSimpleMemory } from "@/lib/memory";
 
 // P3-5 fix: read log topic config from env vars instead of hardcoding

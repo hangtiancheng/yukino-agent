@@ -16,20 +16,22 @@ AI intelligent OnCall assistant.
 - Vercel AI SDK v7 (`ai`): streamText / generateText (structured output via `output: Output.object({schema})`, result on `.output` — `generateObject` is deprecated) / tool / embed / embedMany
 - LLM: OpenAI (OpenAI compatible) via `@ai-sdk/openai` createOpenAI
 - Embedding: text-embedding-v4 via `@ai-sdk/openai-compatible`; selected by `EMBEDDING_PROVIDER` ("openai" only); batch requests capped at 10 inputs
-- Vector DB: Redis Stack (`redis`, index=idx:biz, key prefix=biz:, VECTOR FLOAT32 + HNSW + COSINE); index dim is probed from the embedding provider at startup and the index is auto-recreated on dim mismatch
-- MySQL: `knex` + `mysql2` (mysql_crud tool uses knex.raw for dynamic SQL)
+- Vector DB: Milvus Standalone (`@zilliz/milvus2-sdk-node`, gRPC :19530) in `lib/milvus/` — one collection (`MILVUS_COLLECTION`, default `yukino_knowledge`) carrying BOTH a dense FloatVector path (AUTOINDEX + COSINE) and a native BM25 full-text path (analyzer-enabled `content` field feeds a BM25 Function that populates a `sparse` field). `retrieve()` runs dense+BM25 hybrid search fused with RRF inside Milvus; `retrieveDense()` is COSINE-only (use it when an absolute score threshold is needed — RRF scores are rank-based). Collection dim is inferred from the first embedding and auto-recreated on dim mismatch (same policy the old Redis index had). Chunk `metadata._source` is promoted to a scalar `source` field for filtered search/delete. Verify with `npx tsx scripts/milvus-smoke.ts` (needs a valid embedding key).
+- Database: PostgreSQL via Prisma 7 (`prisma/`, new `prisma-client` generator → `generated/prisma`, `@prisma/adapter-pg` driver adapter). Singleton in `lib/db.ts` (cached on `globalThis`). Schema push: `pnpm db:push`; regenerate client after schema edits: `pnpm db:generate`. The `postgres_query` tool runs raw SQL via `prisma.$queryRawUnsafe`/`$executeRawUnsafe` against `DATABASE_URL` (the DSN is NOT a tool parameter — the LLM only supplies SQL). Host port defaults to 5433 to avoid a native PostgreSQL on 5432.
 - MCP: `@modelcontextprotocol/sdk` (SSE log tools)
 - Monitoring: `prom-client` registry in `lib/metrics.ts`, fed by `POST /api/log` and exposed at `GET /api/metrics`. Covers every yukino-sentry report type except ScreenRecord, plus the Node/V8 metrics prom-client defaults omit (heap limit, heap-used ratio, detached contexts, array buffers, event loop utilization, page faults). Browser-supplied label values are capped at 50 distinct values (overflow becomes `other`). The registry is cached on `globalThis`; when you change the metric set you MUST bump `METRICS_VERSION`, otherwise a long-lived dev server keeps serving a cache whose new fields are `undefined` (typed as present, so tsc cannot catch it) and every `.inc()` throws TypeError. Alert rules live in `prometheus.rules.yml`; every alert name MUST have a matching heading in `data/docs/alert-handling-guide.md`, because the AI Ops pipeline resolves runbooks by alert name. The Go backend (`yukino.go/yukino_agent/internal/app/sentry_metrics_handler.go`) exposes byte-identical `yukino_sentry_*` names so one Prometheus and one rule file serve both jobs — change both bridges together. Verify with `npx tsx scripts/metrics-smoke.ts`.
-- Startup: `instrumentation.ts` register() starts Langfuse observability (no-op when unconfigured), then embeds every doc in `FILE_DIR` (./data/docs)
+- Startup: `instrumentation.ts` register() starts Langfuse observability (no-op when unconfigured), then embeds every doc in `FILE_DIR` (./data/docs) into Milvus
 - AI Ops orchestration: Plan-Execute-Replan is a LangGraph StateGraph in `lib/ai/pipelines/plan-execute-replan/graph.ts` — planner → executor (one plan step per node run) → replanner loop, exiting to uiify (optional A2UI surface) or exhausted. Nodes publish `PlanExecuteEvent` payloads to the "custom" stream via `getWriter()` — NOT the `writer()` helper, which in langgraph 1.4.x reads `configurable.writer` (no longer populated by Pregel) and silently drops every event; `index.ts` re-validates every chunk with the zod schema in `events.ts` before yielding. The replanner's `iteration` budget (`MAX_ITERATIONS`) is the real loop guard; `RECURSION_LIMIT` is a safety net only — keep them in sync. Graph state uses `Annotation.Root` because this repo's zod is v4 (`zod/v4`) and its `~standard` lacks the JSON-Schema props langgraph's `StateSchema` demands. Verify with `npx tsx scripts/ai-ops-graph-smoke.ts` (live run: `AI_OPS_SMOKE_LIVE=1`).
 - Observability: Langfuse telemetry in `lib/observability.ts` — OTEL `NodeSDK` + `LangfuseSpanProcessor` started from `instrumentation.ts`, one `CallbackHandler` trace per graph run (graph/node spans), `observeGeneration()` records each AI SDK call as a generation, `withAiOpsTrace()` propagates session/tags. Enabled only when LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY + LANGFUSE_BASE_URL are ALL set; every hook degrades to a no-op otherwise.
 - Frontend: Tailwind v4 atomic classes + streamdown (streaming markdown + Shiki code highlighting)
 
 ## Directory layout
 
-- `app/` — Next.js App Router (page / layout / api route)
-- `lib/` — server-side logic (ai / redis / memory / config / api-schemas)
-- `components/` — React components
+- `app/` — Next.js App Router (page / layout / api route); `app/devflow/` is the DevFlow workspace UI, `app/api/devflow/` its REST routes
+- `lib/` — server-side logic (ai / milvus / devflow / db / memory / config / api-schemas)
+- `lib/devflow/` — DevFlow backend: `github.ts` (REST client), `sync.ts` (GitHub→Postgres), `rag.ts` (per-repo KB on Milvus), `crypto.ts` (AES-256-GCM token encryption), `drafts.ts` (action-draft execution), `agents/` (issue/PR/CI/report/chat), `schemas.ts` (zod), `http.ts` (`{message,data}` + CORS helpers)
+- `prisma/` — schema.prisma (DevFlow data model) + migrations; `generated/prisma/` is the generated client (git-ignorable, excluded from tsconfig/eslint)
+- `components/` — React components; `components/devflow/` holds the workspace shell, provider, badges and analysis views
 - `hooks/` — React hooks
 
 ## Coding conventions
@@ -39,6 +41,18 @@ AI intelligent OnCall assistant.
 - API responses are wrapped as `{ message, data }`.
 - Configuration is read via `.env` + `lib/config.ts`; no yaml.
 - Strict typing: validate runtime-unknown data with zod (`safeParse`/`parse`); no unnecessary type assertions, no `@ts-ignore` / `eslint-disable`.
+
+## DevFlow workspace (GitHub engineering copilot)
+
+DevFlow is the migrated DevFlow-AI product surface, rebuilt on this stack. It lives at `/devflow` (UI) and `/api/devflow/*` (REST). It connects GitHub repositories, syncs issues / pull requests / CI runs into PostgreSQL, runs AI analysis agents, and keeps a per-repo RAG knowledge base in Milvus.
+
+- **Data flow**: `POST /api/devflow/repos` verifies the repo via the GitHub API, encrypts the optional token (AES-256-GCM, `lib/devflow/crypto.ts`), then `sync.ts` upserts issues, PRs (+ files + review comments) and workflow runs (+ jobs; failed runs also fetch per-job logs, head+tail truncated). Everything is keyed by GitHub id (`repoId_githubIssueId` etc.).
+- **Analysis agents** (`lib/devflow/agents/analysis.ts`): Issue Triage / PR Review / CI Debug each assemble a bounded context, call `generateText` with `Output.object({schema})`, and persist the result as an `AnalysisResult` row. `generateStructured()` retries once with a stricter "JSON only" reminder when the first response fails schema validation (some OpenAI-compatible gateways wrap JSON in prose). Prompts are English ports in `agents/prompts.ts`; output schemas in `schemas.ts`.
+- **Safety gate**: agents never write to GitHub. They create `ActionDraft` rows (`pending_confirmation`); only `PATCH /api/devflow/drafts/:id {action:"execute"}` performs the real API call (`drafts.ts`). The UI requires an explicit confirm dialog.
+- **Per-repo RAG** (`lib/devflow/rag.ts`): documents are SHA-256-deduped, paragraph-chunked, embedded and stored in the shared Milvus collection with `source = "devflow:kb:<repoId>:<docId>"`, so retrieval is scoped to one repo via a `source like` filter. `askKnowledge()` does evidence-grounded QA with numbered citations and refuses to fabricate. Weekly reports (`agents/report.ts`) are also stored here; KB-indexing failure never discards a generated report.
+- **Chat agent** (`agents/chat.ts`): `streamText` with repo-scoped tools (list/get issues & PRs, CI runs/logs, knowledge search, `create_action_draft`). `/api/devflow/chat` streams SSE (`connected`/`message`/`tool`/`done`/`error`), same framing as `/api/chat_stream`.
+- **Frontend**: `app/devflow/layout.tsx` wraps a `ThemeProvider` + `DevflowProvider` (repo context, `components/devflow/provider.tsx`) + sidebar shell. All pages are client components built from `components/ui/*`. Because the React Compiler `react-hooks/set-state-in-effect` rule flags any effect that transitively calls setState (even after `await`), data fetching lives in **inline async IIFEs inside the effect** and manual reloads bump a `reloadKey` state — do NOT call a `useCallback` loader from an effect.
+- **Not migrated** (Python-only deps): RAGAS evals, code-graph, MCP memory server, workspace file tools. Documented as follow-ups.
 
 ## A2UI integration (v0.9)
 

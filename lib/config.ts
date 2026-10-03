@@ -47,11 +47,21 @@ export const config = {
       process.env.OPENAI_EMBEDDING_BASE_URL ??
       "https://openai.aliyuncs.com/compatible-mode/v1",
   },
-  // Redis Stack (RediSearch module) — vector database
-  redis: {
-    url: process.env.REDIS_URL ?? "redis://localhost:6379",
-    indexName: process.env.REDIS_INDEX_NAME ?? "idx:biz",
-    keyPrefix: process.env.REDIS_KEY_PREFIX ?? "biz:",
+  // Milvus — vector database (dense COSINE + native BM25 hybrid search).
+  // Replaces the former Redis Stack vector index.
+  milvus: {
+    uri: process.env.MILVUS_URI ?? "http://localhost:19530",
+    token: process.env.MILVUS_TOKEN ?? "",
+    collection: process.env.MILVUS_COLLECTION ?? "yukino_knowledge",
+    // BM25 analyzer for the full-text path: "standard" (default) or "chinese".
+    analyzer: process.env.MILVUS_ANALYZER ?? "standard",
+  },
+  // PostgreSQL (Prisma) — relational database. Replaces MySQL/knex.
+  // Default port is 5433 because a native PostgreSQL often owns 5432 on dev machines.
+  database: {
+    url:
+      process.env.DATABASE_URL ??
+      "postgresql://yukino:yukino@localhost:5433/yukino_agent",
   },
   // MCP (Log tool SSE)
   mcpUrl: process.env.MCP_URL ?? "http://localhost:3000/sse",
@@ -69,6 +79,18 @@ export const config = {
   provider: (process.env.LLM_PROVIDER ?? "openai") as "openai" | "anthropic",
   // Embedding provider selection: "openai" (only)
   embeddingProvider: (process.env.EMBEDDING_PROVIDER ?? "openai") as "openai",
+  // DevFlow (GitHub collaboration workspace)
+  github: {
+    token: process.env.GITHUB_TOKEN ?? "",
+    apiBaseUrl: process.env.GITHUB_API_BASE_URL ?? "https://api.github.com",
+  },
+  devflow: {
+    // Falls back to the shared MYSQL_DSN when not set explicitly.
+    mysqlDsn: process.env.DEVFLOW_MYSQL_DSN ?? process.env.MYSQL_DSN ?? "",
+    database: process.env.DEVFLOW_MYSQL_DATABASE ?? "devflow",
+    // Key used to encrypt per-repo GitHub tokens at rest (AES-256-GCM).
+    secret: process.env.DEVFLOW_SECRET ?? "devflow-local-dev-secret",
+  },
 } as const;
 
 // Conversation memory window size.

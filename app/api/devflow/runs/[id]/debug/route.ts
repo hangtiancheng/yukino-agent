@@ -1,0 +1,20 @@
+// POST /api/devflow/runs/:id/debug — run the CI Debug agent.
+import { debugRun } from "@/lib/devflow/agents/analysis";
+import { errorMessage, fail, ok } from "@/lib/devflow/http";
+
+export { OPTIONS } from "@/lib/devflow/http";
+
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
+export async function POST(_request: Request, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const record = await debugRun(id);
+    return ok(record);
+  } catch (e) {
+    const message = errorMessage(e);
+    return fail(message.includes("not found") ? 404 : 500, message);
+  }
+}
