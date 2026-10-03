@@ -29,18 +29,53 @@ const asJson = (value: unknown): Prisma.InputJsonValue =>
 
 const PROJECT_PREFIX = "devflow:project";
 const SKIP_DIRS = new Set([
-  ".git", "node_modules", ".next", ".nuxt", "dist", "build", "coverage",
-  "vendor", ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache",
+  ".git",
+  "node_modules",
+  ".next",
+  ".nuxt",
+  "dist",
+  "build",
+  "coverage",
+  "vendor",
+  ".venv",
+  "venv",
+  "__pycache__",
+  ".pytest_cache",
+  ".mypy_cache",
 ]);
-const SECRET_FILENAMES = new Set([".env", ".env.local", ".env.production", ".npmrc", ".pypirc"]);
+const SECRET_FILENAMES = new Set([
+  ".env",
+  ".env.local",
+  ".env.production",
+  ".npmrc",
+  ".pypirc",
+]);
 
 const MANIFEST_NAMES = new Set([
-  "package.json", "pyproject.toml", "requirements.txt", "setup.py", "go.mod",
-  "Cargo.toml", "pom.xml", "build.gradle", "composer.json", "Gemfile",
-  "package-lock.json", "pnpm-lock.yaml", "yarn.lock",
+  "package.json",
+  "pyproject.toml",
+  "requirements.txt",
+  "setup.py",
+  "go.mod",
+  "Cargo.toml",
+  "pom.xml",
+  "build.gradle",
+  "composer.json",
+  "Gemfile",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "yarn.lock",
 ]);
 const DOC_LIKE_EXT = new Set([".md", ".mdx", ".rst", ".txt", ".adoc"]);
-const CONFIG_EXT = new Set([".toml", ".yaml", ".yml", ".json", ".ini", ".conf", ".properties"]);
+const CONFIG_EXT = new Set([
+  ".toml",
+  ".yaml",
+  ".yml",
+  ".json",
+  ".ini",
+  ".conf",
+  ".properties",
+]);
 
 export interface ProjectDocCandidate {
   rel: string;
@@ -77,7 +112,11 @@ function classify(rel: string): ProjectDocCandidate | null {
   if (MANIFEST_NAMES.has(name)) {
     return { rel, sourceType: "manifest", tier: "core" };
   }
-  if (/^(changelog|contributing|license|security|authors|code_of_conduct)(\.|$)/i.test(name)) {
+  if (
+    /^(changelog|contributing|license|security|authors|code_of_conduct)(\.|$)/i.test(
+      name,
+    )
+  ) {
     return { rel, sourceType: "docs", tier: "docs" };
   }
   const ext = path.extname(lower);
@@ -133,7 +172,11 @@ function detectTechStack(files: Set<string>): string[] {
   const stack: string[] = [];
   if (files.has("package.json")) stack.push("JavaScript/TypeScript");
   if (files.has("tsconfig.json")) stack.push("TypeScript");
-  if (files.has("pyproject.toml") || files.has("requirements.txt") || files.has("setup.py"))
+  if (
+    files.has("pyproject.toml") ||
+    files.has("requirements.txt") ||
+    files.has("setup.py")
+  )
     stack.push("Python");
   if (files.has("go.mod")) stack.push("Go");
   if (files.has("Cargo.toml")) stack.push("Rust");
@@ -147,7 +190,9 @@ export async function buildSummary(
   checkout: string,
   candidates: ProjectDocCandidate[],
 ): Promise<Record<string, unknown>> {
-  const topEntries = await readdir(checkout, { withFileTypes: true }).catch(() => []);
+  const topEntries = await readdir(checkout, { withFileTypes: true }).catch(
+    () => [],
+  );
   const topDirs = topEntries
     .filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name))
     .map((e) => e.name)
@@ -158,7 +203,8 @@ export async function buildSummary(
   );
   const sourceTypeCoverage: Record<string, number> = {};
   for (const c of candidates) {
-    sourceTypeCoverage[c.sourceType] = (sourceTypeCoverage[c.sourceType] ?? 0) + 1;
+    sourceTypeCoverage[c.sourceType] =
+      (sourceTypeCoverage[c.sourceType] ?? 0) + 1;
   }
   return {
     techStack: detectTechStack(rootFiles),
@@ -172,11 +218,17 @@ export async function buildSummary(
   };
 }
 
-export function projectFingerprint(branch: string | null, commitSha: string | null): string {
+export function projectFingerprint(
+  branch: string | null,
+  commitSha: string | null,
+): string {
   return `${branch ?? "?"}@${commitSha ? commitSha.slice(0, 12) : "?"}`;
 }
 
-async function readBounded(file: string, maxBytes: number): Promise<string | null> {
+async function readBounded(
+  file: string,
+  maxBytes: number,
+): Promise<string | null> {
   try {
     const data = await readFile(file);
     if (data.length === 0 || data.length > maxBytes) return null;
@@ -200,7 +252,10 @@ type ProjectIndexPatch = Partial<{
   lastIndexedAt: Date | null;
 }>;
 
-async function setState(repoId: string, data: ProjectIndexPatch): Promise<void> {
+async function setState(
+  repoId: string,
+  data: ProjectIndexPatch,
+): Promise<void> {
   const { summary, ...rest } = data;
   const fields = {
     ...rest,
@@ -215,8 +270,14 @@ async function setState(repoId: string, data: ProjectIndexPatch): Promise<void> 
 
 export async function getProjectIndexState(
   repo: Repository,
-): Promise<{ index: ProjectIndex | null; stale: boolean; checkoutCloned: boolean }> {
-  const index = await prisma.projectIndex.findUnique({ where: { repoId: repo.id } });
+): Promise<{
+  index: ProjectIndex | null;
+  stale: boolean;
+  checkoutCloned: boolean;
+}> {
+  const index = await prisma.projectIndex.findUnique({
+    where: { repoId: repo.id },
+  });
   const status = await workspaceStatus(repo);
   let stale = false;
   if (index && index.status === "ready" && status.cloned) {
@@ -286,7 +347,9 @@ export async function indexProject(repo: Repository): Promise<{
     return { fileCount: candidates.length, chunkCount, fingerprint };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    await setState(repo.id, { status: "failed", errorMessage: message }).catch(() => {});
+    await setState(repo.id, { status: "failed", errorMessage: message }).catch(
+      () => {},
+    );
     throw e instanceof WorkspaceError ? e : new WorkspaceError(message, 500);
   }
 }

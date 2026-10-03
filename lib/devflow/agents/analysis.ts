@@ -15,8 +15,8 @@ import {
   type CIDebug,
   type IssueAnalysis,
   type PRReview,
-} from "../schemas";
-import { searchKnowledge } from "../rag";
+} from "@/lib/devflow/schemas";
+import { searchKnowledge } from "@/lib/devflow/rag";
 import {
   CI_DEBUG_PROMPT,
   ISSUE_ANALYSIS_PROMPT,

@@ -19,7 +19,10 @@ export async function GET(request: Request, context: RouteContext) {
     const repo = await getRepoOrThrow(id);
     const url = new URL(request.url);
     const relPath = url.searchParams.get("path") ?? ".";
-    const limitRaw = Number.parseInt(url.searchParams.get("limit") ?? "200", 10);
+    const limitRaw = Number.parseInt(
+      url.searchParams.get("limit") ?? "200",
+      10,
+    );
     const checkout = await requireCheckout(repo);
     const entries = await listFiles(
       checkout,

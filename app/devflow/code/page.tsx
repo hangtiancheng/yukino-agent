@@ -159,9 +159,14 @@ export default function DevflowCodePage() {
     if (!repoId) return;
     setCloning(true);
     try {
-      const ws = await dfPost<WorkspaceStatus>(`/repos/${repoId}/workspace`, {});
+      const ws = await dfPost<WorkspaceStatus>(
+        `/repos/${repoId}/workspace`,
+        {},
+      );
       setWorkspace(ws);
-      notify.success(`Code ready (${ws.branch ?? "default"} @ ${shortSha(ws.commitSha)})`);
+      notify.success(
+        `Code ready (${ws.branch ?? "default"} @ ${shortSha(ws.commitSha)})`,
+      );
     } catch (e) {
       notify.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -181,7 +186,9 @@ export default function DevflowCodePage() {
       notify.success(
         `Indexed ${result.fileCount} docs into ${result.chunkCount} chunks`,
       );
-      const idx = await dfGet<ProjectIndexState>(`/repos/${repoId}/project-index`);
+      const idx = await dfGet<ProjectIndexState>(
+        `/repos/${repoId}/project-index`,
+      );
       setIndexState(idx);
     } catch (e) {
       notify.error(e instanceof Error ? e.message : String(e));
@@ -267,7 +274,11 @@ export default function DevflowCodePage() {
                 size="sm"
                 variant={cloned ? "outline" : "default"}
               >
-                {cloning ? <Spinner className="size-3.5" /> : <RefreshCw className="size-3.5" />}
+                {cloning ? (
+                  <Spinner className="size-3.5" />
+                ) : (
+                  <RefreshCw className="size-3.5" />
+                )}
                 {cloned ? "Refresh (fetch + pull)" : "Clone code"}
               </Button>
             </CardContent>
@@ -296,7 +307,8 @@ export default function DevflowCodePage() {
                   {indexState?.status ?? "idle"}
                 </Badge>
                 <span>
-                  {indexState?.fileCount ?? 0} docs · {indexState?.chunkCount ?? 0} chunks
+                  {indexState?.fileCount ?? 0} docs ·{" "}
+                  {indexState?.chunkCount ?? 0} chunks
                 </span>
                 {indexState?.stale ? (
                   <Badge variant="outline">stale</Badge>
@@ -323,8 +335,14 @@ export default function DevflowCodePage() {
                 size="sm"
                 variant="outline"
               >
-                {indexing ? <Spinner className="size-3.5" /> : <Database className="size-3.5" />}
-                {indexState?.status === "ready" ? "Re-index docs" : "Index docs"}
+                {indexing ? (
+                  <Spinner className="size-3.5" />
+                ) : (
+                  <Database className="size-3.5" />
+                )}
+                {indexState?.status === "ready"
+                  ? "Re-index docs"
+                  : "Index docs"}
               </Button>
             </CardContent>
           </Card>
@@ -344,7 +362,10 @@ export default function DevflowCodePage() {
         </Empty>
       ) : (
         <>
-          <Tabs value={tab} onValueChange={(v) => setTab(v as "search" | "browse")}>
+          <Tabs
+            value={tab}
+            onValueChange={(v) => setTab(v as "search" | "browse")}
+          >
             <TabsList>
               <TabsTrigger value="search">Search code</TabsTrigger>
               <TabsTrigger value="browse">Browse files</TabsTrigger>
@@ -361,8 +382,15 @@ export default function DevflowCodePage() {
                   }}
                   className="flex-1"
                 />
-                <Button onClick={() => void handleSearch()} disabled={searching || !searchQuery.trim()}>
-                  {searching ? <Spinner className="size-4" /> : <Search className="size-4" />}
+                <Button
+                  onClick={() => void handleSearch()}
+                  disabled={searching || !searchQuery.trim()}
+                >
+                  {searching ? (
+                    <Spinner className="size-4" />
+                  ) : (
+                    <Search className="size-4" />
+                  )}
                   Search
                 </Button>
               </div>
@@ -384,7 +412,10 @@ export default function DevflowCodePage() {
                       className="border-border bg-card hover:bg-accent/50 block w-full rounded-lg border p-3 text-left transition-colors"
                     >
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="font-mono text-[10px]">
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-[10px]"
+                        >
                           {hit.path}:{hit.line}
                         </Badge>
                         <span className="text-muted-foreground text-[10px] tabular-nums">
@@ -415,7 +446,9 @@ export default function DevflowCodePage() {
                 {browsePath !== "." ? (
                   <>
                     <ChevronRight className="size-3" />
-                    <span className="text-foreground break-all">{browsePath}</span>
+                    <span className="text-foreground break-all">
+                      {browsePath}
+                    </span>
                   </>
                 ) : null}
                 {browsePath !== "." ? (
@@ -480,14 +513,21 @@ export default function DevflowCodePage() {
                 <CardTitle className="flex items-center justify-between gap-2 text-sm">
                   <span className="flex min-w-0 items-center gap-2">
                     <FileCode2 className="text-muted-foreground size-4 shrink-0" />
-                    <span className="truncate font-mono">{file?.path ?? "…"}</span>
+                    <span className="truncate font-mono">
+                      {file?.path ?? "…"}
+                    </span>
                     {file ? (
                       <span className="text-muted-foreground shrink-0 text-xs font-normal">
-                        lines {file.startLine}–{file.endLine} of {file.totalLines}
+                        lines {file.startLine}–{file.endLine} of{" "}
+                        {file.totalLines}
                       </span>
                     ) : null}
                   </span>
-                  <Button variant="ghost" size="sm" onClick={() => setFile(null)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setFile(null)}
+                  >
                     <X className="size-4" />
                   </Button>
                 </CardTitle>

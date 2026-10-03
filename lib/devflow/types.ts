@@ -258,10 +258,7 @@ export type FeedbackReason =
   | "tool_error"
   | "other";
 export type FeedbackReviewStatus =
-  | "open"
-  | "in_review"
-  | "resolved"
-  | "dismissed";
+  "open" | "in_review" | "resolved" | "dismissed";
 
 export interface FeedbackView {
   id: string;

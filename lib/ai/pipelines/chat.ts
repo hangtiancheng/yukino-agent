@@ -6,16 +6,16 @@ import {
   type ModelMessage,
   isStepCount,
 } from "ai";
-import { quickModel, providerOptions } from "../models";
-import { A2UI_OPEN_TAG, A2UI_PROMPT_SECTION } from "../a2ui/prompt";
-import { correctA2uiBlock } from "../a2ui/correct";
+import { quickModel, providerOptions } from "@/lib/ai/models";
+import { A2UI_OPEN_TAG, A2UI_PROMPT_SECTION } from "@/lib/ai/a2ui/prompt";
+import { correctA2uiBlock } from "@/lib/ai/a2ui/correct";
 import {
   createA2uiStreamFilter,
   extractA2ui,
   parseA2uiBlock,
-} from "../a2ui/extract";
-import { builtinTools } from "../tools";
-import { getLogMcpTools } from "../tools/query-log";
+} from "@/lib/ai/a2ui/extract";
+import { builtinTools } from "@/lib/ai/tools";
+import { getLogMcpTools } from "@/lib/ai/tools/query-log";
 import { retrieve } from "@/lib/milvus/retriever";
 import { getSimpleMemory } from "@/lib/memory";
 

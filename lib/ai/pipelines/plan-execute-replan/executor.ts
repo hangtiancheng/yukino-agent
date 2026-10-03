@@ -7,7 +7,7 @@ import {
   type LanguageModelUsage,
   type Tool,
 } from "ai";
-import { quickModel, providerOptions } from "../../models";
+import { quickModel, providerOptions } from "@/lib/ai/models";
 
 export interface StepResult {
   text: string;

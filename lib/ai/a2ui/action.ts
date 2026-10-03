@@ -3,9 +3,9 @@
 // client appends to that surface's message list — the A2uiView applies them
 // in place. No user chat message is involved.
 import { generateText, isStepCount, type ModelMessage } from "ai";
-import { quickModel, providerOptions } from "../models";
-import { builtinTools } from "../tools";
-import { getLogMcpTools } from "../tools/query-log";
+import { quickModel, providerOptions } from "@/lib/ai/models";
+import { builtinTools } from "@/lib/ai/tools";
+import { getLogMcpTools } from "@/lib/ai/tools/query-log";
 import { correctA2uiBlock } from "./correct";
 import { extractA2ui } from "./extract";
 import {

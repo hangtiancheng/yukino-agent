@@ -6,7 +6,7 @@ import { generateText } from "ai";
 import { prisma } from "@/lib/db";
 import { thinkModel, providerOptions } from "@/lib/ai/models";
 import { observeGeneration } from "@/lib/observability";
-import { addKnowledgeDocument } from "../rag";
+import { addKnowledgeDocument } from "@/lib/devflow/rag";
 import { WEEKLY_REPORT_PROMPT } from "./prompts";
 
 export interface WeeklyReportInput {

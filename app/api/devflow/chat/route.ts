@@ -15,8 +15,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return Response.json(
       {
-        message:
-          "Invalid request: repoId and a non-empty message are required",
+        message: "Invalid request: repoId and a non-empty message are required",
         data: null,
       },
       { status: 400, headers: CORS_HEADERS },

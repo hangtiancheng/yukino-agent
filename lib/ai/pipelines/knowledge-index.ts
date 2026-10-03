@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import { loadFile } from "../loader";
+import { loadFile } from "@/lib/ai/loader";
 import { config } from "@/lib/config";
 import {
   indexChunks,

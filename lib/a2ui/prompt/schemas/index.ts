@@ -9,7 +9,7 @@
  *   `scripts/catalog.ts` (`npm run catalog`).
  */
 
-import type { JsonObject } from "../types";
+import type { JsonObject } from "@/lib/a2ui/prompt/types";
 
 import shadcnCatalogJson from "./catalog.json";
 import commonTypesJson from "./common_types.json";

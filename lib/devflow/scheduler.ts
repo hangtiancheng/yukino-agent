@@ -11,7 +11,10 @@ import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
 import { syncRepository } from "./sync";
 
-type AutoSyncHandle = { timer: ReturnType<typeof setTimeout> | null; stopped: boolean };
+type AutoSyncHandle = {
+  timer: ReturnType<typeof setTimeout> | null;
+  stopped: boolean;
+};
 
 const globalForAutoSync = globalThis as unknown as {
   devflowAutoSync?: AutoSyncHandle;

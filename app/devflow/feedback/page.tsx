@@ -5,13 +5,7 @@
 // with a note, and any entry can be opened as a trace (question + answer +
 // tool calls). Backed by /api/devflow/feedback* (Category C).
 import { useEffect, useMemo, useState } from "react";
-import {
-  CheckCircle2,
-  Eye,
-  ThumbsDown,
-  ThumbsUp,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle2, Eye, ThumbsDown, ThumbsUp, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,13 +53,15 @@ const REASON_LABELS: Record<FeedbackReason, string> = {
   other: "Other",
 };
 
-const REVIEW_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> =
-  {
-    open: "destructive",
-    in_review: "default",
-    resolved: "secondary",
-    dismissed: "outline",
-  };
+const REVIEW_VARIANT: Record<
+  string,
+  "default" | "secondary" | "outline" | "destructive"
+> = {
+  open: "destructive",
+  in_review: "default",
+  resolved: "secondary",
+  dismissed: "outline",
+};
 
 function pct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
@@ -174,10 +170,13 @@ export default function DevflowFeedbackPage() {
     if (!reviewTarget) return;
     setSubmitting(true);
     try {
-      const updated = await dfPatch<FeedbackView>(`/feedback/${reviewTarget.id}`, {
-        reviewStatus,
-        ...(reviewNote.trim() ? { reviewNote: reviewNote.trim() } : {}),
-      });
+      const updated = await dfPatch<FeedbackView>(
+        `/feedback/${reviewTarget.id}`,
+        {
+          reviewStatus,
+          ...(reviewNote.trim() ? { reviewNote: reviewNote.trim() } : {}),
+        },
+      );
       setRows((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
       setReviewTarget(null);
       setReviewNote("");
@@ -323,7 +322,11 @@ export default function DevflowFeedbackPage() {
                         {row.comment ?? "—"}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={REVIEW_VARIANT[row.reviewStatus] ?? "outline"}>
+                        <Badge
+                          variant={
+                            REVIEW_VARIANT[row.reviewStatus] ?? "outline"
+                          }
+                        >
                           {row.reviewStatus.replace("_", " ")}
                         </Badge>
                       </TableCell>
@@ -368,7 +371,10 @@ export default function DevflowFeedbackPage() {
       </Card>
 
       {/* Trace dialog */}
-      <Dialog open={trace !== null || traceLoading} onOpenChange={(o) => !o && setTrace(null)}>
+      <Dialog
+        open={trace !== null || traceLoading}
+        onOpenChange={(o) => !o && setTrace(null)}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Answer trace</DialogTitle>
@@ -404,7 +410,9 @@ export default function DevflowFeedbackPage() {
                     ) : null}
                   </div>
                   <div className="border-border rounded-lg border p-3">
-                    <DevflowMarkdown content={trace.messages.assistant.content} />
+                    <DevflowMarkdown
+                      content={trace.messages.assistant.content}
+                    />
                   </div>
                 </div>
               ) : null}
@@ -452,7 +460,11 @@ export default function DevflowFeedbackPage() {
             />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setReviewTarget(null)} disabled={submitting}>
+            <Button
+              variant="ghost"
+              onClick={() => setReviewTarget(null)}
+              disabled={submitting}
+            >
               Cancel
             </Button>
             <Button onClick={() => void submitReview()} disabled={submitting}>

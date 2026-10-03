@@ -93,7 +93,10 @@ function toTurn(message: ChatMessageView): ChatTurn {
     id: message.id,
     role: message.role === "assistant" ? "assistant" : "user",
     content: message.content,
-    tools: (message.toolCalls ?? []).map((t) => ({ name: t.name, state: "done" })),
+    tools: (message.toolCalls ?? []).map((t) => ({
+      name: t.name,
+      state: "done",
+    })),
     feedback: message.feedback,
     streaming: false,
   };
@@ -104,9 +107,9 @@ export default function DevflowChatPage() {
 
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(
-    null,
-  );
+  const [activeConversationId, setActiveConversationId] = useState<
+    string | null
+  >(null);
   const [convReloadKey, setConvReloadKey] = useState(0);
 
   const [turns, setTurns] = useState<ChatTurn[]>([]);
@@ -145,7 +148,9 @@ export default function DevflowChatPage() {
         if (cancelled) return;
         setConversations(items);
         setActiveConversationId((prev) =>
-          prev && items.some((c) => c.id === prev) ? prev : (items[0]?.id ?? null),
+          prev && items.some((c) => c.id === prev)
+            ? prev
+            : (items[0]?.id ?? null),
         );
       } catch {
         if (!cancelled) setConversations([]);
@@ -409,7 +414,8 @@ export default function DevflowChatPage() {
     }
   };
 
-  const handleHelpful = (target: ChatTurn) => void submitRating(target, "helpful");
+  const handleHelpful = (target: ChatTurn) =>
+    void submitRating(target, "helpful");
 
   const handleUnhelpfulSubmit = async () => {
     if (!ratingTarget) return;
@@ -513,7 +519,9 @@ export default function DevflowChatPage() {
                     </div>
                   </button>
                   <button
-                    onClick={() => void handleDeleteConversation(conversation.id)}
+                    onClick={() =>
+                      void handleDeleteConversation(conversation.id)
+                    }
                     className="text-muted-foreground hover:text-destructive opacity-0 transition-opacity group-hover:opacity-100"
                     aria-label="Delete conversation"
                   >
@@ -537,7 +545,10 @@ export default function DevflowChatPage() {
           }
           actions={
             activeConversation ? (
-              <Badge variant="outline" className="max-w-56 truncate font-normal">
+              <Badge
+                variant="outline"
+                className="max-w-56 truncate font-normal"
+              >
                 {activeConversation.title}
               </Badge>
             ) : undefined
@@ -605,7 +616,8 @@ export default function DevflowChatPage() {
                         : "bg-card border-border rounded-bl-sm border",
                   )}
                 >
-                  {turn.role === "assistant" && (turn.tools ?? []).length > 0 ? (
+                  {turn.role === "assistant" &&
+                  (turn.tools ?? []).length > 0 ? (
                     <div className="mb-2 flex flex-wrap gap-1.5">
                       {(turn.tools ?? []).map((toolCall, j) => (
                         <Badge
@@ -730,7 +742,10 @@ export default function DevflowChatPage() {
             >
               Cancel
             </Button>
-            <Button onClick={() => void handleUnhelpfulSubmit()} disabled={submittingFeedback}>
+            <Button
+              onClick={() => void handleUnhelpfulSubmit()}
+              disabled={submittingFeedback}
+            >
               {submittingFeedback ? <Spinner className="size-4" /> : null}
               Submit feedback
             </Button>

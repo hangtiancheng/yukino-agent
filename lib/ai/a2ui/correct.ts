@@ -3,7 +3,7 @@
 // ONLY a corrected block. Returns undefined when the retry is still invalid —
 // callers must degrade honestly, never fabricate UI data.
 import { generateText, type LanguageModel, type ModelMessage } from "ai";
-import { providerOptions } from "../models";
+import { providerOptions } from "@/lib/ai/models";
 import { extractA2ui } from "./extract";
 import { A2UI_CLOSE_TAG, A2UI_OPEN_TAG } from "./prompt";
 

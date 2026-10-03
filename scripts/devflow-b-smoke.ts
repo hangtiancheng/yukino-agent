@@ -1,8 +1,8 @@
 // Smoke test for DevFlow Category B project-indexing (non-embedding parts):
 // discovery, classification, summary building, and chunking against a real
 // checkout. Run: npx tsx scripts/devflow-b-smoke.ts <checkoutDir>
-import { discoverProjectDocs, buildSummary } from "../lib/devflow/project-index";
-import { chunkText } from "../lib/devflow/rag";
+import { discoverProjectDocs, buildSummary } from "@/lib/devflow/project-index";
+import { chunkText } from "@/lib/devflow/rag";
 
 async function main() {
   const checkout =

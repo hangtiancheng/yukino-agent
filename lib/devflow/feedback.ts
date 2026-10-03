@@ -6,7 +6,11 @@
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
 import { ensureDemoUser } from "./permissions";
-import type { ChatFeedback, ChatMessage, Repository } from "@/generated/prisma/client";
+import type {
+  ChatFeedback,
+  ChatMessage,
+  Repository,
+} from "@/generated/prisma/client";
 
 export type FeedbackRating = "helpful" | "unhelpful";
 export type FeedbackReason =
@@ -99,7 +103,10 @@ export async function sendNegativeFeedbackNotification(
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ msg_type: "text", content: { text: lines.join("\n") } }),
+      body: JSON.stringify({
+        msg_type: "text",
+        content: { text: lines.join("\n") },
+      }),
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`webhook responded ${response.status}`);
@@ -108,7 +115,9 @@ export async function sendNegativeFeedbackNotification(
       const dict = payload as Record<string, unknown>;
       const code = dict.StatusCode ?? dict.code ?? 0;
       if (code !== 0 && code !== "0") {
-        throw new Error(String(dict.StatusMessage ?? dict.msg ?? "webhook rejected"));
+        throw new Error(
+          String(dict.StatusMessage ?? dict.msg ?? "webhook rejected"),
+        );
       }
     }
     return ["sent", null];
@@ -178,7 +187,9 @@ export async function createFeedback(
 
   const notify =
     input.rating === "unhelpful" &&
-    (!existing || existing.rating !== "unhelpful" || existing.notifiedAt === null);
+    (!existing ||
+      existing.rating !== "unhelpful" ||
+      existing.notifiedAt === null);
 
   const baseData = {
     rating: input.rating,
@@ -229,7 +240,10 @@ export async function createFeedback(
   }
 
   if (notify) {
-    const userMessage = await previousUserMessage(conversation.id, message.createdAt);
+    const userMessage = await previousUserMessage(
+      conversation.id,
+      message.createdAt,
+    );
     const [status, error] = await sendNegativeFeedbackNotification(feedback, {
       repo,
       message,
@@ -300,7 +314,9 @@ export interface FeedbackMetrics {
   reasonCounts: Record<string, number>;
 }
 
-export async function feedbackMetrics(repoId: string): Promise<FeedbackMetrics> {
+export async function feedbackMetrics(
+  repoId: string,
+): Promise<FeedbackMetrics> {
   const [rows, assistantMessages] = await Promise.all([
     prisma.chatFeedback.findMany({ where: { repoId } }),
     prisma.chatMessage.count({ where: { repoId, role: "assistant" } }),
@@ -310,7 +326,8 @@ export async function feedbackMetrics(repoId: string): Promise<FeedbackMetrics> 
   const unhelpful = rows.filter((r) => r.rating === "unhelpful").length;
   const reasonCounts: Record<string, number> = {};
   for (const row of rows) {
-    if (row.reason) reasonCounts[row.reason] = (reasonCounts[row.reason] ?? 0) + 1;
+    if (row.reason)
+      reasonCounts[row.reason] = (reasonCounts[row.reason] ?? 0) + 1;
   }
   const round4 = (n: number) => Math.round(n * 10_000) / 10_000;
   return {
@@ -340,7 +357,12 @@ export interface FeedbackTrace {
   conversation: { id: string; title: string } | null;
   feedback: ChatFeedback | null;
   messages: {
-    user: { id: string; role: string; content: string; createdAt: string } | null;
+    user: {
+      id: string;
+      role: string;
+      content: string;
+      createdAt: string;
+    } | null;
     assistant: {
       id: string;
       role: string;

@@ -56,10 +56,43 @@ const SECRET_FILENAMES = new Set([
 ]);
 
 const TEXT_EXTENSIONS = new Set([
-  ".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".java", ".go", ".rs",
-  ".cs", ".cpp", ".c", ".h", ".hpp", ".php", ".rb", ".swift", ".kt", ".kts",
-  ".scala", ".sql", ".sh", ".ps1", ".bat", ".cmd", ".html", ".css", ".scss",
-  ".json", ".yaml", ".yml", ".toml", ".ini", ".md", ".mdx", ".txt",
+  ".py",
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+  ".java",
+  ".go",
+  ".rs",
+  ".cs",
+  ".cpp",
+  ".c",
+  ".h",
+  ".hpp",
+  ".php",
+  ".rb",
+  ".swift",
+  ".kt",
+  ".kts",
+  ".scala",
+  ".sql",
+  ".sh",
+  ".ps1",
+  ".bat",
+  ".cmd",
+  ".html",
+  ".css",
+  ".scss",
+  ".json",
+  ".yaml",
+  ".yml",
+  ".toml",
+  ".ini",
+  ".md",
+  ".mdx",
+  ".txt",
 ]);
 
 const TEXT_FILENAMES = new Set([
@@ -76,9 +109,26 @@ const QUERY_TOKEN_RE =
   /[A-Za-z_$][A-Za-z0-9_.$:/\\-]*|[0-9]{3,}|[\u4e00-\u9fff]{2,}/g;
 
 const STOP_TERMS = new Set([
-  "about", "after", "before", "code", "error", "failed", "failure", "file",
-  "from", "into", "issue", "project", "pull", "request", "test", "tests",
-  "that", "the", "this", "with",
+  "about",
+  "after",
+  "before",
+  "code",
+  "error",
+  "failed",
+  "failure",
+  "file",
+  "from",
+  "into",
+  "issue",
+  "project",
+  "pull",
+  "request",
+  "test",
+  "tests",
+  "that",
+  "the",
+  "this",
+  "with",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -249,7 +299,9 @@ async function doSyncCheckout(repo: Repository): Promise<SyncResult> {
   };
 }
 
-export async function workspaceStatus(repo: Repository): Promise<WorkspaceStatus> {
+export async function workspaceStatus(
+  repo: Repository,
+): Promise<WorkspaceStatus> {
   const target = repoCheckoutPath(repo);
   const cloned = await isGitWorkTree(target);
   return {
@@ -381,7 +433,10 @@ export async function readCodeFile(
   if (!isTextFile(name)) {
     throw new WorkspaceError("Not a readable text file (binary or excluded)");
   }
-  const text = await readTextBounded(abs, config.devflow.workspace.maxFileBytes);
+  const text = await readTextBounded(
+    abs,
+    config.devflow.workspace.maxFileBytes,
+  );
   if (text === null) {
     throw new WorkspaceError("File is empty, binary, or too large to read");
   }
@@ -539,10 +594,13 @@ export async function searchCode(
   }
 
   const hits = [...best.values()].sort(
-    (a, b) => b.score - a.score || a.path.localeCompare(b.path) || a.line - b.line,
+    (a, b) =>
+      b.score - a.score || a.path.localeCompare(b.path) || a.line - b.line,
   );
   const maxScore = hits[0]?.score || 1;
-  return hits.slice(0, cappedLimit).map((h) => ({ ...h, score: h.score / maxScore }));
+  return hits
+    .slice(0, cappedLimit)
+    .map((h) => ({ ...h, score: h.score / maxScore }));
 }
 
 // Convenience: resolve a repo's checkout, throwing a clear error if not cloned.

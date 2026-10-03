@@ -23,16 +23,16 @@ import {
 } from "ai";
 import { z } from "zod/v4";
 import { observeGeneration } from "@/lib/observability";
-import { providerOptions, quickModel, thinkModel } from "../../models";
-import { correctA2uiBlock } from "../../a2ui/correct";
-import { extractA2ui } from "../../a2ui/extract";
+import { providerOptions, quickModel, thinkModel } from "@/lib/ai/models";
+import { correctA2uiBlock } from "@/lib/ai/a2ui/correct";
+import { extractA2ui } from "@/lib/ai/a2ui/extract";
 import {
   A2UI_CLOSE_TAG,
   A2UI_OPEN_TAG,
   A2UI_PROMPT_SECTION,
-} from "../../a2ui/prompt";
-import { builtinTools } from "../../tools";
-import { getLogMcpTools } from "../../tools/query-log";
+} from "@/lib/ai/a2ui/prompt";
+import { builtinTools } from "@/lib/ai/tools";
+import { getLogMcpTools } from "@/lib/ai/tools/query-log";
 import { executeStep } from "./executor";
 import type { PlanExecuteEvent } from "./events";
 

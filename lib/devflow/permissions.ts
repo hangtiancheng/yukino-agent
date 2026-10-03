@@ -2,11 +2,7 @@
 // FastAPI's `Depends(require_permission(...))` becomes an async helper that a
 // route awaits; it throws PermissionError (mapped to HTTP 403) when denied.
 import { prisma } from "@/lib/db";
-import {
-  Prisma,
-  type AuditLog,
-  type User,
-} from "@/generated/prisma/client";
+import { Prisma, type AuditLog, type User } from "@/generated/prisma/client";
 
 export type Permission =
   | "repo:read"
@@ -45,9 +41,7 @@ export const ROLE_PERMISSIONS: Record<string, ReadonlySet<Permission>> = {
 };
 
 export class PermissionError extends Error {
-  constructor(
-    public permission: Permission,
-  ) {
+  constructor(public permission: Permission) {
     super(`Missing permission: ${permission}`);
     this.name = "PermissionError";
   }
@@ -56,7 +50,9 @@ export class PermissionError extends Error {
 // Single-tenant dev model: the first user is the acting principal. Created on
 // demand as an owner so a fresh install is usable without a signup flow.
 export async function ensureDemoUser(): Promise<User> {
-  const existing = await prisma.user.findFirst({ orderBy: { createdAt: "asc" } });
+  const existing = await prisma.user.findFirst({
+    orderBy: { createdAt: "asc" },
+  });
   if (existing) {
     if (!existing.role) {
       return prisma.user.update({

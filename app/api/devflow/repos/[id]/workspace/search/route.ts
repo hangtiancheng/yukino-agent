@@ -23,7 +23,9 @@ const CodeSearchSchema = z.object({
 
 export async function POST(request: Request, context: RouteContext) {
   const { id } = await context.params;
-  const parsed = CodeSearchSchema.safeParse(await request.json().catch(() => null));
+  const parsed = CodeSearchSchema.safeParse(
+    await request.json().catch(() => null),
+  );
   if (!parsed.success) {
     return fail(
       400,

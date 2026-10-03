@@ -11,19 +11,19 @@ import {
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
 import { quickModel, providerOptions } from "@/lib/ai/models";
-import { searchKnowledge } from "../rag";
+import { searchKnowledge } from "@/lib/devflow/rag";
 import {
   listFiles,
   readCodeFile,
   requireCheckout,
   searchCode,
-} from "../workspace";
-import { searchProjectDocs } from "../project-index";
+} from "@/lib/devflow/workspace";
+import { searchProjectDocs } from "@/lib/devflow/project-index";
 import {
   appendMessage,
   ensureConversation,
   listMessages,
-} from "../conversations";
+} from "@/lib/devflow/conversations";
 import { DEVFLOW_CHAT_SYSTEM_PROMPT } from "./prompts";
 import type { Repository } from "@/generated/prisma/client";
 
