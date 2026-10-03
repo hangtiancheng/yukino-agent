@@ -19,7 +19,7 @@ import {
   useTransform,
   type MotionValue,
 } from "motion/react";
-import { BotMessageSquare, FlaskConical, FolderGit2 } from "lucide-react";
+import { BotMessageSquare, FlaskConical, FolderGit2, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const BASE_SIZE = 40;
@@ -36,6 +36,15 @@ interface DockItemDef {
 
 // All tiles share the theme's sage-green primary colour (light/dark aware).
 const DOCK_ITEMS: DockItemDef[] = [
+  {
+    href: "/complaints",
+    label: "投诉信箱",
+    icon: Mail,
+    isActive: (p) =>
+      p.startsWith("/complaints") ||
+      p.startsWith("/account/") ||
+      ["/login", "/register", "/forgot-password"].includes(p),
+  },
   {
     href: "/",
     label: "OnCall Agent",

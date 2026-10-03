@@ -23,7 +23,7 @@ export const getCurrentTimeTool = tool({
 // postgres_query
 export const postgresQueryTool = tool({
   description:
-    "Execute SQL against the PostgreSQL application database and return JSON results. Supports query/insert/update/delete. Results are formatted as JSON for easy parsing.",
+    "Execute SQL against the separately configured OnCall PostgreSQL database and return JSON results. Supports query/insert/update/delete. Cannot access the application account or complaint database. Unavailable until the administrator configures a dedicated connection.",
   inputSchema: postgresQuerySchema,
   execute: async (input) =>
     JSON.stringify(await execPostgresSql(input.sql, input.operate_type)),

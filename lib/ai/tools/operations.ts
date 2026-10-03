@@ -1,7 +1,7 @@
 // Pure function implementations for tools:
 // get_current_time / query_prometheus_alerts / query_internal_docs / postgres_query
 import { retrieve } from "@/lib/milvus/retriever";
-import { prisma } from "@/lib/db";
+import { executeOncallSql } from "./postgres";
 import { config } from "@/lib/config";
 import { z } from "zod/v4";
 
@@ -122,33 +122,12 @@ export async function retrieveDocs(query: string) {
 }
 
 // ============ postgres_query ============
-// Executes directly against the configured DATABASE_URL without an
-// interactive confirmation prompt. The connection string is NOT a tool
-// parameter — the LLM only supplies SQL, so it can never redirect queries
-// to an arbitrary database.
-
-// Prisma returns BigInt for int8 columns; JSON.stringify throws on BigInt,
-// so serialize them as numbers (ids in this schema fit safely).
-function serializeRows(rows: unknown): unknown {
-  return JSON.parse(
-    JSON.stringify(rows, (_key, value) =>
-      typeof value === "bigint" ? Number(value) : value,
-    ),
-  );
-}
+// Public OnCall must never inherit the application account's database access.
+// The LLM supplies SQL only; the dedicated connection is administrator-configured.
 
 export async function execPostgresSql(
   sql: string,
   operateType: string,
 ): Promise<unknown> {
-  if (operateType === "query") {
-    const rows = await prisma.$queryRawUnsafe(sql);
-    return serializeRows(rows);
-  }
-  const affected = await prisma.$executeRawUnsafe(sql);
-  return {
-    success: true,
-    affected_rows: affected,
-    message: `Executed ${operateType} sql`,
-  };
+  return executeOncallSql(sql, operateType);
 }

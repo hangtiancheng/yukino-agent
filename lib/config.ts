@@ -3,6 +3,20 @@
 import "dotenv/config";
 
 export const config = {
+  oncallDatabaseUrl: process.env.ONCALL_DATABASE_URL ?? "",
+  account: {
+    secret: process.env.AUTH_SECRET ?? "",
+    appUrl: process.env.APP_URL ?? "http://localhost:3000",
+    secureCookies: process.env.NODE_ENV === "production",
+  },
+  smtp: {
+    host: process.env.SMTP_HOST ?? "",
+    port: Number(process.env.SMTP_PORT ?? "587"),
+    secure: process.env.SMTP_SECURE === "true",
+    user: process.env.SMTP_USER ?? "",
+    password: process.env.SMTP_PASSWORD ?? "",
+    from: process.env.SMTP_FROM ?? "",
+  },
   // OpenAI (OpenAI compatible). 'think' is used for planning/replanning, 'quick' is used for execution/chat.
   openai: {
     think: {

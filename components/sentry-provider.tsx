@@ -25,9 +25,29 @@ if (isBrowser() && !isInitialized()) {
     dsn: "/api/log",
     projectId: "yukino-agent",
     debug: true,
+    // Account credentials and private complaint content must not enter telemetry.
+    excludeAPIs: [/\/api\/auth(?:\/|$)/, /\/api\/complaints(?:\/|$)/],
+    beforeBreadcrumb: (item) =>
+      /^\/(login|register|forgot-password|account|complaints)(\/|$)/.test(
+        window.location.pathname,
+      )
+        ? {
+            id: item.id,
+            type: item.type,
+            name: "Mailbox",
+            time: item.time,
+            timestamp: item.timestamp,
+            message: "Mailbox interaction",
+            status: item.status,
+            userAction: item.userAction,
+          }
+        : item,
     beforeSendBatch: (eventList) =>
       eventList.filter(
-        (item) => JSON.stringify(item).length <= MAX_EVENT_BYTES,
+        (item) =>
+          !/\/(login|register|forgot-password|account|complaints)([/?#]|$)/.test(
+            item.url,
+          ) && JSON.stringify(item).length <= MAX_EVENT_BYTES,
       ),
   });
   enablePlugin(new PerformancePlugin(), new ExposurePlugin());

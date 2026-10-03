@@ -12,6 +12,75 @@ datasource db {
   provider = "postgresql"
 }
 
+// Verified mailbox accounts are separate from DevFlow's demo permission user.
+model MailboxAccount {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  passwordHash   String?
+  authVersion    Int      @default(0)
+  lastReminderAt DateTime?
+  createdAt      DateTime @default(now())
+  sessions       MailboxSession[]
+  complaints     Complaint[]
+}
+
+model MailboxSession {
+  tokenHash   String   @id
+  accountId   String
+  authVersion Int
+  expiresAt   DateTime
+  account     MailboxAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([expiresAt])
+}
+
+model MailboxCode {
+  id         String   @id @default(uuid())
+  email      String
+  purpose    String
+  digest     String
+  attempts   Int      @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@unique([email, purpose])
+}
+
+model MailboxThrottle {
+  key       String   @id
+  count     Int      @default(1)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model Complaint {
+  id          String   @id @default(uuid())
+  authorId    String
+  anonymous   Boolean  @default(false)
+  subject     String
+  body        String
+  createdAt   DateTime @default(now())
+  author      MailboxAccount @relation(fields: [authorId], references: [id])
+  recipients  ComplaintRecipient[]
+
+  @@index([authorId, createdAt])
+}
+
+model ComplaintRecipient {
+  id          String    @id @default(uuid())
+  complaintId String
+  // Email identity intentionally supports recipients who have not registered.
+  email       String
+  readAt      DateTime?
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@unique([complaintId, email])
+  @@index([email, readAt])
+}
+
 model Repository {
   id            String    @id @default(uuid())
   owner         String

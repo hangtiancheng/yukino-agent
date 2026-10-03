@@ -18,6 +18,10 @@ Built on Next.js 16 + AI SDK, with Redis Stack for vector search and the A2UI sh
 
 ## setup
 
+### Complaint mailbox
+
+Email login/registration, optional passwords, and a complaint mailbox are available at `/complaints`. Configure PostgreSQL, `APP_URL`, `AUTH_SECRET`, and `SMTP_*`, then run `pnpm db:generate` and `pnpm db:push`. See [mailbox setup, privacy rules, and regression tests](docs/mailbox.md). OnCall and DevFlow remain accessible without login.
+
 ### Redis Stack (Vector DB)
 
 Requires Redis Stack (includes the RediSearch module for vector search).
