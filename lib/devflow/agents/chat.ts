@@ -13,11 +13,19 @@ import { prisma } from "@/lib/db";
 import { quickModel, providerOptions } from "@/lib/ai/models";
 import { searchKnowledge } from "../rag";
 import {
+  listFiles,
+  readCodeFile,
+  requireCheckout,
+  searchCode,
+} from "../workspace";
+import { searchProjectDocs } from "../project-index";
+import {
   appendMessage,
   ensureConversation,
   listMessages,
 } from "../conversations";
 import { DEVFLOW_CHAT_SYSTEM_PROMPT } from "./prompts";
+import type { Repository } from "@/generated/prisma/client";
 
 export type DevflowChatEvent =
   | { type: "text"; content: string }
@@ -47,7 +55,8 @@ function clipBody(body: string | null, max = 2000): string | null {
 // Build the repository-scoped tool set. Every tool reads from the synced
 // PostgreSQL data; the only write path is create_action_draft, which produces
 // a pending draft that requires human confirmation before touching GitHub.
-function buildTools(repoId: string): Record<string, Tool> {
+function buildTools(repo: Repository): Record<string, Tool> {
+  const repoId = repo.id;
   return {
     list_issues: tool({
       description:
@@ -268,6 +277,86 @@ function buildTools(repoId: string): Record<string, Tool> {
         });
       },
     }),
+    workspace_list_files: tool({
+      description:
+        "List files and directories in the repository's cloned source checkout. Read-only. Requires the code to be cloned first (Code page). Pass path='.' for the root.",
+      inputSchema: z.object({
+        path: z.string().default("."),
+        limit: z.number().int().min(1).max(500).default(200),
+      }),
+      execute: async ({ path: relPath, limit }) => {
+        try {
+          const checkout = await requireCheckout(repo);
+          const entries = await listFiles(checkout, relPath, limit);
+          return pack({ count: entries.length, entries });
+        } catch (e) {
+          return pack({ error: e instanceof Error ? e.message : String(e) });
+        }
+      },
+    }),
+    workspace_read_file: tool({
+      description:
+        "Read a text file from the repository's cloned checkout. Read-only; refuses binaries and secret files (.env, .npmrc). Optionally pass startLine + lineCount for an excerpt.",
+      inputSchema: z.object({
+        path: z.string().min(1),
+        startLine: z.number().int().min(1).optional(),
+        lineCount: z.number().int().min(1).max(2000).optional(),
+      }),
+      execute: async ({ path: relPath, startLine, lineCount }) => {
+        try {
+          const checkout = await requireCheckout(repo);
+          const file = await readCodeFile(checkout, relPath, {
+            startLine,
+            lineCount,
+          });
+          return pack(file);
+        } catch (e) {
+          return pack({ error: e instanceof Error ? e.message : String(e) });
+        }
+      },
+    }),
+    workspace_search_code: tool({
+      description:
+        "Lexical (keyword) search over the CURRENT source/docs in the repository's cloned checkout. Read-only. Returns the best matching line per file. Use to find where a symbol, string, or config key is used in the actual code.",
+      inputSchema: z.object({
+        query: z.string().min(1),
+        path: z.string().optional(),
+        limit: z.number().int().min(1).max(50).default(12),
+      }),
+      execute: async ({ query, path: relPath, limit }) => {
+        try {
+          const checkout = await requireCheckout(repo);
+          const hits = await searchCode(checkout, query, relPath, limit);
+          return pack({ count: hits.length, hits });
+        } catch (e) {
+          return pack({ error: e instanceof Error ? e.message : String(e) });
+        }
+      },
+    }),
+    search_project_docs: tool({
+      description:
+        "Semantic search over the repository's indexed project docs (README, manifests, docs/). Requires the project index to be built (Code page). Use for conceptual 'how does this project work / what stack is it' questions.",
+      inputSchema: z.object({
+        query: z.string().min(1),
+        topK: z.number().int().min(1).max(10).default(5),
+      }),
+      execute: async ({ query, topK }) => {
+        try {
+          const hits = await searchProjectDocs(repoId, query, topK);
+          return pack({
+            count: hits.length,
+            hits: hits.map((h) => ({
+              path: h.path,
+              source_type: h.sourceType,
+              score: Number(h.score.toFixed(4)),
+              content: h.content.slice(0, 1200),
+            })),
+          });
+        } catch (e) {
+          return pack({ error: e instanceof Error ? e.message : String(e) });
+        }
+      },
+    }),
   };
 }
 
@@ -313,7 +402,7 @@ export async function* devflowChatStream(
     model: quickModel,
     system,
     messages: history,
-    tools: buildTools(repoId),
+    tools: buildTools(repo),
     stopWhen: isStepCount(12),
     providerOptions,
     onError: ({ error }) => {

@@ -106,6 +106,25 @@ export const config = {
       feishuWebhookUrl: process.env.DEVFLOW_FEISHU_WEBHOOK_URL ?? "",
       traceBaseUrl: process.env.DEVFLOW_FEEDBACK_TRACE_BASE_URL ?? "",
     },
+    // Category B: server-side managed git checkouts that back the workspace file
+    // tools and project-doc indexing. Clones are shallow (--depth 1) and live on
+    // the Node server's disk; disable on serverless deployments.
+    workspace: {
+      checkoutDir: process.env.DEVFLOW_REPO_CHECKOUT_DIR ?? "./data/workspaces",
+      // Safety bounds for clone/refresh and file reads.
+      gitTimeoutMs: Number.parseInt(
+        process.env.DEVFLOW_GIT_TIMEOUT_MS ?? "180000",
+        10,
+      ),
+      maxFileBytes: Number.parseInt(
+        process.env.DEVFLOW_MAX_FILE_BYTES ?? "300000",
+        10,
+      ),
+      maxScanFiles: Number.parseInt(
+        process.env.DEVFLOW_MAX_SCAN_FILES ?? "2000",
+        10,
+      ),
+    },
   },
 } as const;
 

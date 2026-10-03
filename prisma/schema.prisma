@@ -35,6 +35,7 @@ model Repository {
   knowledgeDocuments KnowledgeDocument[]
   actionDrafts       ActionDraft[]
   conversations      Conversation[]
+  projectIndex       ProjectIndex?
 
   @@index([owner])
   @@index([name])
@@ -307,4 +308,34 @@ model ChatFeedback {
   @@index([repoId])
   @@index([conversationId])
   @@index([reviewStatus])
+}
+
+// --- Category B: project-doc index state (vectors live in Milvus) ---
+// One row per repository. The workspace manager clones/refreshes the repo to a
+// managed checkout; project-indexing discovers the repo's docs/manifests,
+// chunks + embeds them into the shared Milvus collection with
+// source = "devflow:project:<repoId>". This row tracks status + fingerprint so
+// re-indexing only happens when the checkout changed.
+model ProjectIndex {
+  id            String    @id @default(uuid())
+  repoId        String    @unique
+  // "idle" | "building" | "ready" | "failed"
+  status        String    @default("idle")
+  // Fingerprint of the indexed checkout (branch@commit) to detect staleness.
+  fingerprint   String?
+  branch        String?
+  commitSha     String?
+  fileCount     Int       @default(0)
+  chunkCount    Int       @default(0)
+  // Project summary: { techStack, topDirs, sourceTypeCoverage, docs }.
+  summary       Json?
+  errorMessage  String?
+  snoozedUntil  DateTime?
+  lastIndexedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  repo Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@index([status])
 }

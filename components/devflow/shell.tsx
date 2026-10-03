@@ -10,6 +10,7 @@ import {
   BookOpen,
   CircleDot,
   ClipboardCheck,
+  Code2,
   FileText,
   FolderGit2,
   GitBranch,
@@ -69,6 +70,7 @@ const NAV_GROUPS: Array<{
     label: "Intelligence",
     items: [
       { href: "/devflow/knowledge", label: "Knowledge Base", icon: BookOpen },
+      { href: "/devflow/code", label: "Code", icon: Code2 },
       { href: "/devflow/chat", label: "Agent Chat", icon: MessageSquareText },
       { href: "/devflow/reports", label: "Weekly Reports", icon: FileText },
       { href: "/devflow/feedback", label: "Feedback", icon: ThumbsUp },

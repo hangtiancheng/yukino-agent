@@ -21,6 +21,8 @@ const eslintConfig = defineConfig([
     "components/ui/**",
     // Generated Prisma client.
     "generated/**",
+    // Category B managed git checkouts (cloned third-party repos, not our source).
+    "data/workspaces/**",
     // Legacy DevFlow-AI source kept for reference during migration.
     "DevFlow-AI/**",
   ]),

@@ -208,3 +208,6 @@ target
 
 # Generated Prisma client (regenerate with `pnpm db:generate`)
 /generated/
+
+# Category B managed git checkouts (cloned third-party repos; regenerated on demand)
+/data/workspaces/

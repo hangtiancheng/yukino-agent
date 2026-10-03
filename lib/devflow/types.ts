@@ -317,6 +317,56 @@ export interface FeedbackTrace {
   };
 }
 
+// --- workspace / project index (category B) ---
+
+export interface WorkspaceStatus {
+  cloned: boolean;
+  path: string;
+  branch: string | null;
+  commitSha: string | null;
+}
+
+export interface FileEntry {
+  path: string;
+  type: "file" | "dir";
+  size: number | null;
+}
+
+export interface FileContent {
+  path: string;
+  content: string;
+  startLine: number;
+  endLine: number;
+  totalLines: number;
+  truncated: boolean;
+}
+
+export interface CodeSearchHit {
+  path: string;
+  line: number;
+  snippet: string;
+  score: number;
+}
+
+export interface ProjectIndexState {
+  status: string;
+  fingerprint: string | null;
+  branch: string | null;
+  commitSha: string | null;
+  fileCount: number;
+  chunkCount: number;
+  summary: {
+    techStack?: string[];
+    topDirs?: string[];
+    sourceTypeCoverage?: Record<string, number>;
+    docs?: Array<{ path: string; tier: string; sourceType: string }>;
+  } | null;
+  errorMessage: string | null;
+  lastIndexedAt: string | null;
+  stale: boolean;
+  checkoutCloned: boolean;
+}
+
 // --- dashboard ---
 
 export interface DevflowStats {
