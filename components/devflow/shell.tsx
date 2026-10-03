@@ -19,6 +19,7 @@ import {
   GitPullRequest,
   Sparkles,
   Sun,
+  ThumbsUp,
 } from "lucide-react";
 import {
   Sidebar,
@@ -70,6 +71,7 @@ const NAV_GROUPS: Array<{
       { href: "/devflow/knowledge", label: "Knowledge Base", icon: BookOpen },
       { href: "/devflow/chat", label: "Agent Chat", icon: MessageSquareText },
       { href: "/devflow/reports", label: "Weekly Reports", icon: FileText },
+      { href: "/devflow/feedback", label: "Feedback", icon: ThumbsUp },
     ],
   },
   {

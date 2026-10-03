@@ -226,6 +226,97 @@ export interface ActionDraft {
   updatedAt: string;
 }
 
+// --- conversations & chat feedback (category C) ---
+
+export interface ConversationSummary {
+  id: string;
+  repoId: string;
+  title: string;
+  status: string;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMessageView {
+  id: string;
+  conversationId: string;
+  role: string;
+  content: string;
+  toolCalls: Array<{ name: string; input?: unknown }>;
+  meta: Record<string, unknown>;
+  createdAt: string;
+  feedback: { rating: string; reviewStatus: string } | null;
+}
+
+export type FeedbackRating = "helpful" | "unhelpful";
+export type FeedbackReason =
+  | "inaccurate"
+  | "not_relevant"
+  | "missing_context"
+  | "unreliable_citation"
+  | "tool_error"
+  | "other";
+export type FeedbackReviewStatus =
+  | "open"
+  | "in_review"
+  | "resolved"
+  | "dismissed";
+
+export interface FeedbackView {
+  id: string;
+  repoId: string;
+  conversationId: string;
+  assistantMessageId: string;
+  rating: FeedbackRating;
+  reason: FeedbackReason | null;
+  comment: string | null;
+  reviewStatus: FeedbackReviewStatus;
+  reviewNote: string | null;
+  notificationStatus: string;
+  notificationError: string | null;
+  notifiedAt: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FeedbackMetrics {
+  repoId: string;
+  assistantMessages: number;
+  ratedMessages: number;
+  feedbackCoverage: number;
+  helpful: number;
+  unhelpful: number;
+  helpfulRate: number;
+  unhelpfulRate: number;
+  negativeFeedbackRate: number;
+  openReviews: number;
+  reasonCounts: Record<string, number>;
+}
+
+export interface FeedbackTrace {
+  traceId: string;
+  repository: { id: string; fullName: string } | null;
+  conversation: { id: string; title: string } | null;
+  feedback: FeedbackView | null;
+  messages: {
+    user: {
+      id: string;
+      role: string;
+      content: string;
+      createdAt: string;
+    } | null;
+    assistant: {
+      id: string;
+      role: string;
+      content: string;
+      toolCalls: Array<{ name: string; input?: unknown }>;
+      createdAt: string;
+    } | null;
+  };
+}
+
 // --- dashboard ---
 
 export interface DevflowStats {

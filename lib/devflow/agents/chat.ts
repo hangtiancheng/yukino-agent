@@ -12,12 +12,22 @@ import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
 import { quickModel, providerOptions } from "@/lib/ai/models";
 import { searchKnowledge } from "../rag";
+import {
+  appendMessage,
+  ensureConversation,
+  listMessages,
+} from "../conversations";
 import { DEVFLOW_CHAT_SYSTEM_PROMPT } from "./prompts";
 
 export type DevflowChatEvent =
   | { type: "text"; content: string }
   | { type: "tool"; name: string; state: "call" | "result"; input?: unknown }
-  | { type: "done" };
+  | {
+      type: "done";
+      conversationId: string;
+      userMessageId: string;
+      assistantMessageId: string;
+    };
 
 const MAX_TOOL_RESULT_CHARS = 12_000;
 
@@ -261,24 +271,48 @@ function buildTools(repoId: string): Record<string, Tool> {
   };
 }
 
-// Stream a DevFlow chat turn. Yields text deltas and tool lifecycle events;
-// the caller (API route) serializes them as SSE.
+const HISTORY_LIMIT = 20;
+
+// Stream one DevFlow chat turn. Persists the user message, streams the
+// assistant answer, then persists it (with its tool trace) so conversations are
+// durable server-side and each answer can be rated. The `done` event carries
+// the ids the client needs to attach feedback.
 export async function* devflowChatStream(
   repoId: string,
-  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  input: { conversationId?: string; message: string },
 ): AsyncGenerator<DevflowChatEvent> {
   const repo = await prisma.repository.findUnique({ where: { id: repoId } });
   if (!repo) throw new Error(`Repository ${repoId} not found`);
 
+  const conversation = await ensureConversation(repoId, input.conversationId);
+  const prior = await listMessages(conversation.id, HISTORY_LIMIT);
+  const userMessage = await appendMessage({
+    conversationId: conversation.id,
+    repoId,
+    role: "user",
+    content: input.message,
+  });
+
   const system = `${DEVFLOW_CHAT_SYSTEM_PROMPT}\n\nCurrent repository: ${repo.fullName} (${repo.owner}/${repo.name})${repo.description ? `\nDescription: ${repo.description}` : ""}`;
 
+  const history: ModelMessage[] = [
+    ...prior.map(
+      (m) =>
+        ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }) satisfies ModelMessage,
+    ),
+    { role: "user", content: input.message } satisfies ModelMessage,
+  ];
+
   let streamError: unknown;
+  const toolTrace: Array<{ name: string; input?: unknown }> = [];
+  let assistantText = "";
   const result = streamText({
     model: quickModel,
     system,
-    messages: messages.map(
-      (m) => ({ role: m.role, content: m.content }) satisfies ModelMessage,
-    ),
+    messages: history,
     tools: buildTools(repoId),
     stopWhen: isStepCount(12),
     providerOptions,
@@ -289,8 +323,10 @@ export async function* devflowChatStream(
 
   for await (const part of result.fullStream) {
     if (part.type === "text-delta") {
+      assistantText += part.text;
       yield { type: "text", content: part.text };
     } else if (part.type === "tool-call") {
+      toolTrace.push({ name: part.toolName, input: part.input });
       yield {
         type: "tool",
         name: part.toolName,
@@ -307,5 +343,19 @@ export async function* devflowChatStream(
       ? streamError
       : new Error(String(streamError));
   }
-  yield { type: "done" };
+
+  const assistantMessage = await appendMessage({
+    conversationId: conversation.id,
+    repoId,
+    role: "assistant",
+    content: assistantText,
+    toolCalls: toolTrace,
+  });
+
+  yield {
+    type: "done",
+    conversationId: conversation.id,
+    userMessageId: userMessage.id,
+    assistantMessageId: assistantMessage.id,
+  };
 }

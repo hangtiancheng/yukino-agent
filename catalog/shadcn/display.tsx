@@ -46,6 +46,7 @@ import {
   ComponentIdSchema,
   DynamicNumberSchema,
   DynamicStringSchema,
+  ResolvedChildRef,
 } from "@a2ui/web_core/v0_9";
 
 export const AlertApi = {
@@ -263,9 +264,10 @@ export const KbdApi = {
 
 export const Kbd = createComponentImplementation(KbdApi, ({ props }) => (
   <KbdGroup style={weightStyle(props.weight)}>
-    {(props.keys ?? []).map((key: string, i: number) => (
-      <UIKbd key={i}>{key}</UIKbd>
-    ))}
+    {(props.keys ?? []).map(
+      (key: string | ResolvedChildRef, i: number) =>
+        typeof key === "string" && <UIKbd key={i}>{key}</UIKbd>,
+    )}
   </KbdGroup>
 ));
 

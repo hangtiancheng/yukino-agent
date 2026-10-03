@@ -15,4 +15,7 @@ export async function register(): Promise<void> {
     // Never block server boot on indexing problems (e.g. Milvus down).
     console.error("[instrumentation] startup knowledge indexing failed:", e);
   }
+  // DevFlow periodic repo re-sync (no-op unless DEVFLOW_AUTO_SYNC_ENABLED=true).
+  const { startAutoSyncLoop } = await import("@/lib/devflow/scheduler");
+  startAutoSyncLoop();
 }

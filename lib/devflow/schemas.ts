@@ -143,14 +143,46 @@ export const WeeklyReportSchema = z.object({
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
-export const ChatMessageSchema = z.object({
-  role: z.enum(["user", "assistant"]),
-  content: z.string().min(1),
-});
-
 export const DevflowChatSchema = z.object({
   repoId: z.string().min(1),
-  messages: z.array(ChatMessageSchema).min(1).max(40),
+  // Omitted on the first turn of a new conversation; the server resolves or
+  // creates the conversation and returns its id in the `done` SSE event.
+  conversationId: z.string().min(1).optional(),
+  message: z.string().min(1).max(8000),
+});
+
+export const FeedbackRatingSchema = z.enum(["helpful", "unhelpful"]);
+export const FeedbackReasonSchema = z.enum([
+  "inaccurate",
+  "not_relevant",
+  "missing_context",
+  "unreliable_citation",
+  "tool_error",
+  "other",
+]);
+export const ReviewStatusSchema = z.enum([
+  "open",
+  "in_review",
+  "resolved",
+  "dismissed",
+]);
+
+export const FeedbackCreateSchema = z
+  .object({
+    repoId: z.string().min(1),
+    conversationId: z.string().min(1),
+    assistantMessageId: z.string().min(1),
+    rating: FeedbackRatingSchema,
+    reason: FeedbackReasonSchema.optional(),
+    comment: z.string().max(1000).optional(),
+  })
+  .refine((v) => !(v.rating === "helpful" && v.reason !== undefined), {
+    message: "Helpful feedback must not include a negative reason",
+  });
+
+export const FeedbackReviewSchema = z.object({
+  reviewStatus: ReviewStatusSchema,
+  reviewNote: z.string().max(2000).optional(),
 });
 
 export const KnowledgeSearchSchema = z.object({

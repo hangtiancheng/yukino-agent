@@ -34,6 +34,7 @@ model Repository {
   workflowRuns       WorkflowRun[]
   knowledgeDocuments KnowledgeDocument[]
   actionDrafts       ActionDraft[]
+  conversations      Conversation[]
 
   @@index([owner])
   @@index([name])
@@ -197,4 +198,113 @@ model ActionDraft {
 
   @@index([repoId, status])
   @@index([createdAt])
+}
+
+// --- Category C: conversations, chat feedback, permissions/audit ---
+// Ported from the DevFlow-AI Python models (Conversation, ChatMessage,
+// ChatFeedback, User, AuditLog). The B-only models those tables referenced
+// (AgentRun / ChatSession / ConversationMemory / EvidenceItem / MemoryCandidate
+// / RecallEvent / AgentWorkflowRun / AgentTaskRun) are intentionally absent, so
+// feedback is anchored on the assistant ChatMessage id rather than a run id.
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  // "owner" | "maintainer" | "developer" | "viewer"
+  role      String   @default("viewer")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  feedback  ChatFeedback[]
+  auditLogs AuditLog[]
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  // Loose reference (no FK): an audit trail should survive repo deletion.
+  repoId      String?
+  action      String
+  targetType  String?
+  targetId    String?
+  // "success" | "failed" | "denied"
+  status      String   @default("success")
+  requestJson Json?
+  resultJson  Json?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([repoId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model Conversation {
+  id           String   @id @default(uuid())
+  repoId       String
+  title        String   @default("New conversation")
+  // "active" | "deleted" (soft delete; messages/feedback are hard-deleted)
+  status       String   @default("active")
+  messageCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  repo     Repository     @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+  feedback ChatFeedback[]
+
+  @@index([repoId, status])
+  @@index([updatedAt])
+}
+
+model ChatMessage {
+  id             String   @id @default(uuid())
+  conversationId String
+  // Denormalized for per-repo queries; cascade happens via the conversation.
+  repoId         String
+  // "user" | "assistant"
+  role           String
+  content        String
+  // Normalized tool trace: [{ name, state, input? }]
+  toolCalls      Json?
+  meta           Json?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  feedback     ChatFeedback?
+
+  @@index([conversationId, createdAt])
+  @@index([repoId])
+}
+
+model ChatFeedback {
+  id                 String    @id @default(uuid())
+  repoId             String
+  conversationId     String
+  assistantMessageId String    @unique
+  userId             String?
+  // "helpful" | "unhelpful"
+  rating             String
+  // "inaccurate" | "not_relevant" | "missing_context" | "unreliable_citation" | "tool_error" | "other"
+  reason             String?
+  comment            String?
+  // "open" | "in_review" | "resolved" | "dismissed"
+  reviewStatus       String    @default("open")
+  reviewNote         String?
+  // "sent" | "failed" | "pending" | "not_configured" | "not_applicable"
+  notificationStatus String    @default("not_applicable")
+  notificationError  String?
+  notifiedAt         DateTime?
+  reviewedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  assistantMessage ChatMessage  @relation(fields: [assistantMessageId], references: [id], onDelete: Cascade)
+  user             User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([repoId])
+  @@index([conversationId])
+  @@index([reviewStatus])
 }

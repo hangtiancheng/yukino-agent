@@ -83,13 +83,29 @@ export const config = {
   github: {
     token: process.env.GITHUB_TOKEN ?? "",
     apiBaseUrl: process.env.GITHUB_API_BASE_URL ?? "https://api.github.com",
+    // Shared secret for verifying inbound GitHub webhook signatures (HMAC-SHA256).
+    // When empty, webhook signature verification is skipped (dev only).
+    webhookSecret: process.env.GITHUB_WEBHOOK_SECRET ?? "",
   },
   devflow: {
-    // Falls back to the shared MYSQL_DSN when not set explicitly.
-    mysqlDsn: process.env.DEVFLOW_MYSQL_DSN ?? process.env.MYSQL_DSN ?? "",
-    database: process.env.DEVFLOW_MYSQL_DATABASE ?? "devflow",
     // Key used to encrypt per-repo GitHub tokens at rest (AES-256-GCM).
     secret: process.env.DEVFLOW_SECRET ?? "devflow-local-dev-secret",
+    // Periodic background re-sync of connected repositories (see
+    // lib/devflow/scheduler.ts, started from instrumentation.ts).
+    autoSync: {
+      enabled: process.env.DEVFLOW_AUTO_SYNC_ENABLED === "true",
+      intervalSeconds: Number.parseInt(
+        process.env.DEVFLOW_AUTO_SYNC_INTERVAL_SECONDS ?? "900",
+        10,
+      ),
+      limit: Number.parseInt(process.env.DEVFLOW_AUTO_SYNC_LIMIT ?? "30", 10),
+    },
+    // Negative-feedback notification (Feishu/Lark incoming webhook) and the
+    // public base URL used to build feedback trace links.
+    feedback: {
+      feishuWebhookUrl: process.env.DEVFLOW_FEISHU_WEBHOOK_URL ?? "",
+      traceBaseUrl: process.env.DEVFLOW_FEEDBACK_TRACE_BASE_URL ?? "",
+    },
   },
 } as const;
 

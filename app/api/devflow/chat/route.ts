@@ -1,6 +1,7 @@
 // POST /api/devflow/chat — SSE stream of the DevFlow tool-calling agent.
 // Events: connected / message (text delta) / tool ({name,state,input?}) /
-// done / error. Same framing conventions as /api/chat_stream.
+// done ({conversationId,userMessageId,assistantMessageId}) / error. Same
+// framing conventions as /api/chat_stream.
 import { DevflowChatSchema } from "@/lib/devflow/schemas";
 import { devflowChatStream } from "@/lib/devflow/agents/chat";
 import { CORS_HEADERS } from "@/lib/devflow/http";
@@ -15,13 +16,13 @@ export async function POST(request: Request) {
     return Response.json(
       {
         message:
-          "Invalid request: repoId and a non-empty messages array are required",
+          "Invalid request: repoId and a non-empty message are required",
         data: null,
       },
       { status: 400, headers: CORS_HEADERS },
     );
   }
-  const { repoId, messages } = parsed.data;
+  const { repoId, conversationId, message } = parsed.data;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -41,7 +42,10 @@ export async function POST(request: Request) {
       };
       send("connected", JSON.stringify({ status: "connected", repoId }));
       try {
-        for await (const ev of devflowChatStream(repoId, messages)) {
+        for await (const ev of devflowChatStream(repoId, {
+          conversationId,
+          message,
+        })) {
           if (ev.type === "text") {
             send("message", ev.content);
           } else if (ev.type === "tool") {
@@ -57,7 +61,14 @@ export async function POST(request: Request) {
               }),
             );
           } else {
-            send("done", "Stream completed");
+            send(
+              "done",
+              JSON.stringify({
+                conversationId: ev.conversationId,
+                userMessageId: ev.userMessageId,
+                assistantMessageId: ev.assistantMessageId,
+              }),
+            );
           }
         }
       } catch (e) {
