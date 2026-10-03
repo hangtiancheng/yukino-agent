@@ -6,14 +6,14 @@ export const config = {
   // OpenAI (OpenAI compatible). 'think' is used for planning/replanning, 'quick' is used for execution/chat.
   openai: {
     think: {
-      model: process.env.OPENAI_THINK_MODEL ?? "deepseek-v4-flash",
+      model: process.env.OPENAI_THINK_MODEL ?? "deepseek-flash",
       apiKey: process.env.OPENAI_THINK_API_KEY ?? "",
       baseURL:
         process.env.OPENAI_THINK_BASE_URL ??
         "https://ark.cn-beijing.volces.com/api/v3",
     },
     quick: {
-      model: process.env.OPENAI_QUICK_MODEL ?? "deepseek-v4-flash",
+      model: process.env.OPENAI_QUICK_MODEL ?? "deepseek-flash",
       apiKey: process.env.OPENAI_QUICK_API_KEY ?? "",
       baseURL:
         process.env.OPENAI_QUICK_BASE_URL ??
@@ -22,13 +22,13 @@ export const config = {
   },
   anthropic: {
     think: {
-      model: process.env.ANTHROPIC_THINK_MODEL ?? "deepseek-v4-flash",
+      model: process.env.ANTHROPIC_THINK_MODEL ?? "deepseek-flash",
       apiKey: process.env.ANTHROPIC_THINK_API_KEY ?? "",
       baseURL:
         process.env.ANTHROPIC_THINK_BASE_URL ?? "https://api.anthropic.com",
     },
     quick: {
-      model: process.env.ANTHROPIC_QUICK_MODEL ?? "deepseek-v4-flash",
+      model: process.env.ANTHROPIC_QUICK_MODEL ?? "deepseek-flash",
       apiKey: process.env.ANTHROPIC_QUICK_API_KEY ?? "",
       baseURL:
         process.env.ANTHROPIC_QUICK_BASE_URL ?? "https://api.anthropic.com",
