@@ -1,0 +1,330 @@
+# Alert rules for yukino-agent.
+#
+# Alert names are contract: the AI Ops pipeline calls query_prometheus_alerts,
+# then query_internal_docs with the alert name, so every alert here must have a
+# matching heading in data/docs/alert-handling-guide.md.
+#
+# Install to the path referenced by prometheus.yml rule_files, then reload:
+#   cp prometheus.rules.yml /opt/homebrew/etc/prometheus.rules.yml
+#   brew services restart prometheus
+
+groups:
+  - name: targets
+    rules:
+      - alert: ServiceOffline
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "Target {{ $labels.job }} is down"
+          description: "Prometheus cannot scrape {{ $labels.job }} at {{ $labels.instance }}; up has been 0 for over 1 minute. The process may have crashed, panicked, or the port may be occupied."
+
+  - name: node-runtime
+    rules:
+      - alert: NodeHeapNearLimit
+        expr: yukino_node_v8_heap_used_ratio > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "V8 heap of {{ $labels.job }} is {{ $value | humanizePercentage }} of its limit"
+          description: "used_heap_size / heap_size_limit has exceeded 90% for 5 minutes on {{ $labels.instance }}. The process is close to an out-of-memory abort."
+
+      - alert: NodeHeapLeakSuspected
+        expr: predict_linear(yukino_node_v8_heap_used_ratio[30m], 3600) > 0.95
+        for: 15m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "V8 heap on {{ $labels.job }} trends to its limit within an hour"
+          description: "Linear extrapolation of the last 30 minutes of yukino_node_v8_heap_used_ratio on {{ $labels.instance }} reaches 95% within the next hour, which is the signature of a leak rather than normal load."
+
+      - alert: NodeDetachedContextLeak
+        expr: yukino_node_v8_contexts{kind="detached"} > 10
+        for: 15m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "{{ $value }} detached V8 contexts on {{ $labels.job }}"
+          description: "Detached contexts are contexts V8 cannot collect because something still references them. A count that stays above 10 on {{ $labels.instance }} means closures or listeners are retaining destroyed realms."
+
+      - alert: NodeEventLoopSaturated
+        expr: yukino_node_eventloop_utilization > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "Event loop of {{ $labels.job }} is {{ $value | humanizePercentage }} busy"
+          description: "The event loop on {{ $labels.instance }} has been active more than 90% of wall clock time for 5 minutes; it has no headroom left to accept new work."
+
+      - alert: HighEventLoopLag
+        expr: nodejs_eventloop_lag_p99_seconds > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "Event loop p99 lag on {{ $labels.job }} is {{ $value }}s"
+          description: "p99 event loop lag on {{ $labels.instance }} has exceeded 100ms for 5 minutes, so callbacks are queueing behind blocking work and requests will start timing out."
+
+      - alert: NodeGcPressure
+        expr: rate(nodejs_gc_duration_seconds_sum[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "{{ $labels.job }} spends {{ $value | humanizePercentage }} of its time in GC"
+          description: "Garbage collection on {{ $labels.instance }} consumes more than 10% of wall clock time. Either allocation churn is excessive or the live set is close to the heap limit and V8 is collecting repeatedly."
+
+      - alert: NodeCpuSaturated
+        expr: rate(process_cpu_seconds_total{job="yukino-agent"}[5m]) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "{{ $labels.job }} is using {{ $value }} CPU cores"
+          description: "Process CPU time on {{ $labels.instance }} grows at more than 0.9 core-seconds per second, so a single-threaded Node process is effectively pinned. The Go backend is deliberately excluded because it scales across GOMAXPROCS cores; use GoSchedulerLatencyHigh and GoGcCpuPressure for that service."
+
+      - alert: NodeMajorPageFaults
+        expr: |
+          (
+            increase(yukino_node_page_faults{kind="major"}[10m])
+              / ignoring(kind)
+            increase(yukino_node_page_faults{kind="minor"}[10m])
+          ) > 0.1
+          and ignoring(kind) increase(yukino_node_page_faults{kind="major"}[10m]) > 1000
+        for: 10m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of page faults on {{ $labels.job }} require disk I/O"
+          description: "More than 10% of page faults on {{ $labels.instance }} are major, meaning the access could not be satisfied from memory and the host is under memory pressure. Measured as a ratio rather than an absolute count because macOS getrusage reports memory-compressor page-ins as major faults, which makes any absolute threshold fire permanently on a dev machine."
+
+  - name: go-runtime
+    rules:
+      - alert: GoGoroutineLeak
+        expr: go_goroutines{job!="prometheus"} > 500 and deriv(go_goroutines{job!="prometheus"}[30m]) > 0
+        for: 15m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "{{ $labels.job }} holds {{ $value }} goroutines and is still growing"
+          description: "Goroutine count on {{ $labels.instance }} is above 500 and trending up over the last 30 minutes. This is the Go equivalent of a leak: goroutines blocked on a channel, an unbounded worker spawn, or requests whose context is never cancelled."
+
+      - alert: GoSchedulerLatencyHigh
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (le, job, instance) (rate(go_sched_latencies_seconds_bucket{job!="prometheus"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "p99 scheduler latency on {{ $labels.job }} is {{ $value }}s"
+          description: "Goroutines on {{ $labels.instance }} wait more than 50ms at p99 between becoming runnable and actually running. This is the Go analogue of event loop lag: the process is CPU-starved or GOMAXPROCS is too low for the offered load."
+
+      - alert: GoStopTheWorldHigh
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (le, job, instance) (rate(go_sched_pauses_total_gc_seconds_bucket{job!="prometheus"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "p99 GC stop-the-world pause on {{ $labels.job }} is {{ $value }}s"
+          description: "Garbage collection stops every goroutine for more than 50ms at p99 on {{ $labels.instance }}. Long pauses usually mean a very large live heap or heavy pointer-dense structures."
+
+      - alert: GoGcCpuPressure
+        expr: |
+          rate(go_cpu_classes_gc_total_cpu_seconds_total{job!="prometheus"}[5m])
+            / rate(go_cpu_classes_total_cpu_seconds_total{job!="prometheus"}[5m]) > 0.25
+        for: 10m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "{{ $labels.job }} spends {{ $value | humanizePercentage }} of its CPU on GC"
+          description: "More than a quarter of the CPU time on {{ $labels.instance }} goes to garbage collection. Either allocation churn is excessive or GOGC/GOMEMLIMIT is forcing the collector to run continuously."
+
+      - alert: GoHeapNearLimit
+        expr: yukino_go_heap_used_ratio > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "Go live heap on {{ $labels.job }} is {{ $value | humanizePercentage }} of GOMEMLIMIT"
+          description: "The live heap on {{ $labels.instance }} has been above 90% of GOMEMLIMIT for 5 minutes. The collector will thrash and then the process will be OOM-killed. Note this metric reads 0 when GOMEMLIMIT is unset."
+
+      - alert: GoMutexContention
+        expr: rate(go_sync_mutex_wait_total_seconds_total{job!="prometheus"}[5m]) > 1
+        for: 10m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "{{ $labels.job }} loses {{ $value }}s per second waiting on mutexes"
+          description: "Goroutines on {{ $labels.instance }} spend more than one second per wall-clock second blocked on mutex handoff, so a shared lock is serialising the service."
+
+      - alert: GoThreadGrowth
+        expr: go_threads{job!="prometheus"} > 100
+        for: 15m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "{{ $labels.job }} has {{ $value }} OS threads"
+          description: "The Go runtime created more than 100 OS threads on {{ $labels.instance }}. Threads are only spawned when goroutines block in syscalls or cgo, so this points at blocking I/O that should be async or a cgo call that never returns."
+
+  - name: telemetry-pipeline
+    rules:
+      - alert: SentryReportPipelineRejecting
+        expr: rate(yukino_sentry_report_batches_total{outcome="invalid"}[10m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+          service: yukino-sentry
+        annotations:
+          summary: "/api/log is rejecting report batches"
+          description: "POST /api/log has been returning 400 for browser report batches for 10 minutes. Either the SDK payload shape drifted from reportBatchSchema in lib/metrics.ts or something else is posting to the dsn."
+
+      - alert: SentryTelemetryStalled
+        expr: time() - max by (project_id) (yukino_sentry_event_last_seen_timestamp_seconds) > 1800
+        for: 5m
+        labels:
+          severity: warning
+          service: yukino-sentry
+        annotations:
+          summary: "No browser telemetry from {{ $labels.project_id }} for 30 minutes"
+          description: "The newest yukino-sentry event for project {{ $labels.project_id }} is older than 30 minutes. Either nobody is using the app or the reporting path is broken."
+
+  - name: frontend-errors
+    rules:
+      - alert: FrontendReactCrash
+        expr: increase(yukino_sentry_errors_total{type="React"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: yukino-sentry
+        annotations:
+          summary: "React render crash in {{ $labels.project_id }} ({{ $labels.name }})"
+          description: "{{ $value }} React render errors named {{ $labels.name }} were reported by project {{ $labels.project_id }} in the last 5 minutes. These are caught by ReactErrorBoundary, so users saw a fallback instead of the page."
+
+      - alert: FrontendErrorSpike
+        expr: sum by (project_id) (rate(yukino_sentry_errors_total[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          service: yukino-sentry
+        annotations:
+          summary: "{{ $labels.project_id }} reports {{ $value }} browser errors per second"
+          description: "Browser error rate for project {{ $labels.project_id }} has exceeded 12 errors per minute for 5 minutes, aggregated across Error, React, Vue and OtherFrameworks event types."
+
+      - alert: FrontendWhiteScreen
+        expr: increase(yukino_sentry_white_screens_total[10m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: yukino-sentry
+        annotations:
+          summary: "White screen detected in {{ $labels.project_id }}"
+          description: "{{ $value }} white-screen detections were reported by project {{ $labels.project_id }} in the last 10 minutes. The SDK sampler found the viewport still resolving to root elements after the page finished loading."
+
+      - alert: FrontendResourceLoadFailure
+        expr: increase(yukino_sentry_resource_errors_total[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: yukino-sentry
+        annotations:
+          summary: "{{ $value }} <{{ $labels.tag }}> resources failed to load in {{ $labels.project_id }}"
+          description: "Static resource load failures for element type {{ $labels.tag }} in project {{ $labels.project_id }} exceeded 5 in 10 minutes. Common causes are a bad deploy leaving stale asset hashes, or a CDN outage."
+
+  - name: frontend-performance
+    rules:
+      - alert: HighInterfaceFailureRate
+        expr: |
+          sum by (project_id) (rate(yukino_sentry_http_requests_total{status="Error"}[5m]))
+            / sum by (project_id) (rate(yukino_sentry_http_requests_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: yukino-sentry
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of browser requests in {{ $labels.project_id }} are failing"
+          description: "More than 10% of XHR/fetch requests reported by project {{ $labels.project_id }} returned a 4xx/5xx status over the last 5 minutes."
+
+      - alert: FrontendHttpLatencyHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, project_id) (rate(yukino_sentry_http_request_duration_ms_bucket[10m]))
+          ) > 3000
+        for: 10m
+        labels:
+          severity: warning
+          service: yukino-sentry
+        annotations:
+          summary: "p95 browser request latency in {{ $labels.project_id }} is {{ $value }}ms"
+          description: "The 95th percentile of browser-observed HTTP duration for project {{ $labels.project_id }} has exceeded 3s for 10 minutes."
+
+      - alert: WebVitalsDegradation
+        expr: |
+          sum by (name, project_id) (rate(yukino_sentry_web_vital_samples_total{rating="poor"}[15m]))
+            / sum by (name, project_id) (rate(yukino_sentry_web_vital_samples_total[15m])) > 0.25
+        for: 15m
+        labels:
+          severity: warning
+          service: yukino-sentry
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of {{ $labels.name }} samples in {{ $labels.project_id }} are poor"
+          description: "More than a quarter of {{ $labels.name }} samples reported by project {{ $labels.project_id }} landed in the poor band over the last 15 minutes."
+
+      - alert: FrontendNavigationSlow
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, project_id) (rate(yukino_sentry_navigation_timing_ms_bucket{phase="loadEvent"}[15m]))
+          ) > 5000
+        for: 15m
+        labels:
+          severity: warning
+          service: yukino-sentry
+        annotations:
+          summary: "p95 page load in {{ $labels.project_id }} is {{ $value }}ms"
+          description: "The 95th percentile of the loadEvent navigation phase for project {{ $labels.project_id }} has exceeded 5s for 15 minutes."
+
+      - alert: FrontendLongTaskPressure
+        expr: sum by (project_id) (rate(yukino_sentry_long_tasks_total[10m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+          service: yukino-sentry
+        annotations:
+          summary: "{{ $labels.project_id }} reports {{ $value }} main-thread long tasks per second"
+          description: "Main-thread long tasks (over 50ms) in project {{ $labels.project_id }} exceed one per second, so the UI is blocked often enough for users to notice input delay."
+
+      - alert: FrontendMemoryHigh
+        expr: yukino_sentry_browser_memory_bytes > 1.5e9
+        for: 10m
+        labels:
+          severity: warning
+          service: yukino-sentry
+        annotations:
+          summary: "Browser tab in {{ $labels.project_id }} holds {{ $value | humanize1024 }}B"
+          description: "performance.measureUserAgentSpecificMemory reports more than 1.5GB for a tab of project {{ $labels.project_id }}, which risks a renderer OOM on lower-memory devices."
