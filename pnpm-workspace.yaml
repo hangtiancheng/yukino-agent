@@ -8,16 +8,5 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
   workerd: false
-minimumReleaseAgeExclude:
-  - "@yukino.js/sentry@0.0.1"
-  - "@ai-sdk/anthropic@4.0.76"
-  - "@ai-sdk/gateway@4.0.108"
-  - "@ai-sdk/openai-compatible@3.0.66"
-  - "@ai-sdk/openai@4.0.89"
-  - "@ai-sdk/provider-utils@5.0.57"
-  - "@ai-sdk/provider@4.0.25"
-  - "@langchain/langgraph-sdk@1.12.3"
-  - "@langchain/langgraph@1.4.21"
-  - ai@7.0.133
-  - lucide-react@1.53.0
-  - react-resizable-panels@4.14.3
+
+minimumReleaseAge: 0
