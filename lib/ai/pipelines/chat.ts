@@ -27,7 +27,6 @@ import {
   getSkillCatalogPrompt,
   getChatPromptSection,
 } from "@/lib/ai/prompts-skills";
-import { prisma } from "@/lib/db";
 
 const LOG_TOPIC_REGION = process.env.LOG_TOPIC_REGION ?? "";
 const LOG_TOPIC_ID = process.env.LOG_TOPIC_ID ?? "";
@@ -123,12 +122,22 @@ async function buildChatTools(): Promise<ChatTools> {
   };
 }
 
+export interface ChatReferenceStages {
+  vectorRank?: number;
+  vectorScore?: number;
+  bm25Rank?: number;
+  bm25Score?: number;
+  rerankRank?: number;
+  rerankScore?: number;
+}
+
 export interface ChatReference {
   title: string;
   source: string;
   score: number;
   excerpt: string;
   knowledgeType?: KnowledgeType;
+  stages?: ChatReferenceStages;
 }
 
 const REFERENCE_EXCERPT_CHARS = 200;
@@ -154,6 +163,7 @@ export function toReferences(docs: RetrievedDoc[]): ChatReference[] {
       score: Number(doc.score.toFixed(4)),
       excerpt,
       ...(knowledgeType ? { knowledgeType } : {}),
+      ...(doc.stages ? { stages: doc.stages } : {}),
     };
   });
 }
@@ -165,56 +175,13 @@ export interface ChatResult {
   reasoning?: string;
 }
 
-export const AUDIT_TEXT_CHARS = 500;
-
-export function summarizeAuditText(value: unknown): string {
-  let text: string;
-  if (typeof value === "string") {
-    text = value;
-  } else {
-    try {
-      text = JSON.stringify(value) ?? String(value);
-    } catch {
-      text = String(value);
-    }
-  }
-  const normalized = text.split(/\s+/).join(" ").trim();
-  if (normalized.length <= AUDIT_TEXT_CHARS) return normalized;
-  return `${normalized.slice(0, AUDIT_TEXT_CHARS - 3)}...`;
-}
-
-interface ToolAuditInput {
-  sessionId: string;
-  turnIndex: number;
-  toolName: string;
-  source: "builtin" | "mcp";
-  input: unknown;
-  resultText: unknown;
-  status: "success" | "error";
-  durationMs: number;
-}
-
-function recordToolAudit(input: ToolAuditInput): void {
-  prisma.toolCallAudit
-    .create({
-      data: {
-        sessionId: input.sessionId,
-        turnIndex: input.turnIndex,
-        toolName: input.toolName,
-        source: input.source,
-        inputJson: { input: summarizeAuditText(input.input) },
-        resultText: summarizeAuditText(input.resultText),
-        status: input.status,
-        durationMs: input.durationMs,
-      },
-    })
-    .catch((e: unknown) => {
-      console.warn(
-        "[chat] tool-call audit write failed:",
-        e instanceof Error ? e.message : String(e),
-      );
-    });
-}
+export {
+  AUDIT_TEXT_CHARS,
+  summarizeAuditText,
+  recordToolAudit,
+  type ToolAuditInput,
+} from "@/lib/ai/tool-audit";
+import { recordToolAudit } from "@/lib/ai/tool-audit";
 
 export async function chat(id: string, question: string): Promise<ChatResult> {
   const mem = getSimpleMemory(id);

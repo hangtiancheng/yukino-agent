@@ -79,6 +79,26 @@
       "sop": "SOP",
       "document": "知识库",
       "diagnosticCase": "故障案例"
+    },
+    "feedback": {
+      "helpful": "有帮助",
+      "needsImprovement": "需要改进",
+      "details": "补充反馈",
+      "remove": "删除反馈",
+      "reasonPlaceholder": "原因 (短标签)",
+      "commentPlaceholder": "评论 — 哪里不对或缺失?",
+      "correctionPlaceholder": "更正 — 正确的回答应该是什么?",
+      "save": "保存"
+    },
+    "stageVector": "向量",
+    "stageBm25": "BM25",
+    "stageRerank": "精排",
+    "aiops": {
+      "planCreated": "已生成计划, 共 {count} 步",
+      "stepRunning": "正在执行第 {index} 步: {step}",
+      "stepDone": "第 {index} 步完成: {output}",
+      "replanDone": "重规划: 目标已达成, 正在生成报告",
+      "replanContinue": "重规划: 还剩 {count} 步"
     }
   },
   "devflow": {
@@ -359,7 +379,9 @@
         "save": "保存设置",
         "saving": "保存中…",
         "saved": "检索设置已保存",
-        "methodLabel": "检索方式"
+        "methodLabel": "检索方式",
+        "scoreThreshold": "分数阈值",
+        "scoreThresholdHint": "回答前过滤绝对向量 (COSINE) 相似度低于阈值的检索结果."
       },
       "test": {
         "colDoc": "文档",
@@ -485,7 +507,11 @@
         "task": "任务",
         "preference": "偏好",
         "repoContext": "项目上下文"
-      }
+      },
+      "memorySearchTitle": "记忆搜索",
+      "memorySearchPlaceholder": "搜索知识库与已同步的 GitHub 内容…",
+      "memoryRecallEventsTitle": "召回事件",
+      "memoryRecallEventsEmpty": "还没有记忆召回记录."
     },
     "reports": {
       "title": "周报",
@@ -1025,7 +1051,12 @@
       "skillsUnavailable": "Skill 存储不可用",
       "skillNotFound": "未找到该 Skill",
       "invalidRequest": "请求不合法",
-      "docNotFound": "未找到知识文档"
+      "docNotFound": "未找到知识文档",
+      "invalidFeedbackQuery": "反馈查询参数无效",
+      "invalidFeedbackBody": "反馈请求体无效",
+      "feedbackUnavailable": "反馈存储不可用",
+      "feedbackNotFound": "反馈记录不存在",
+      "promptNotFound": "提示词不存在"
     }
   },
   "gallery": {
@@ -1052,7 +1083,13 @@
     "diagnoseFailedWithError": "诊断失败: {error}",
     "runDetailUnavailable": "运行详情不可用.",
     "casesTab": "案例库",
-    "casesEmpty": "暂无诊断案例记录."
+    "casesEmpty": "暂无诊断案例记录.",
+    "progressPlan": "已生成计划 ({count} 步)",
+    "progressStep": "第 {index} 步: {step}",
+    "progressStepDone": "第 {index} 步完成",
+    "progressReplan": "重规划: 还剩 {count} 步",
+    "progressReplanDone": "重规划完成 — 正在生成报告",
+    "runTimeline": "步骤时间线"
   },
   "knowledge": {
     "title": "知识库",
@@ -1081,5 +1118,37 @@
       "document": "知识库",
       "diagnosticCase": "故障案例"
     }
+  },
+  "oncallSettings": {
+    "title": "助手设置",
+    "adminToken": "管理员令牌",
+    "adminTokenPlaceholder": "ONCALL_ADMIN_TOKEN",
+    "adminTokenHint": "修改操作需要令牌, 仅保存在当前浏览器; 服务端未配置令牌时所有修改都会被拒绝.",
+    "promptsTab": "提示词",
+    "skillsTab": "技能",
+    "mcpTab": "MCP",
+    "promptNamePlaceholder": "提示词名称",
+    "promptContentPlaceholder": "自定义系统提示词内容 (markdown)",
+    "cancelEdit": "取消编辑",
+    "create": "创建",
+    "update": "更新",
+    "promptsEmpty": "还没有自定义提示词.",
+    "edit": "编辑",
+    "delete": "删除",
+    "uploadSkill": "上传 SKILL.md",
+    "skillsEmpty": "还没有上传技能.",
+    "mcpNamePlaceholder": "连接名称 (字母、数字、_ 或 -)",
+    "mcpUrlPlaceholder": "https://mcp.example.com/sse",
+    "mcpHeadersPlaceholder": "可选请求头, JSON 键值对象",
+    "mcpHeadersInvalid": "请求头必须是字符串值的 JSON 对象",
+    "mcpEmpty": "还没有配置 MCP 连接.",
+    "mcpTools": "工具",
+    "mcpCheck": "探测",
+    "mcpCheckOk": "连接正常 — 发现 {count} 个工具",
+    "mcpCheckFailed": "连接探测失败",
+    "mcpCheckFailedWith": "连接探测失败: {error}",
+    "saveFailed": "保存失败",
+    "deleteFailed": "删除失败",
+    "saved": "已保存"
   }
 }

@@ -6,14 +6,23 @@ import {
   a2uiActionResponseSchema,
   chatReferenceSchema,
   chatResponseSchema,
-  aiOpsResponseSchema,
   uploadResponseSchema,
 } from "@/lib/schemas";
 import type { KnowledgeType } from "@/lib/ai/pipelines/knowledge-index";
 import { toast } from "@/components/ui/toast";
 import { useTranslations } from "next-intl";
+import { runAiOpsStream } from "@/hooks/aiops-stream";
 
 export type Mode = "quick" | "stream";
+
+export interface ChatReferenceStages {
+  vectorRank?: number;
+  vectorScore?: number;
+  bm25Rank?: number;
+  bm25Score?: number;
+  rerankRank?: number;
+  rerankScore?: number;
+}
 
 export interface ChatReference {
   title: string;
@@ -21,6 +30,7 @@ export interface ChatReference {
   score: number;
   excerpt: string;
   knowledgeType?: KnowledgeType;
+  stages?: ChatReferenceStages;
 }
 
 export interface ChatToolCall {
@@ -484,40 +494,101 @@ export function useChat() {
     [isStreaming, messages, mode, sessionId, t, tCommon, upsertHistory],
   );
 
-  const triggerAIOps = useCallback(async (): Promise<AIOpsResult | null> => {
-    setIsStreaming(true);
-    setOverlay({
-      show: true,
-      text: t("overlay.aiOpsText"),
-      subtext: t("overlay.aiOpsSubtext"),
-    });
-    try {
-      const resp = await fetch("/api/ai_ops", { method: "POST" });
-      const parsed = aiOpsResponseSchema.safeParse(await resp.json());
-      if (!parsed.success) throw new Error(t("errors.invalidAiOpsResponse"));
-      const result = parsed.data.data?.result;
-      if (parsed.data.message === "OK" && result) {
-        const a2ui = parsed.data.data?.a2ui;
-        return {
-          result,
-          detail: parsed.data.data?.detail ?? [],
-          ...(a2ui && a2ui.length > 0 ? { a2ui } : {}),
+  const triggerAIOps = useCallback(
+    async (alert?: unknown): Promise<AIOpsResult | null> => {
+      // Owns the fresh-session reset (legacy AiopsRunForm always started a
+      // new workspace run) so it never depends on stale closure state.
+      const freshSessionId = generateSessionId();
+      setSessionId(freshSessionId);
+      setIsStreaming(true);
+      const controller = new AbortController();
+      setStreamController(controller);
+      const progress: string[] = [];
+      let currentMsgs: ChatMessage[] = [
+        { type: "assistant", content: "", pending: true, detail: [] },
+      ];
+      setMessages(currentMsgs);
+      const updatePending = (patch: Partial<ChatMessage>) => {
+        const last = currentMsgs.at(-1);
+        if (!last) return;
+        currentMsgs = [...currentMsgs.slice(0, -1), { ...last, ...patch }];
+        setMessages(currentMsgs);
+      };
+      try {
+        const streamed = await runAiOpsStream(
+          alert !== undefined ? { alert } : {},
+          {
+            onPlan: (steps) => {
+              progress.push(t("aiops.planCreated", { count: steps.length }));
+              steps.forEach((step, i) => progress.push(`${i + 1}. ${step}`));
+              updatePending({ detail: [...progress] });
+            },
+            onStepStart: (index, step) => {
+              progress.push(t("aiops.stepRunning", { index: index + 1, step }));
+              updatePending({ detail: [...progress] });
+            },
+            onStepDone: (index, output) => {
+              progress.push(
+                t("aiops.stepDone", {
+                  index: index + 1,
+                  output: output.slice(0, 400),
+                }),
+              );
+              updatePending({ detail: [...progress] });
+            },
+            onReplan: (done, remaining) => {
+              progress.push(
+                done
+                  ? t("aiops.replanDone")
+                  : t("aiops.replanContinue", { count: remaining.length }),
+              );
+              updatePending({ detail: [...progress] });
+            },
+          },
+          controller.signal,
+        );
+        const detail =
+          streamed.detail.length > 0 ? streamed.detail : [...progress];
+        const finalMsg: ChatMessage = {
+          type: "assistant",
+          content: streamed.result,
+          detail,
+          ...(streamed.a2ui && streamed.a2ui.length > 0
+            ? { a2ui: streamed.a2ui }
+            : {}),
         };
+        currentMsgs = [...currentMsgs.slice(0, -1), finalMsg];
+        setMessages(currentMsgs);
+        upsertHistory(freshSessionId, currentMsgs);
+        return {
+          result: streamed.result,
+          detail,
+          ...(streamed.a2ui && streamed.a2ui.length > 0
+            ? { a2ui: streamed.a2ui }
+            : {}),
+        };
+      } catch (e) {
+        if (controller.signal.aborted) {
+          currentMsgs = currentMsgs.slice(0, -1);
+          setMessages(currentMsgs);
+          return null;
+        }
+        currentMsgs = currentMsgs.slice(0, -1);
+        setMessages(currentMsgs);
+        showNotification(
+          t("notifications.aiOpsFailed", {
+            error: e instanceof Error ? e.message : String(e),
+          }),
+          "error",
+        );
+        return null;
+      } finally {
+        setStreamController(null);
+        setIsStreaming(false);
       }
-      throw new Error(parsed.data.message || tCommon("unknownError"));
-    } catch (e) {
-      showNotification(
-        t("notifications.aiOpsFailed", {
-          error: e instanceof Error ? e.message : String(e),
-        }),
-        "error",
-      );
-      return null;
-    } finally {
-      setIsStreaming(false);
-      setOverlay({ show: false, text: "", subtext: "" });
-    }
-  }, [showNotification, t, tCommon]);
+    },
+    [showNotification, t, upsertHistory],
+  );
 
   const sendA2uiAction = useCallback(
     async (messageIndex: number, action: A2uiClientAction) => {

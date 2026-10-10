@@ -1,10 +1,20 @@
 import { z } from "zod/v4";
 
+export const chatReferenceStagesSchema = z.object({
+  vectorRank: z.number().optional(),
+  vectorScore: z.number().optional(),
+  bm25Rank: z.number().optional(),
+  bm25Score: z.number().optional(),
+  rerankRank: z.number().optional(),
+  rerankScore: z.number().optional(),
+});
+
 export const chatReferenceSchema = z.object({
   title: z.string(),
   source: z.string(),
   score: z.number(),
   excerpt: z.string(),
+  stages: chatReferenceStagesSchema.optional(),
 });
 
 export const chatResponseSchema = z.object({

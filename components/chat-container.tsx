@@ -16,6 +16,7 @@ const SUGGESTION_KEYS = [
 interface ChatContainerProps {
   messages: ChatMessage[];
   isStreaming: boolean;
+  sessionId: string;
   mode: Mode;
   onModeChange: (m: Mode) => void;
   onSend: (text: string) => void;
@@ -26,6 +27,7 @@ interface ChatContainerProps {
 export default function ChatContainer({
   messages,
   isStreaming,
+  sessionId,
   mode,
   onModeChange,
   onSend,
@@ -77,6 +79,7 @@ export default function ChatContainer({
         <MessageList
           messages={messages}
           isStreaming={isStreaming}
+          sessionId={sessionId}
           onA2uiAction={onA2uiAction}
         />
       )}

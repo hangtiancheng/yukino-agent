@@ -81,6 +81,8 @@ interface KnowledgeConfig {
   retrievalMethod: KbRetrievalMethod;
   rerankEnabled: boolean;
   topK: number;
+  scoreThresholdEnabled: boolean;
+  scoreThreshold: number;
   chunkSize: number;
   chunkOverlap: number;
 }
@@ -1015,6 +1017,45 @@ export default function DevflowKnowledgePage() {
                           setConfig({ ...config, rerankEnabled: checked })
                         }
                       />
+                    </div>
+                    <div className="border-border flex items-center justify-between gap-4 rounded-lg border p-3">
+                      <div className="min-w-0">
+                        <p className="text-foreground text-sm font-medium">
+                          {t("config.scoreThreshold")}
+                        </p>
+                        <p className="text-muted-foreground mt-0.5 text-xs">
+                          {t("config.scoreThresholdHint")}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={1}
+                          step={0.05}
+                          value={config.scoreThreshold}
+                          disabled={!config.scoreThresholdEnabled}
+                          onChange={(e) =>
+                            setConfig({
+                              ...config,
+                              scoreThreshold: Math.min(
+                                1,
+                                Math.max(0, Number(e.target.value) || 0),
+                              ),
+                            })
+                          }
+                          className="h-8 w-20 text-xs"
+                        />
+                        <Switch
+                          checked={config.scoreThresholdEnabled}
+                          onCheckedChange={(checked) =>
+                            setConfig({
+                              ...config,
+                              scoreThresholdEnabled: checked,
+                            })
+                          }
+                        />
+                      </div>
                     </div>
                     {overlapInvalid ? (
                       <p className="text-destructive text-xs">

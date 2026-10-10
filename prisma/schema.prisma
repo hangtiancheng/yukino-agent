@@ -44,6 +44,7 @@ model Repository {
   threadMemory       ThreadMemory?
   conversationMemories ConversationMemory[]
   memoryCandidates   MemoryCandidate[]
+  recallEvents       RecallEvent[]
 
   @@index([owner])
   @@index([name])
@@ -329,6 +330,8 @@ model KnowledgeBaseConfig {
   retrievalMethod String   @default("hybrid")
   rerankEnabled   Boolean  @default(true)
   topK            Int      @default(3)
+  scoreThresholdEnabled Boolean @default(false)
+  scoreThreshold        Float   @default(0.5)
   chunkSize       Int      @default(800)
   chunkOverlap    Int      @default(100)
   createdAt       DateTime @default(now())
@@ -559,6 +562,7 @@ model AiOpsRun {
   status    String    @default("running")
   report    String    @default("")
   detail    Json      @default("[]")
+  events    Json      @default("[]")
   a2ui      Json?
   error     String?
   alertName String?
@@ -619,4 +623,40 @@ model SkillAsset {
   updatedAt   DateTime @updatedAt
 
   @@index([enabled])
+}
+
+model UserFeedback {
+  id         String   @id @default(uuid())
+  sessionId  String   @default("")
+  targetType String
+  targetId   String
+  subjectId  String   @default("")
+  rating     String
+  reason     String?
+  comment    String?
+  correction String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([targetType, targetId, subjectId])
+  @@index([sessionId])
+  @@index([targetType, targetId])
+}
+
+model RecallEvent {
+  id             String   @id @default(uuid())
+  repoId         String
+  conversationId String?
+  toolName       String
+  query          String   @default("")
+  resultsJson    Json     @default("[]")
+  citationsJson  Json     @default("[]")
+  scope          String   @default("project")
+  mode           String   @default("hybrid")
+  metadataJson   Json     @default("{}")
+  createdAt      DateTime @default(now())
+
+  repo Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@index([repoId, createdAt])
 }

@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
+import { requireOncallAdmin } from "@/lib/ai/admin";
 import { validateSkillMarkdown } from "@/lib/ai/prompts-skills";
 
 const CORS_HEADERS = {
@@ -24,6 +25,20 @@ const skillPatchSchema = z.object({
 
 export async function PATCH(request: Request, context: RouteContext) {
   const t = await getTranslations("api.oncall");
+  const admin = requireOncallAdmin(request);
+  if (admin !== null) {
+    return Response.json(
+      {
+        message: t(
+          admin === "not_configured"
+            ? "adminNotConfigured"
+            : "adminUnauthorized",
+        ),
+        data: null,
+      },
+      { status: admin === "not_configured" ? 403 : 401, headers: CORS_HEADERS },
+    );
+  }
   const { id } = await context.params;
   const parsed = skillPatchSchema.safeParse(
     await request.json().catch(() => null),
@@ -116,8 +131,22 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   const t = await getTranslations("api.oncall");
+  const admin = requireOncallAdmin(request);
+  if (admin !== null) {
+    return Response.json(
+      {
+        message: t(
+          admin === "not_configured"
+            ? "adminNotConfigured"
+            : "adminUnauthorized",
+        ),
+        data: null,
+      },
+      { status: admin === "not_configured" ? 403 : 401, headers: CORS_HEADERS },
+    );
+  }
   const { id } = await context.params;
   try {
     const existing = await prisma.skillAsset.findUnique({ where: { id } });

@@ -33,12 +33,19 @@ export async function GET(request: Request, context: RouteContext) {
       parsed.data.beforeMessageId,
     );
     return ok(
-      messages.map((m) => ({
-        ...toMessageView(m),
-        feedback: m.feedback
-          ? { rating: m.feedback.rating, reviewStatus: m.feedback.reviewStatus }
-          : null,
-      })),
+      messages
+        // System rows are compaction bookkeeping (compact boundaries /
+        // compaction failures); the legacy timeline exposed user+assistant only.
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({
+          ...toMessageView(m),
+          feedback: m.feedback
+            ? {
+                rating: m.feedback.rating,
+                reviewStatus: m.feedback.reviewStatus,
+              }
+            : null,
+        })),
     );
   } catch (e) {
     const message = errorMessage(e);

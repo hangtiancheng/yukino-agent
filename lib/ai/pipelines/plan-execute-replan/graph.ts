@@ -24,6 +24,7 @@ import {
 } from "@/lib/ai/a2ui/prompt";
 import { builtinTools } from "@/lib/ai/tools";
 import { getLogMcpTools } from "@/lib/ai/tools/query-log";
+import { recordToolAudit } from "@/lib/ai/tool-audit";
 import { executeStep, findUnknownToolReferences } from "./executor";
 import type { PlanExecuteEvent } from "./events";
 
@@ -38,6 +39,10 @@ const overwrite = <T>(_left: T, right: T): T => right;
 const OpsState = Annotation.Root({
   query: Annotation<string>(),
   alert: Annotation<Record<string, string> | null>({
+    reducer: overwrite,
+    default: () => null,
+  }),
+  runId: Annotation<string | null>({
     reducer: overwrite,
     default: () => null,
   }),
@@ -143,6 +148,22 @@ async function executor(state: OpsGraphState): Promise<OpsGraphUpdate> {
       return res;
     },
   );
+  if (state.runId !== null) {
+    const builtinNames = new Set(Object.keys(builtinTools));
+    let turnIndex = 0;
+    for (const audit of result.toolAudits) {
+      recordToolAudit({
+        sessionId: `aiops:${state.runId}`,
+        turnIndex: turnIndex++,
+        toolName: audit.toolName,
+        source: builtinNames.has(audit.toolName) ? "builtin" : "mcp",
+        input: audit.input,
+        resultText: audit.resultText,
+        status: audit.status,
+        durationMs: 0,
+      });
+    }
+  }
   writeEvent({ type: "step_done", index, output: result.text });
   return { stepIndex: index + 1, detail: [result.text] };
 }

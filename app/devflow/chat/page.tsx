@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import {
   Bot,
   Brain,
@@ -11,6 +11,7 @@ import {
   FileText,
   MessageSquare,
   Plus,
+  Search,
   Send,
   Sparkles,
   Square,
@@ -86,6 +87,25 @@ interface ConversationMemoryPanel extends MemoryStatePanel {
 interface RepoMemoryPanel {
   thread: MemoryStatePanel | null;
   conversations: ConversationMemoryPanel[];
+}
+
+interface MemorySearchResultPanel {
+  title: string;
+  sourceType: string;
+  sourceId: string;
+  snippet: string;
+  score: number;
+}
+
+interface RecallEventPanel {
+  id: string;
+  conversationId: string | null;
+  toolName: string;
+  query: string;
+  resultCount: number;
+  scope: string;
+  mode: string;
+  createdAt: string;
 }
 
 interface MemoryCandidatePanel {
@@ -209,6 +229,7 @@ function parseErrorFrame(dataText: string): {
 export default function DevflowChatPage() {
   const { repoId, repo } = useDevflow();
   const t = useTranslations("devflow.agentChat");
+  const format = useFormatter();
   const tc = useTranslations("common");
   const samples = [
     t("sample1"),
@@ -243,6 +264,12 @@ export default function DevflowChatPage() {
   const [memory, setMemory] = useState<RepoMemoryPanel | null>(null);
   const [candidates, setCandidates] = useState<MemoryCandidatePanel[]>([]);
   const [memoryReloadKey, setMemoryReloadKey] = useState(0);
+  const [memoryQuery, setMemoryQuery] = useState("");
+  const [memorySearchResults, setMemorySearchResults] = useState<
+    MemorySearchResultPanel[]
+  >([]);
+  const [memorySearching, setMemorySearching] = useState(false);
+  const [recallEvents, setRecallEvents] = useState<RecallEventPanel[]>([]);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeConversationId) ?? null,
@@ -311,22 +338,28 @@ export default function DevflowChatPage() {
       if (!repoId) {
         setMemory(null);
         setCandidates([]);
+        setRecallEvents([]);
         return;
       }
       try {
-        const [memoryData, candidateData] = await Promise.all([
+        const [memoryData, candidateData, recallData] = await Promise.all([
           dfGet<RepoMemoryPanel>(`/repos/${repoId}/memory`),
           dfGet<MemoryCandidatePanel[]>(
             `/repos/${repoId}/memory-candidates?status=pending`,
           ),
+          dfGet<RecallEventPanel[]>(
+            `/repos/${repoId}/memory/recall-events?limit=15`,
+          ).catch(() => [] as RecallEventPanel[]),
         ]);
         if (cancelled) return;
         setMemory(memoryData);
         setCandidates(candidateData);
+        setRecallEvents(recallData);
       } catch {
         if (!cancelled) {
           setMemory(null);
           setCandidates([]);
+          setRecallEvents([]);
         }
       }
     })();
@@ -641,6 +674,26 @@ export default function DevflowChatPage() {
     }
   };
 
+  const handleMemorySearch = async () => {
+    if (!repoId || memoryQuery.trim() === "" || memorySearching) return;
+    setMemorySearching(true);
+    try {
+      const result = await dfGet<{
+        query: string;
+        results: MemorySearchResultPanel[];
+        resultCount: number;
+      }>(
+        `/repos/${repoId}/memory/search?q=${encodeURIComponent(memoryQuery.trim())}&limit=8`,
+      );
+      setMemorySearchResults(result.results);
+      setMemoryReloadKey((k) => k + 1);
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setMemorySearching(false);
+    }
+  };
+
   const candidateKindLabel = (kind: string): string => {
     const key = CANDIDATE_KIND_KEYS[kind];
     return key ? t(`candidateKind.${key}`) : kind;
@@ -901,6 +954,94 @@ export default function DevflowChatPage() {
                         <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
                           {candidate.content}
                         </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="border-border border-t pt-3">
+                <span className="text-sm font-medium">
+                  {t("memorySearchTitle")}
+                </span>
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <input
+                    value={memoryQuery}
+                    onChange={(e) => setMemoryQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void handleMemorySearch();
+                    }}
+                    placeholder={t("memorySearchPlaceholder")}
+                    className="border-border bg-background placeholder:text-muted-foreground h-8 min-w-0 flex-1 rounded-md border px-2 text-xs outline-none"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 px-2"
+                    disabled={
+                      !repoId || memorySearching || memoryQuery.trim() === ""
+                    }
+                    onClick={() => void handleMemorySearch()}
+                  >
+                    {memorySearching ? (
+                      <Spinner className="size-3.5" />
+                    ) : (
+                      <Search className="size-3.5" />
+                    )}
+                  </Button>
+                </div>
+                {memorySearchResults.length > 0 ? (
+                  <ul className="mt-2 space-y-1.5">
+                    {memorySearchResults.map((result, i) => (
+                      <li
+                        key={`${result.sourceId}-${i}`}
+                        className="border-border bg-background rounded-md border px-2 py-1.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-xs font-medium">
+                            {result.title}
+                          </span>
+                          <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
+                            {(result.score * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px]">
+                          {result.snippet}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+              <div className="border-border border-t pt-3">
+                <span className="text-sm font-medium">
+                  {t("memoryRecallEventsTitle")}
+                </span>
+                {recallEvents.length === 0 ? (
+                  <p className="text-muted-foreground mt-1.5 text-xs italic">
+                    {t("memoryRecallEventsEmpty")}
+                  </p>
+                ) : (
+                  <ul className="mt-2 space-y-1">
+                    {recallEvents.map((event) => (
+                      <li
+                        key={event.id}
+                        className="flex items-center justify-between gap-2 text-[11px]"
+                      >
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <Badge
+                            variant="outline"
+                            className="text-muted-foreground shrink-0 px-1 py-0 text-[10px] font-normal"
+                          >
+                            {event.toolName}
+                          </Badge>
+                          <span className="text-foreground/80 truncate">
+                            {event.query}
+                          </span>
+                        </span>
+                        <span className="text-muted-foreground shrink-0 tabular-nums">
+                          {event.resultCount} ·{" "}
+                          {format.dateTime(new Date(event.createdAt), "short")}
+                        </span>
                       </li>
                     ))}
                   </ul>

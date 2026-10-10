@@ -4,7 +4,9 @@ import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
 import { quickModel, providerOptions } from "@/lib/ai/models";
 import { observeGeneration } from "@/lib/observability";
-import { addKnowledgeDocument } from "@/lib/devflow/rag";
+import { addKnowledgeDocument, kbFilter } from "@/lib/devflow/rag";
+import { contentScopeFilter } from "@/lib/devflow/content-index";
+import { scopedRetrieve } from "@/lib/devflow/search";
 import { Prisma, type MemoryCandidate } from "@/generated/prisma/client";
 
 const asJson = (value: unknown): Prisma.InputJsonValue =>
@@ -467,6 +469,9 @@ export async function newMessagesSinceSeal(
   return prisma.chatMessage.count({
     where: {
       conversationId,
+      // Compaction bookkeeping rows (compact boundaries / failures) are not
+      // conversational turns and must not trigger sealing on their own.
+      role: { in: ["user", "assistant"] },
       ...(memory ? { createdAt: { gt: memory.updatedAt } } : {}),
     },
   });
@@ -1001,3 +1006,157 @@ export const MemoryCandidateListQuerySchema = z.object({
   status: z.enum([...MEMORY_CANDIDATE_STATUSES, "all"]).default("pending"),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
+
+// ---------------------------------------------------------------------------
+// Recall events + cross-scope memory search (port of the legacy memory_hub
+// record_recall_event / EvidenceStore.search surfaces)
+// ---------------------------------------------------------------------------
+
+export interface RecallEventInput {
+  repoId: string;
+  conversationId?: string | null;
+  toolName: string;
+  query: string;
+  results: unknown[];
+  citations?: unknown[];
+  scope?: string;
+  mode?: string;
+  metadata?: Record<string, unknown>;
+}
+
+const RECALL_RESULTS_LIMIT = 20;
+
+export function recordRecallEvent(input: RecallEventInput): void {
+  const results = input.results.slice(0, RECALL_RESULTS_LIMIT);
+  void prisma.recallEvent
+    .create({
+      data: {
+        repoId: input.repoId,
+        conversationId: input.conversationId ?? null,
+        toolName: input.toolName,
+        query: clipInline(input.query, 500),
+        resultsJson: JSON.parse(JSON.stringify(results)),
+        citationsJson: JSON.parse(
+          JSON.stringify(input.citations?.slice(0, RECALL_RESULTS_LIMIT) ?? []),
+        ),
+        scope: input.scope ?? "project",
+        mode: input.mode ?? "hybrid",
+        metadataJson: JSON.parse(JSON.stringify(input.metadata ?? {})),
+      },
+    })
+    .catch((e) =>
+      console.warn(
+        "[devflow:memory] recall event persistence failed:",
+        e instanceof Error ? e.message : String(e),
+      ),
+    );
+}
+
+export interface RecallEventView {
+  id: string;
+  conversationId: string | null;
+  toolName: string;
+  query: string;
+  resultCount: number;
+  scope: string;
+  mode: string;
+  createdAt: string;
+}
+
+export const RecallEventListQuerySchema = z.object({
+  conversationId: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+});
+
+export async function listRecallEvents(
+  repoId: string,
+  opts: { conversationId?: string; limit?: number } = {},
+): Promise<RecallEventView[]> {
+  const rows = await prisma.recallEvent.findMany({
+    where: {
+      repoId,
+      ...(opts.conversationId ? { conversationId: opts.conversationId } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    take: opts.limit ?? 30,
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    conversationId: row.conversationId,
+    toolName: row.toolName,
+    query: row.query,
+    resultCount: Array.isArray(row.resultsJson) ? row.resultsJson.length : 0,
+    scope: row.scope,
+    mode: row.mode,
+    createdAt: row.createdAt.toISOString(),
+  }));
+}
+
+export interface MemorySearchResult {
+  title: string;
+  sourceType: string;
+  sourceId: string;
+  snippet: string;
+  score: number;
+}
+
+export const MemorySearchQuerySchema = z.object({
+  q: z.string().default(""),
+  limit: z.coerce.number().int().min(1).max(30).default(8),
+});
+
+/**
+ * Hybrid memory/evidence search across the repository's semantic scopes:
+ * knowledge-base documents (incl. memory notes) and the synced GitHub
+ * content index (issues / PRs / failed CI logs). Records a recall event so
+ * the memory panel can audit what was recalled.
+ */
+export async function searchRepoMemory(
+  repoId: string,
+  query: string,
+  limit = 8,
+  conversationId?: string | null,
+): Promise<MemorySearchResult[]> {
+  const trimmed = query.trim();
+  if (trimmed === "") return [];
+  const perScope = Math.max(limit, 8);
+  const [kbDocs, itemDocs] = await Promise.all([
+    scopedRetrieve(trimmed, perScope, kbFilter(repoId)).catch(() => []),
+    scopedRetrieve(trimmed, perScope, contentScopeFilter(repoId)).catch(
+      () => [],
+    ),
+  ]);
+  const merged = [...kbDocs, ...itemDocs]
+    .map((doc) => ({
+      title: String(
+        doc.metadata.doc_name ??
+          doc.metadata.title ??
+          doc.metadata.item_title ??
+          "untitled",
+      ),
+      sourceType: String(
+        doc.metadata.source_type ?? doc.metadata.item_type ?? "document",
+      ),
+      sourceId: String(doc.metadata.doc_id ?? doc.metadata.item_id ?? doc.id),
+      snippet: clipInline(doc.content, 300),
+      score: doc.score,
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+  recordRecallEvent({
+    repoId,
+    conversationId,
+    toolName: "manual_memory_search",
+    query: trimmed,
+    results: merged,
+    citations: merged.map((item) => ({
+      type: item.sourceType,
+      id: item.sourceId,
+      title: item.title,
+    })),
+    scope: "project",
+    mode: "hybrid",
+    metadata: { limit, surface: "workspace_memory" },
+  });
+  return merged;
+}

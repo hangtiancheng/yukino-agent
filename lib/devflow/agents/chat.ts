@@ -9,8 +9,10 @@ import {
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
-import { quickModel, providerOptions } from "@/lib/ai/models";
+import { quickModel, providerOptions, quickModelId } from "@/lib/ai/models";
 import { searchKnowledge } from "@/lib/devflow/rag";
+import { analyzeIssue, debugRun, reviewPull } from "./analysis";
+import { generateWeeklyReport } from "./report";
 import {
   listFiles,
   readCodeFile,
@@ -24,9 +26,19 @@ import {
   listMessages,
 } from "@/lib/devflow/conversations";
 import {
+  compressMessages,
+  defaultContextBudget,
+  ensureContextHeadroom,
+  latestCompactBoundary,
+  type CompactionOutcome,
+  type CompressionStats,
+} from "@/lib/devflow/context-compression";
+import {
   buildMemoryContext,
+  clipToTokenBudget,
   maybeSealAndMerge,
   proposeMemoryCandidate,
+  recordRecallEvent,
   MEMORY_CANDIDATE_KINDS,
 } from "@/lib/devflow/memory";
 import { DEVFLOW_CHAT_SYSTEM_PROMPT } from "./prompts";
@@ -527,6 +539,169 @@ function buildTools(
         });
       },
     }),
+    analyze_issue: tool({
+      description:
+        "Run the full Issue Triage analysis agent (deterministic rules + LLM) on a synced issue by its number. Persists an AnalysisResult and returns category/priority/complexity/suggested owner/conclusion.",
+      inputSchema: z.object({
+        issueNumber: z.number().int().positive(),
+      }),
+      execute: async ({ issueNumber }) => {
+        try {
+          const issue = await prisma.issue.findFirst({
+            where: { repoId, number: issueNumber },
+            select: { id: true, number: true, title: true },
+          });
+          if (!issue) {
+            return pack({ error: `Issue #${issueNumber} is not synced` });
+          }
+          const record = await analyzeIssue(issue.id);
+          return pack({
+            issue: `#${issue.number} ${issue.title}`,
+            analysis_id: record.id,
+            ...record.result,
+          });
+        } catch (e) {
+          return pack({ error: e instanceof Error ? e.message : String(e) });
+        }
+      },
+    }),
+    analyze_pull: tool({
+      description:
+        "Run the full PR Review analysis agent (deterministic rules + LLM) on a synced pull request by its number. Persists an AnalysisResult and returns merge recommendation, findings and risk points.",
+      inputSchema: z.object({
+        prNumber: z.number().int().positive(),
+      }),
+      execute: async ({ prNumber }) => {
+        try {
+          const pr = await prisma.pullRequest.findFirst({
+            where: { repoId, number: prNumber },
+            select: { id: true, number: true, title: true },
+          });
+          if (!pr) {
+            return pack({ error: `Pull request #${prNumber} is not synced` });
+          }
+          const record = await reviewPull(pr.id);
+          return pack({
+            pull_request: `#${pr.number} ${pr.title}`,
+            analysis_id: record.id,
+            ...record.result,
+          });
+        } catch (e) {
+          return pack({ error: e instanceof Error ? e.message : String(e) });
+        }
+      },
+    }),
+    analyze_ci_run: tool({
+      description:
+        "Run the full CI Debug analysis agent on a workflow run. Pass the GitHub run id when known; otherwise the latest failed run of the repository is analyzed. Returns failure type, root cause and fix steps.",
+      inputSchema: z.object({
+        githubRunId: z.string().optional(),
+      }),
+      execute: async ({ githubRunId }) => {
+        try {
+          let run;
+          if (githubRunId !== undefined && githubRunId !== "") {
+            run = await prisma.workflowRun.findFirst({
+              where: { repoId, githubRunId: BigInt(githubRunId) },
+              select: { id: true, name: true },
+            });
+          } else {
+            run = await prisma.workflowRun.findFirst({
+              where: { repoId, conclusion: "failure" },
+              orderBy: { githubUpdatedAt: "desc" },
+              select: { id: true, name: true },
+            });
+          }
+          if (!run) {
+            return pack({
+              error:
+                githubRunId !== undefined && githubRunId !== ""
+                  ? `Workflow run ${githubRunId} is not synced`
+                  : "No failed workflow run found for this repository",
+            });
+          }
+          const record = await debugRun(run.id);
+          return pack({
+            workflow_run: run.name,
+            analysis_id: record.id,
+            ...record.result,
+          });
+        } catch (e) {
+          return pack({ error: e instanceof Error ? e.message : String(e) });
+        }
+      },
+    }),
+    generate_weekly_report: tool({
+      description:
+        "Generate the engineering weekly report for the repository over a date range (YYYY-MM-DD, defaults to the last 7 days). The report is saved into the repository knowledge base.",
+      inputSchema: z.object({
+        startDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        endDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+      }),
+      execute: async ({ startDate, endDate }) => {
+        try {
+          const end = endDate ?? new Date().toISOString().slice(0, 10);
+          const start =
+            startDate ??
+            new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10);
+          const report = await generateWeeklyReport({
+            repoId,
+            startDate: start,
+            endDate: end,
+          });
+          return pack({
+            range: `${start} .. ${end}`,
+            generation_mode: report.generationMode,
+            knowledge_doc_id: report.knowledgeDocId,
+            metrics: report.metrics,
+            report_markdown: clipBody(report.reportMarkdown, 12_000),
+          });
+        } catch (e) {
+          return pack({ error: e instanceof Error ? e.message : String(e) });
+        }
+      },
+    }),
+    repo_health: tool({
+      description:
+        "Deterministic repository health snapshot: open issues/PRs, recent failed CI runs and pending drafts. Use for 'how is this repo doing' questions.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        try {
+          const [openIssues, openPrs, failedRuns, pendingDrafts] =
+            await Promise.all([
+              prisma.issue.count({ where: { repoId, state: "open" } }),
+              prisma.pullRequest.count({ where: { repoId, state: "open" } }),
+              prisma.workflowRun.count({
+                where: { repoId, conclusion: "failure" },
+              }),
+              prisma.actionDraft.count({
+                where: { repoId, status: "pending_confirmation" },
+              }),
+            ]);
+          const recentFailed = await prisma.workflowRun.findMany({
+            where: { repoId, conclusion: "failure" },
+            orderBy: { githubUpdatedAt: "desc" },
+            take: 5,
+            select: { name: true, headBranch: true, githubUpdatedAt: true },
+          });
+          return pack({
+            open_issues: openIssues,
+            open_pull_requests: openPrs,
+            failed_ci_runs: failedRuns,
+            pending_drafts: pendingDrafts,
+            recent_failed_runs: recentFailed,
+          });
+        } catch (e) {
+          return pack({ error: e instanceof Error ? e.message : String(e) });
+        }
+      },
+    }),
     create_action_draft: tool({
       description:
         "Create a GitHub action draft that requires human confirmation before execution. Use for commenting on issues/PRs, creating issues, closing issues, or adding labels. NEVER claims the action was performed.",
@@ -653,6 +828,16 @@ function buildTools(
       execute: async () => {
         try {
           const context = await buildMemoryContext(repoId, conversationId);
+          recordRecallEvent({
+            repoId,
+            conversationId,
+            toolName: "memory_recall",
+            query: "thread memory + conversation context",
+            results:
+              context !== "" ? [{ summary: clipBody(context, 800) }] : [],
+            scope: "conversation",
+            mode: "direct",
+          });
           return (
             context || "No persisted memory exists for this repository yet."
           );
@@ -693,7 +878,9 @@ function buildTools(
   };
 }
 
-const HISTORY_LIMIT = 20;
+// Legacy ContextAssembler fetched max(limit, 30) rows and then compressed them
+// into the token budget; the fetch cap plays that role here.
+const HISTORY_LIMIT = 30;
 export const HISTORY_RETRY_LIMIT = 8;
 
 function resilientTools(
@@ -729,6 +916,7 @@ interface AttemptResult {
   assistantText: string;
   toolTrace: Array<{ name: string; input?: unknown }>;
   citations: ChatCitation[];
+  compressionStats?: CompressionStats;
   streamError?: unknown;
 }
 
@@ -741,17 +929,26 @@ async function* streamAssistantAttempt(params: {
   historyLimit: number;
   guard: ToolLoopGuard;
 }): AsyncGenerator<DevflowChatEvent, AttemptResult, void> {
+  // Legacy ContextAssembler semantics: the recent-history fetch is
+  // boundary-agnostic (a compact boundary is an ADDITIVE memory section in the
+  // system prompt, not a truncation point); compressMessages then clips the
+  // window into the token budget.
   const prior = await listMessages(params.conversationId, params.historyLimit);
-  const history: ModelMessage[] = [
-    ...prior
+  const budget = defaultContextBudget(quickModelId());
+  const { kept, stats: compressionStats } = compressMessages(
+    prior
       .filter((m) => m.id !== params.excludeMessageId)
-      .map(
-        (m) =>
-          ({
-            role: m.role as "user" | "assistant",
-            content: m.content,
-          }) satisfies ModelMessage,
-      ),
+      .map((m) => ({ role: m.role, content: m.content })),
+    budget.recentTokens,
+  );
+  const history: ModelMessage[] = [
+    ...kept.map(
+      (m) =>
+        ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }) satisfies ModelMessage,
+    ),
     { role: "user", content: params.message } satisfies ModelMessage,
   ];
 
@@ -792,9 +989,15 @@ async function* streamAssistantAttempt(params: {
   }
 
   if (streamError !== undefined) {
-    return { assistantText, toolTrace, citations, streamError };
+    return {
+      assistantText,
+      toolTrace,
+      citations,
+      compressionStats,
+      streamError,
+    };
   }
-  return { assistantText, toolTrace, citations };
+  return { assistantText, toolTrace, citations, compressionStats };
 }
 
 export async function* devflowChatStream(
@@ -817,6 +1020,33 @@ export async function* devflowChatStream(
   try {
     const memoryContext = await buildMemoryContext(repoId, conversation.id);
     if (memoryContext) system += `\n\n${memoryContext}`;
+  } catch {}
+
+  // Progressive compaction (legacy ProgressiveContextManager.ensure_headroom):
+  // when the persisted segment grows past the pressure threshold, older
+  // messages are folded into a compact-boundary summary row. Failures never
+  // break the turn — the circuit breaker lives inside the compactor.
+  let compaction: CompactionOutcome | null = null;
+  try {
+    compaction = await ensureContextHeadroom({
+      repoId,
+      conversationId: conversation.id,
+      currentMessage: input.message,
+      model: quickModelId(),
+    });
+  } catch (e) {
+    console.warn(
+      "[devflow:chat] context compaction unavailable:",
+      e instanceof Error ? e.message : String(e),
+    );
+  }
+
+  try {
+    const boundary = await latestCompactBoundary(conversation.id);
+    if (boundary !== null && boundary.content.trim() !== "") {
+      const budget = defaultContextBudget(quickModelId());
+      system += `\n\n[Compaction Boundary]\n${clipToTokenBudget(boundary.content, budget.memoryTokens)}\n[/Compaction Boundary]`;
+    }
   } catch {}
 
   try {
@@ -897,13 +1127,28 @@ export async function* devflowChatStream(
 
   const citations = dedupeCitations(result.citations);
 
+  const meta: Record<string, unknown> = {};
+  if (citations.length > 0) meta.citations = citations;
+  if (result.compressionStats) meta.compressionStats = result.compressionStats;
+  if (compaction !== null && compaction.attempted) {
+    meta.progressiveCompaction = {
+      compacted: compaction.compacted ?? false,
+      reason: compaction.reason ?? null,
+      mode: compaction.mode ?? null,
+      stage: compaction.stage ?? compaction.pressure.stage,
+      messagesSummarized: compaction.messagesSummarized ?? 0,
+      messagesPreserved: compaction.messagesPreserved ?? 0,
+      pressure: compaction.pressure,
+    };
+  }
+
   const assistantMessage = await appendMessage({
     conversationId: conversation.id,
     repoId,
     role: "assistant",
     content,
     toolCalls: result.toolTrace,
-    ...(citations.length > 0 ? { meta: { citations } } : {}),
+    ...(Object.keys(meta).length > 0 ? { meta } : {}),
   });
 
   yield {

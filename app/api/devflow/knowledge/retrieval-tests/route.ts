@@ -1,6 +1,10 @@
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
-import { kbFilter, getKnowledgeConfig } from "@/lib/devflow/rag";
+import {
+  applyScoreThreshold,
+  getKnowledgeConfig,
+  kbFilter,
+} from "@/lib/devflow/rag";
 import { scopedRetrieve } from "@/lib/devflow/search";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 
@@ -59,6 +63,7 @@ export async function POST(request: Request) {
     let docs;
     try {
       docs = await scopedRetrieve(query, effectiveTopK, kbFilter(repoId));
+      docs = await applyScoreThreshold(docs, query, kbFilter(repoId), config);
     } catch {
       return fail(503, "vectorSearchUnavailable");
     }
@@ -89,6 +94,8 @@ export async function POST(request: Request) {
       retrievalMethod: config.retrievalMethod,
       rerankEnabled: config.rerankEnabled,
       topK: effectiveTopK,
+      scoreThresholdEnabled: config.scoreThresholdEnabled,
+      scoreThreshold: config.scoreThreshold,
       chunkSize: config.chunkSize,
       chunkOverlap: config.chunkOverlap,
     };

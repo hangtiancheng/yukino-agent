@@ -6,9 +6,17 @@ import {
 } from "ai";
 import { quickModel, providerOptions } from "@/lib/ai/models";
 
+export interface StepToolAudit {
+  toolName: string;
+  input: unknown;
+  resultText: unknown;
+  status: "success" | "error";
+}
+
 export interface StepResult {
   text: string;
   usage: LanguageModelUsage;
+  toolAudits: StepToolAudit[];
 }
 
 const TOOL_MENTION_PATTERN = /\btool\s+`?([a-z][a-z0-9]*(?:_[a-z0-9]+)+)`?/g;
@@ -36,5 +44,25 @@ export async function executeStep(
     stopWhen: isStepCount(10),
     providerOptions,
   });
-  return { text: result.text, usage: result.usage };
+  // Legacy persisted one aiops_tool_call_audits row per diagnostic tool call;
+  // flatten the step trace so the graph node can record the same audit trail.
+  const toolAudits: StepToolAudit[] = [];
+  for (const stepResult of result.steps) {
+    for (const call of stepResult.toolCalls) {
+      const matched = stepResult.toolResults.find(
+        (r) => r.toolCallId === call.toolCallId,
+      );
+      const failed = stepResult.content.some(
+        (part) =>
+          part.type === "tool-error" && part.toolCallId === call.toolCallId,
+      );
+      toolAudits.push({
+        toolName: call.toolName,
+        input: call.input,
+        resultText: matched ? matched.output : failed ? "tool failed" : "",
+        status: failed ? "error" : "success",
+      });
+    }
+  }
+  return { text: result.text, usage: result.usage, toolAudits };
 }

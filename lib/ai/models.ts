@@ -79,6 +79,12 @@ function resolveQuickModel(): LanguageModel {
 export const thinkModel = resolveThinkModel();
 export const quickModel = resolveQuickModel();
 
+export function quickModelId(): string {
+  return config.provider === "anthropic"
+    ? config.anthropic.quick.model
+    : config.openai.quick.model;
+}
+
 export const providerOptions =
   config.provider === "anthropic"
     ? {

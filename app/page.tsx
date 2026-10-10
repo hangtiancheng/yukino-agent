@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { useChat, type ChatMessage } from "@/hooks/use-chat";
+import { useChat } from "@/hooks/use-chat";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import {
   ResizableHandle,
@@ -17,6 +17,7 @@ import ActiveAlertsPanel, {
 } from "@/components/active-alerts-panel";
 import LoadingOverlay from "@/components/loading-overlay";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { OncallSettings } from "@/components/oncall-settings";
 
 export default function Home() {
   const t = useTranslations("chat");
@@ -44,18 +45,8 @@ export default function Home() {
       showNotification(t("notifications.waitForOperation"), "warning");
       return;
     }
-    newChat();
-    const r = await triggerAIOps();
-    if (r) {
-      const msg: ChatMessage = {
-        type: "assistant",
-        content: r.result,
-        detail: r.detail,
-        ...(r.a2ui && r.a2ui.length > 0 ? { a2ui: r.a2ui } : {}),
-      };
-      addMessage(msg);
-    }
-  }, [isStreaming, showNotification, newChat, triggerAIOps, addMessage, t]);
+    await triggerAIOps();
+  }, [isStreaming, showNotification, triggerAIOps, t]);
 
   const handleUpload = useCallback(
     async (file: File) => {
@@ -92,13 +83,15 @@ export default function Home() {
         <ResizableHandle className="hover:bg-primary/40 active:bg-primary/60" />
         <ResizablePanel minSize={360}>
           <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-            <div className="absolute top-4 right-4 z-10">
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5">
+              <OncallSettings />
               <LanguageSwitcher className="bg-background/80 shadow-sm backdrop-blur-sm" />
             </div>
             <AIOpsBtn onClick={handleAIOps} disabled={isStreaming} />
             <ChatContainer
               messages={messages}
               isStreaming={isStreaming}
+              sessionId={sessionId}
               mode={mode}
               onModeChange={setMode}
               onSend={sendMessage}

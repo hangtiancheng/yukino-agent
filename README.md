@@ -54,8 +54,6 @@ Prometheus runs without `--web.enable-lifecycle`, so `POST /-/reload` returns 40
 
 Prometheus port: `9090`. Grafana port: `3000` (`3000` under Docker is the Next.js dev server). Credentials: admin / pass.
 
----
-
 ## APIs
 
 - `POST /api/chat` — non-streaming chat
@@ -72,6 +70,78 @@ Prometheus port: `9090`. Grafana port: `3000` (`3000` under Docker is the Next.j
 - Hybrid search (dense + BM25, RRF-fused) runs inside Milvus; setting `RERANK_API_KEY` adds a second-stage rerank via the Aliyun DashScope text-rerank endpoint (see `.env.example`). Unfiltered retrieval excludes `devflow:*` sources so DevFlow repo knowledge never leaks into OnCall answers.
 - Finished AI Ops reports are persisted back into the knowledge base as diagnostic case documents, so future chats and diagnoses retrieve past incidents.
 - Tool definitions follow a three-layer split: `schemas.ts` (zod) → `operations.ts` (pure functions) → `index.ts` (AI SDK `tool` wrapper).
+
+---
+
+## Migration from `.legacy`
+
+This repo consolidates two Python projects — `.legacy/agent_py-release-2026-09-08`
+(the OnCall backend + Vue frontend) and `.legacy/DevFlow-AI` (the DevFlow FastAPI
+backend + Next.js frontend) — into one Next.js 16 + AI SDK app. The port is
+feature-complete except for the deliberate divergences listed below.
+
+Restored on top of the initial port:
+
+- DevFlow progressive context compression (`lib/devflow/context-compression.ts`,
+  a port of `context_compression.py` + `ProgressiveContextManager`): token-pressure
+  stages, token-budgeted history windowing, LLM compaction into persisted
+  compact-boundary messages with session-memory / extractive fallbacks, key-fact
+  preservation, and a failure circuit breaker.
+- AI Ops tool-call audits — every plan-step tool call lands in `ToolCallAudit`
+  under session `aiops:<runId>` (legacy `aiops_tool_call_audits`), readable via
+  `GET /api/tool_audits?session=aiops:<runId>`.
+- AI Ops run event timeline — `AiOpsRun.events` persists a truncated
+  PlanExecuteEvent trail (plan / step start / step output / replans), the
+  lightweight successor of the legacy evidence-chain tables, rendered in the ops
+  panel run history.
+
+Deliberate divergences:
+
+OnCall (from `agent_py`):
+
+- **Auth & tenancy removed** — legacy had user accounts, bearer sessions and
+  per-user scoping; both surfaces here are public and single-tenant.
+- **Server-side chat sessions → client-side** — legacy persisted chat sessions
+  per user; histories now live in browser localStorage (client session ids still
+  anchor tool audits and feedback). Consequently the legacy memory-mode selector
+  (`every_30_turns` / `context_70_percent` / `manual` compaction) and the
+  context-usage API are replaced by the automatic rolling summary
+  (`MEMORY_SUMMARY_ENABLED`).
+- **Background job runtime removed** — legacy queued document indexing through a
+  worker pool with cancel/retry; uploads and startup indexing run synchronously,
+  and `POST /api/knowledge_docs/[name]` offers manual re-index.
+- **Single knowledge base** — legacy supported multiple knowledge bases per user;
+  here one `FILE_DIR`-backed KB serves OnCall (DevFlow keeps per-repo KBs in
+  Milvus as before).
+- **Chunking strategy fixed** — legacy exposed per-document strategy selection
+  (fixed-character / markdown-heading / paragraph / legacy-word); the OnCall KB
+  always uses the heading-aware chunker now.
+- **Evidence-chain tables replaced** — legacy `aiops_diagnostic_steps` /
+  `aiops_diagnostic_evidence` / report-evidence links / graph checkpoints become
+  `AiOpsRun.events` + `ToolCallAudit` (see above).
+- **Project configuration** — legacy's shared/protected project config becomes
+  plain `.env` + `lib/config.ts`.
+
+DevFlow (from `DevFlow-AI`):
+
+- **Evaluation suites not ported** — the agent/RAG eval runner (incl. the ragas
+  integration) and its UI depend on the Python eval ecosystem; retrieval quality
+  is covered here by the retrieval-test runs on the Knowledge page instead.
+- **PR worktree snapshots removed** — `worktree_manager` (snapshot / worktree /
+  cleanup endpoints) is replaced by the read-only managed-clone design
+  (`lib/devflow/workspace.ts`).
+- **MCP stdio surfaces removed** — the legacy memory MCP server and the skills
+  `mcp-status` probe are replaced by in-process tools.
+- **EvidenceItem table removed** — legacy rebuilt a keyword evidence index from
+  chat history; the Milvus GitHub content index (semantic search over synced
+  issues / PRs / CI logs) supersedes it in
+  `GET /api/devflow/repos/:id/memory/search`.
+- **Streaming-only chat** — legacy also exposed a non-streaming `POST /api/chat`;
+  the port streams SSE exclusively.
+- **`thinking_delta` second-LLM stream not ported** (documented in
+  `lib/devflow/analyze-stream.ts`).
+
+---
 
 ## Monitoring
 

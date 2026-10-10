@@ -48,6 +48,10 @@ export async function PUT(request: Request) {
     if (rest.rerankEnabled !== undefined)
       patch.rerankEnabled = rest.rerankEnabled;
     if (rest.topK !== undefined) patch.topK = rest.topK;
+    if (rest.scoreThresholdEnabled !== undefined)
+      patch.scoreThresholdEnabled = rest.scoreThresholdEnabled;
+    if (rest.scoreThreshold !== undefined)
+      patch.scoreThreshold = rest.scoreThreshold;
     if (rest.chunkSize !== undefined) patch.chunkSize = rest.chunkSize;
     if (rest.chunkOverlap !== undefined) patch.chunkOverlap = rest.chunkOverlap;
 

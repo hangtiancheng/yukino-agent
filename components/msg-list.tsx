@@ -10,6 +10,7 @@ import type {
 import type { KnowledgeType } from "@/lib/ai/pipelines/knowledge-index";
 import type { A2uiClientAction } from "@a2ui/web_core/v0_9";
 import { A2uiView } from "@/components/a2ui-view";
+import FeedbackControl from "./feedback-control";
 import MdRender from "./md-render";
 import { ChevronDown, FileText, Sparkles, Wrench } from "lucide-react";
 import {
@@ -39,12 +40,14 @@ import { cn } from "@/lib/utils";
 interface MessageListProps {
   messages: ChatMessage[];
   isStreaming: boolean;
+  sessionId: string;
   onA2uiAction: (messageIndex: number, action: A2uiClientAction) => void;
 }
 
 export default function MessageList({
   messages,
   isStreaming,
+  sessionId,
   onA2uiAction,
 }: MessageListProps) {
   return (
@@ -68,6 +71,7 @@ export default function MessageList({
                   <MessageItem
                     message={m}
                     index={i}
+                    sessionId={sessionId}
                     streaming={
                       isStreaming &&
                       i === messages.length - 1 &&
@@ -157,6 +161,43 @@ const KNOWLEDGE_TYPE_KEYS: Record<
   "diagnostic-case": "diagnosticCase",
 };
 
+function referenceStageTrace(
+  ref: ChatReference,
+  labels: { vector: string; bm25: string; rerank: string },
+): string {
+  const stages = ref.stages;
+  if (!stages) return "";
+  const parts: string[] = [];
+  if (stages.vectorRank !== undefined) {
+    parts.push(
+      `${labels.vector} #${stages.vectorRank}${
+        stages.vectorScore !== undefined
+          ? ` (${stages.vectorScore.toFixed(3)})`
+          : ""
+      }`,
+    );
+  }
+  if (stages.bm25Rank !== undefined) {
+    parts.push(
+      `${labels.bm25} #${stages.bm25Rank}${
+        stages.bm25Score !== undefined
+          ? ` (${stages.bm25Score.toFixed(3)})`
+          : ""
+      }`,
+    );
+  }
+  if (stages.rerankRank !== undefined) {
+    parts.push(
+      `${labels.rerank} #${stages.rerankRank}${
+        stages.rerankScore !== undefined
+          ? ` (${stages.rerankScore.toFixed(3)})`
+          : ""
+      }`,
+    );
+  }
+  return parts.length > 0 ? `\n${parts.join(" · ")}` : "";
+}
+
 function References({ references }: { references: ChatReference[] }) {
   const t = useTranslations("chat");
   return (
@@ -167,7 +208,14 @@ function References({ references }: { references: ChatReference[] }) {
           key={`${ref.source}-${i}`}
           variant="secondary"
           className="max-w-64 gap-1 font-normal"
-          title={`${ref.source} · score ${ref.score.toFixed(3)}\n\n${ref.excerpt}`}
+          title={`${ref.source} · score ${ref.score.toFixed(3)}${referenceStageTrace(
+            ref,
+            {
+              vector: t("stageVector"),
+              bm25: t("stageBm25"),
+              rerank: t("stageRerank"),
+            },
+          )}\n\n${ref.excerpt}`}
         >
           <FileText className="size-3 shrink-0" />
           {ref.knowledgeType && (
@@ -176,6 +224,11 @@ function References({ references }: { references: ChatReference[] }) {
             </span>
           )}
           <span className="truncate">{ref.title}</span>
+          {ref.stages?.rerankRank !== undefined && (
+            <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
+              {t("stageRerank")} #{ref.stages.rerankRank}
+            </span>
+          )}
         </Badge>
       ))}
     </div>
@@ -243,11 +296,13 @@ function ReasoningDetails({
 const MessageItem = memo(function MessageItem({
   message,
   index,
+  sessionId,
   streaming,
   onA2uiAction,
 }: {
   message: ChatMessage;
   index: number;
+  sessionId: string;
   streaming: boolean;
   onA2uiAction: (messageIndex: number, action: A2uiClientAction) => void;
 }) {
@@ -296,6 +351,14 @@ const MessageItem = memo(function MessageItem({
           <A2uiView
             messages={message.a2ui}
             onRawAction={(action) => onA2uiAction(index, action)}
+          />
+        )}
+        {!streaming && !message.pending && sessionId !== "" && (
+          <FeedbackControl
+            targetType="chat_message"
+            targetId={`${sessionId}:${index}`}
+            sessionId={sessionId}
+            compact
           />
         )}
       </MessageContent>

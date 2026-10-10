@@ -1,12 +1,13 @@
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
+import { requireOncallAdmin } from "@/lib/ai/admin";
 import { validateChatPrompt } from "@/lib/ai/prompts-skills";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-admin-token",
 };
 
 export async function OPTIONS() {
@@ -56,6 +57,20 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const t = await getTranslations("api.oncall");
+  const admin = requireOncallAdmin(request);
+  if (admin !== null) {
+    return Response.json(
+      {
+        message: t(
+          admin === "not_configured"
+            ? "adminNotConfigured"
+            : "adminUnauthorized",
+        ),
+        data: null,
+      },
+      { status: admin === "not_configured" ? 403 : 401, headers: CORS_HEADERS },
+    );
+  }
   const parsed = promptPostSchema.safeParse(
     await request.json().catch(() => null),
   );

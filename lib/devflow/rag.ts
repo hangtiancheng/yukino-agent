@@ -9,6 +9,8 @@ import { queryByFilter, quote, count } from "@/lib/milvus/client";
 import { observeGeneration } from "@/lib/observability";
 import { KNOWLEDGE_QA_PROMPT } from "./agents/prompts";
 import { chunkDocument, siblingIdsByParent, type Chunk } from "./chunking";
+import { retrieveDense } from "@/lib/milvus/retriever";
+import { rerankEnabled } from "@/lib/ai/rerank";
 import { scopedRetrieve } from "./search";
 
 const KB_PREFIX = "devflow:kb";
@@ -311,6 +313,8 @@ export interface KnowledgeConfigValues {
   retrievalMethod: KbRetrievalMethod;
   rerankEnabled: boolean;
   topK: number;
+  scoreThresholdEnabled: boolean;
+  scoreThreshold: number;
   chunkSize: number;
   chunkOverlap: number;
 }
@@ -319,6 +323,8 @@ export const KB_CONFIG_FALLBACK: KnowledgeConfigValues = {
   retrievalMethod: "hybrid",
   rerankEnabled: true,
   topK: 5,
+  scoreThresholdEnabled: false,
+  scoreThreshold: 0.5,
   chunkSize: CHUNK_SIZE,
   chunkOverlap: CHUNK_OVERLAP,
 };
@@ -329,6 +335,8 @@ export const KnowledgeConfigUpdateSchema = z
     retrievalMethod: z.enum(KB_RETRIEVAL_METHODS).optional(),
     rerankEnabled: z.boolean().optional(),
     topK: z.number().int().min(1).max(20).optional(),
+    scoreThresholdEnabled: z.boolean().optional(),
+    scoreThreshold: z.number().min(0).max(1).optional(),
     chunkSize: z.number().int().min(100).max(8_000).optional(),
     chunkOverlap: z.number().int().min(0).max(4_000).optional(),
   })
@@ -357,6 +365,8 @@ export async function getKnowledgeConfig(
       : KB_CONFIG_FALLBACK.retrievalMethod,
     rerankEnabled: row.rerankEnabled,
     topK: row.topK,
+    scoreThresholdEnabled: row.scoreThresholdEnabled,
+    scoreThreshold: row.scoreThreshold,
     chunkSize: row.chunkSize,
     chunkOverlap: row.chunkOverlap,
   };
@@ -377,9 +387,35 @@ export async function upsertKnowledgeConfig(
       : KB_CONFIG_FALLBACK.retrievalMethod,
     rerankEnabled: row.rerankEnabled,
     topK: row.topK,
+    scoreThresholdEnabled: row.scoreThresholdEnabled,
+    scoreThreshold: row.scoreThreshold,
     chunkSize: row.chunkSize,
     chunkOverlap: row.chunkOverlap,
   };
+}
+
+/**
+ * Legacy score_threshold pipeline stage. Fusion/rerank scores are rank-based
+ * (RRF), so the absolute gate is evaluated against the dense COSINE
+ * similarity of each candidate (see lib/milvus/retriever.ts guidance).
+ */
+export async function applyScoreThreshold<T extends { id: string }>(
+  docs: T[],
+  query: string,
+  filter: string,
+  cfg: KnowledgeConfigValues,
+): Promise<T[]> {
+  if (!cfg.scoreThresholdEnabled || docs.length === 0) return docs;
+  const dense = await retrieveDense(
+    query,
+    Math.min(Math.max(docs.length * 4, 20), 100),
+    filter,
+  ).catch(() => []);
+  if (dense.length === 0) return docs;
+  const denseScoreById = new Map(dense.map((d) => [d.id, d.score]));
+  return docs.filter(
+    (doc) => (denseScoreById.get(doc.id) ?? 0) >= cfg.scoreThreshold,
+  );
 }
 
 export async function searchKnowledge(
@@ -394,10 +430,11 @@ export async function searchKnowledge(
   const filter = opts?.filter ?? kbFilter(repoId);
   const fetchK = opts?.sourceType ? topK * 2 : topK;
   const cfg = await getKnowledgeConfig(repoId);
-  const docs = await scopedRetrieve(query, fetchK, filter, {
+  let docs = await scopedRetrieve(query, fetchK, filter, {
     method: cfg.retrievalMethod,
     rerank: cfg.rerankEnabled,
   });
+  docs = await applyScoreThreshold(docs, query, filter, cfg);
   const hits = docs.map((doc) => ({
     docId: String(doc.metadata.doc_id ?? ""),
     docName: String(doc.metadata.doc_name ?? "unknown"),
@@ -856,6 +893,7 @@ export interface RagStatusView {
   chunkCount: number;
   sourceTypes: Record<string, number>;
   embedding: { provider: string; model: string };
+  rerank: { apiConfigured: boolean; fallback: string };
   generation: { llmConfigured: boolean; fallback: string };
   supportedFiles: string[];
 }
@@ -885,6 +923,10 @@ export async function ragStatus(repoId: string): Promise<RagStatusView> {
     embedding: {
       provider: config.embeddingProvider,
       model: config.openaiEmbedding.model,
+    },
+    rerank: {
+      apiConfigured: rerankEnabled(),
+      fallback: "local heuristic reranker",
     },
     generation: {
       llmConfigured:

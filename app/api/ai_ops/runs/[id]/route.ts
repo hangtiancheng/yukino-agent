@@ -36,6 +36,7 @@ export async function GET(_request: Request, context: RouteContext) {
           alertName: run.alertName,
           report: run.report,
           detail: run.detail,
+          events: run.events,
           a2ui: run.a2ui,
           error: run.error,
           startedAt: run.startedAt.toISOString(),

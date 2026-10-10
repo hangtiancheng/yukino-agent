@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { z } from "zod/v4";
+import { runAiOpsStream } from "@/hooks/aiops-stream";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import MdRender from "@/components/md-render";
@@ -75,33 +76,93 @@ const casesResponseSchema = z.object({
   data: z.object({ items: z.array(caseSchema).default([]) }).nullish(),
 });
 
+const runEventSchema = z.object({
+  type: z.string(),
+  index: z.number().optional(),
+  step: z.string().optional(),
+  output: z.string().optional(),
+  steps: z.array(z.string()).optional(),
+  done: z.boolean().optional(),
+  remaining: z.array(z.string()).optional(),
+  error: z.string().optional(),
+});
+type RunEvent = z.infer<typeof runEventSchema>;
+
 const runDetailDataSchema = z.object({
   id: z.string(),
   status: z.string(),
   alertName: z.string().nullable(),
   report: z.string(),
   error: z.string().nullish(),
+  events: z.array(runEventSchema).default([]),
 });
 const runDetailResponseSchema = z.object({
   message: z.string(),
   data: runDetailDataSchema.nullish(),
 });
 
-const aiOpsResponseSchema = z.object({
-  message: z.string(),
-  data: z
-    .object({
-      result: z.string(),
-      detail: z.array(z.string()).optional(),
-      a2ui: z.array(z.unknown()).optional(),
-    })
-    .nullish(),
-});
-
 export interface AiOpsReportPayload {
   result: string;
   detail: string[];
   a2ui?: unknown[];
+}
+
+function RunTimelineEvent({ event }: { event: RunEvent }) {
+  const t = useTranslations("oncallOps");
+  if (event.type === "plan_created") {
+    const steps = event.steps ?? [];
+    return (
+      <div className="text-xs">
+        <span className="text-muted-foreground">
+          {t("progressPlan", { count: steps.length })}
+        </span>
+        <ol className="text-muted-foreground mt-0.5 list-decimal pl-4">
+          {steps.map((step, i) => (
+            <li key={i} className="truncate">
+              {step}
+            </li>
+          ))}
+        </ol>
+      </div>
+    );
+  }
+  if (event.type === "step_start") {
+    return (
+      <div className="text-muted-foreground truncate text-xs">
+        {t("progressStep", {
+          index: (event.index ?? 0) + 1,
+          step: event.step ?? "",
+        })}
+      </div>
+    );
+  }
+  if (event.type === "step_done") {
+    return (
+      <div className="text-xs">
+        <div className="text-muted-foreground">
+          {t("progressStepDone", { index: (event.index ?? 0) + 1 })}
+        </div>
+        {event.output ? (
+          <pre className="bg-muted/50 text-foreground/80 mt-0.5 max-h-24 overflow-auto rounded px-2 py-1 text-[11px] whitespace-pre-wrap">
+            {event.output}
+          </pre>
+        ) : null}
+      </div>
+    );
+  }
+  if (event.type === "replan") {
+    return (
+      <div className="text-muted-foreground text-xs">
+        {event.done
+          ? t("progressReplanDone")
+          : t("progressReplan", { count: (event.remaining ?? []).length })}
+      </div>
+    );
+  }
+  if (event.type === "error") {
+    return <div className="text-destructive text-xs">{event.error}</div>;
+  }
+  return null;
 }
 
 interface ActiveAlertsPanelProps {
@@ -147,6 +208,7 @@ export default function ActiveAlertsPanel({
   const [alertsLoading, setAlertsLoading] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [diagnosing, setDiagnosing] = useState<string | null>(null);
+  const [diagnoseProgress, setDiagnoseProgress] = useState<string[]>([]);
 
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [runsLoading, setRunsLoading] = useState(false);
@@ -261,34 +323,42 @@ export default function ActiveAlertsPanel({
     async (alert: AlertItem) => {
       if (disabled || diagnosing !== null) return;
       setDiagnosing(alert.alert_name);
+      setDiagnoseProgress([]);
+      const progress: string[] = [];
+      const push = (line: string) => {
+        progress.push(line);
+        setDiagnoseProgress([...progress].slice(-6));
+      };
       try {
-        const resp = await fetch("/api/ai_ops", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ alert }),
+        const streamed = await runAiOpsStream(
+          { alert },
+          {
+            onPlan: (steps) => {
+              push(t("progressPlan", { count: steps.length }));
+            },
+            onStepStart: (index, step) => {
+              push(t("progressStep", { index: index + 1, step }));
+            },
+            onStepDone: (index) => {
+              push(t("progressStepDone", { index: index + 1 }));
+            },
+            onReplan: (done, remaining) => {
+              push(
+                done
+                  ? t("progressReplanDone")
+                  : t("progressReplan", { count: remaining.length }),
+              );
+            },
+          },
+        );
+        onReport({
+          result: streamed.result,
+          detail: streamed.detail,
+          ...(streamed.a2ui && streamed.a2ui.length > 0
+            ? { a2ui: streamed.a2ui }
+            : {}),
         });
-        const parsed = aiOpsResponseSchema.safeParse(await resp.json());
-        if (
-          parsed.success &&
-          parsed.data.message === "OK" &&
-          parsed.data.data != null
-        ) {
-          onReport({
-            result: parsed.data.data.result,
-            detail: parsed.data.data.detail ?? [],
-            ...(parsed.data.data.a2ui && parsed.data.data.a2ui.length > 0
-              ? { a2ui: parsed.data.data.a2ui }
-              : {}),
-          });
-          setReloadKey((k) => k + 1);
-        } else {
-          onNotify(
-            parsed.success && parsed.data.message !== ""
-              ? parsed.data.message
-              : t("diagnoseFailed"),
-            "error",
-          );
-        }
+        setReloadKey((k) => k + 1);
       } catch (e) {
         onNotify(
           t("diagnoseFailedWithError", {
@@ -298,6 +368,7 @@ export default function ActiveAlertsPanel({
         );
       } finally {
         setDiagnosing(null);
+        setDiagnoseProgress([]);
       }
     },
     [disabled, diagnosing, onNotify, onReport, t],
@@ -442,6 +513,16 @@ export default function ActiveAlertsPanel({
                         </a>
                       )}
                     </div>
+                    {diagnosing === alert.alert_name &&
+                      diagnoseProgress.length > 0 && (
+                        <div className="bg-muted/60 text-muted-foreground mt-1.5 flex flex-col gap-0.5 rounded-md px-2 py-1.5 text-[11px] leading-snug">
+                          {diagnoseProgress.map((line, i) => (
+                            <div key={i} className="truncate">
+                              {line}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                   </div>
                 ))}
               </div>
@@ -497,6 +578,18 @@ export default function ActiveAlertsPanel({
                         )}
                         {!runDetailLoading && runDetail !== null && (
                           <>
+                            {runDetail.events.length > 0 && (
+                              <div className="mb-3">
+                                <div className="text-muted-foreground mb-1.5 text-[11px] font-medium tracking-wide uppercase">
+                                  {t("runTimeline")}
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                  {runDetail.events.map((ev, i) => (
+                                    <RunTimelineEvent key={i} event={ev} />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             {runDetail.report !== "" ? (
                               <MdRender
                                 content={runDetail.report}

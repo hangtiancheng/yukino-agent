@@ -79,6 +79,26 @@
       "sop": "SOP",
       "document": "Knowledge",
       "diagnosticCase": "Diagnostic case"
+    },
+    "feedback": {
+      "helpful": "Helpful",
+      "needsImprovement": "Needs improvement",
+      "details": "Feedback details",
+      "remove": "Remove feedback",
+      "reasonPlaceholder": "Reason (short tag)",
+      "commentPlaceholder": "Comment — what was wrong or missing?",
+      "correctionPlaceholder": "Correction — what should the answer be?",
+      "save": "Save"
+    },
+    "stageVector": "vector",
+    "stageBm25": "BM25",
+    "stageRerank": "rerank",
+    "aiops": {
+      "planCreated": "Plan created with {count} step(s)",
+      "stepRunning": "Running step {index}: {step}",
+      "stepDone": "Step {index} finished: {output}",
+      "replanDone": "Replan: objective achieved, writing the report",
+      "replanContinue": "Replan: {count} step(s) remaining"
     }
   },
   "devflow": {
@@ -359,7 +379,9 @@
         "save": "Save settings",
         "saving": "Saving…",
         "saved": "Retrieval settings saved",
-        "methodLabel": "Retrieval method"
+        "methodLabel": "Retrieval method",
+        "scoreThreshold": "Score threshold",
+        "scoreThresholdHint": "Filter out results whose absolute dense (COSINE) similarity is below the threshold before answering."
       },
       "test": {
         "colDoc": "Document",
@@ -485,7 +507,11 @@
         "task": "Task",
         "preference": "Preference",
         "repoContext": "Repo context"
-      }
+      },
+      "memorySearchTitle": "Memory search",
+      "memorySearchPlaceholder": "Search knowledge + synced GitHub content…",
+      "memoryRecallEventsTitle": "Recall events",
+      "memoryRecallEventsEmpty": "No memory recalls recorded yet."
     },
     "reports": {
       "title": "Weekly Reports",
@@ -1025,7 +1051,12 @@
       "skillsUnavailable": "Skill storage is unavailable",
       "skillNotFound": "Skill not found",
       "invalidRequest": "Invalid request",
-      "docNotFound": "Knowledge document not found"
+      "docNotFound": "Knowledge document not found",
+      "invalidFeedbackQuery": "Feedback query is invalid",
+      "invalidFeedbackBody": "Feedback body is invalid",
+      "feedbackUnavailable": "Feedback storage is unavailable",
+      "feedbackNotFound": "Feedback record not found",
+      "promptNotFound": "Prompt not found"
     }
   },
   "gallery": {
@@ -1052,7 +1083,13 @@
     "diagnoseFailedWithError": "Diagnosis failed: {error}",
     "runDetailUnavailable": "Run detail is unavailable.",
     "casesTab": "Case library",
-    "casesEmpty": "No diagnostic cases recorded yet."
+    "casesEmpty": "No diagnostic cases recorded yet.",
+    "progressPlan": "Plan created ({count} steps)",
+    "progressStep": "Step {index}: {step}",
+    "progressStepDone": "Step {index} finished",
+    "progressReplan": "Replanning: {count} step(s) left",
+    "progressReplanDone": "Replan complete — writing report",
+    "runTimeline": "Step timeline"
   },
   "knowledge": {
     "title": "Knowledge base",
@@ -1081,5 +1118,37 @@
       "document": "Knowledge",
       "diagnosticCase": "Diagnostic case"
     }
+  },
+  "oncallSettings": {
+    "title": "Assistant settings",
+    "adminToken": "Admin token",
+    "adminTokenPlaceholder": "ONCALL_ADMIN_TOKEN",
+    "adminTokenHint": "Required for changes; stored only in this browser. Mutations are rejected when the server has no admin token configured.",
+    "promptsTab": "Prompts",
+    "skillsTab": "Skills",
+    "mcpTab": "MCP",
+    "promptNamePlaceholder": "Prompt name",
+    "promptContentPlaceholder": "Custom system-prompt section content (markdown)",
+    "cancelEdit": "Cancel edit",
+    "create": "Create",
+    "update": "Update",
+    "promptsEmpty": "No custom prompts yet.",
+    "edit": "Edit",
+    "delete": "Delete",
+    "uploadSkill": "Upload SKILL.md",
+    "skillsEmpty": "No skills uploaded yet.",
+    "mcpNamePlaceholder": "Connection name (letters, digits, _ or -)",
+    "mcpUrlPlaceholder": "https://mcp.example.com/sse",
+    "mcpHeadersPlaceholder": "Optional headers as a JSON key/value object",
+    "mcpHeadersInvalid": "Headers must be a JSON object of string values",
+    "mcpEmpty": "No MCP connections configured.",
+    "mcpTools": "Tools",
+    "mcpCheck": "Check",
+    "mcpCheckOk": "Connection OK — {count} tool(s) discovered",
+    "mcpCheckFailed": "Connection check failed",
+    "mcpCheckFailedWith": "Connection check failed: {error}",
+    "saveFailed": "Save failed",
+    "deleteFailed": "Delete failed",
+    "saved": "Saved"
   }
 }

@@ -91,6 +91,7 @@ ${operatorNote}`;
 export async function* runPlanExecuteReplan(
   query: string = AI_OPS_QUERY,
   alert: Record<string, string> | null = null,
+  runId: string | null = null,
 ): AsyncGenerator<PlanExecuteEvent> {
   const sessionId = randomUUID();
   logStart("PlanExecuteReplan");
@@ -98,7 +99,7 @@ export async function* runPlanExecuteReplan(
   try {
     const stream = await withAiOpsTrace(sessionId, () =>
       opsGraph.stream(
-        { query, alert },
+        { query, alert, runId },
         {
           streamMode: "custom",
           recursionLimit: RECURSION_LIMIT,
