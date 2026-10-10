@@ -54,7 +54,7 @@
     "@streamdown/code": "^1.1.1",
     "@yukino.js/sentry": "latest",
     "@zilliz/milvus2-sdk-node": "^3.0.6",
-    "ai": "^7.0.136",
+    "ai": "^7.0.137",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -85,7 +85,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^24.19.1",
+    "@types/node": "^24.19.2",
     "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
