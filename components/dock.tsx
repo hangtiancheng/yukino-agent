@@ -1,14 +1,5 @@
 "use client";
 
-// macOS-style bottom Dock for switching between the app surfaces:
-// OnCall Agent (/), DevFlow (/devflow) and the A2UI Gallery (/gallery).
-// - Icons magnify as the pointer sweeps across the dock (spring-smoothed,
-//   driven by a single shared mouseX MotionValue).
-// - Hovering an icon reveals a tooltip label above it.
-// - The active route is marked with a small dot under its icon.
-// Mounted once in the root layout; it floats above page content (pages keep
-// their full height, nothing is pushed aside).
-
 import { useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,7 +21,6 @@ import { cn } from "@/lib/utils";
 
 const BASE_SIZE = 40;
 const MAX_SIZE = 60;
-// Horizontal distance (px) from an icon centre at which magnification ends.
 const MAGNET_RANGE = 100;
 
 interface DockItemDef {
@@ -40,7 +30,6 @@ interface DockItemDef {
   isActive: (pathname: string) => boolean;
 }
 
-// Tiles share the theme's sage-green primary colour (light/dark aware).
 const DOCK_ITEMS: DockItemDef[] = [
   {
     href: "/",
@@ -80,8 +69,6 @@ function DockItem({
   const t = useTranslations("dock");
   const tileRef = useRef<HTMLDivElement>(null);
 
-  // Distance between the pointer and this icon's centre; Infinity when the
-  // pointer is outside the dock (useTransform clamps it back to BASE_SIZE).
   const distance = useTransform(mouseX, (x) => {
     const bounds = tileRef.current?.getBoundingClientRect();
     if (!bounds) return Infinity;
@@ -121,7 +108,7 @@ function DockItem({
       >
         <item.icon style={{ width: "56%", height: "56%" }} strokeWidth={1.75} />
       </motion.div>
-      {/* Active-route dot; always occupies space so tiles share a baseline. */}
+
       <span
         className={cn(
           "bg-foreground/80 mt-1.5 size-1 rounded-full transition-opacity",

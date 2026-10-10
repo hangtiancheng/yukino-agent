@@ -1,9 +1,3 @@
-// Offline smoke test for the structure-aware chunking port + the retrieval
-// post-processing stages (dedup / per-parent cap / heuristic rerank) + the
-// DevFlow answer gate's conflict state. Expectations are ported from the
-// Python legacy suite (tests/test_chunking.py, test_rag_rerank.py).
-// No network/Milvus/embedding keys required:
-//   npx tsx tests/chunking.smoke.ts
 import assert from "node:assert/strict";
 import {
   chunkDocument,
@@ -207,7 +201,6 @@ function checkCsv() {
     ),
     "csv: row ranges",
   );
-  // Quoted field with embedded newline.
   const quoted = 'a,b\n1,"two\nlines"\n';
   const quotedChunks = chunkDocument(quoted, "q.csv", 200, 0);
   assert.ok(
@@ -250,8 +243,6 @@ function checkPrPatch() {
 }
 
 function checkSiblings() {
-  // A markdown section whose body is split into several children: the middle
-  // child's sibling_ids must point at its prev and next rows.
   const text = `# Big
 
 ${"para one. ".repeat(30)}
@@ -264,7 +255,6 @@ ${"para three. ".repeat(30)}
   assert.ok(chunks.length >= 3, `siblings: doc split (got ${chunks.length})`);
   const ids = siblingIdsByParent(chunks, (i) => `doc#${i}`);
   assert.equal(ids.length, chunks.length, "siblings: aligned");
-  // Every entry includes its own id in the middle slot.
   chunks.forEach((_, i) => {
     assert.equal(ids[i]![1], `doc#${i}`, `siblings: own id at slot 1 for ${i}`);
   });
@@ -455,13 +445,11 @@ async function checkIndexPolicy() {
     "policy: allowlist rejects others",
   );
 
-  // fnmatch semantics: `*` crosses `/`, `[seq]` classes, `?` single char.
   assert.ok(globToRegExp("a*b").test("a/x/yb"), "glob: star crosses slash");
   assert.ok(globToRegExp("file?.md").test("file1.md"), "glob: question mark");
   assert.ok(globToRegExp("[ab]c").test("bc"), "glob: char class");
   assert.ok(!globToRegExp("[!ab]c").test("ac"), "glob: negated class");
 
-  // Digest stability + change sensitivity (staleness fingerprint input).
   assert.equal(
     policyDigest(policy),
     policyDigest(
@@ -477,7 +465,6 @@ async function checkIndexPolicy() {
     "policy digest differs",
   );
 
-  // Invalid policies fail honestly.
   assert.throws(
     () => parseIndexPolicyYaml("version: 2"),
     /Unsupported project index config version/,

@@ -1,4 +1,3 @@
-// POST /api/chat — unified response shape { message, data }.
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
 import { chat } from "@/lib/ai/pipelines/chat";
@@ -43,9 +42,6 @@ export async function POST(request: Request) {
       { headers: CORS_HEADERS },
     );
   } catch (e) {
-    // The Vercel AI SDK throws APICallError with the real upstream body in
-    // `responseBody`/`statusCode`; `e.message` alone is often empty when a
-    // non-official Anthropic-compatible gateway returns a non-standard error.
     const err = e as {
       name?: string;
       message?: string;

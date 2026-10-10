@@ -1,6 +1,3 @@
-// GitHub → PostgreSQL sync. Port of the original repos_sync.py: upserts
-// issues, pull requests (with files + review comments) and workflow runs
-// (with jobs and failure logs) for a connected repository.
 import { prisma } from "@/lib/db";
 import { decryptToken } from "./crypto";
 import { sanitizeCiLog } from "./sanitize";
@@ -31,8 +28,6 @@ export interface SyncResult {
   workflowRuns: number;
 }
 
-// Per-job log cap: keep the head (where the first error usually is) and the
-// tail (where the failure summary is), drop the middle.
 const LOG_HEAD_CHARS = 20_000;
 const LOG_TAIL_CHARS = 20_000;
 const MAX_FAILED_JOB_LOGS = 3;
@@ -60,9 +55,6 @@ function truncateLog(text: string): string {
   );
 }
 
-// JSON-safe shape persisted into WorkflowRun.jobs (Prisma Json column).
-// NOTE: `type` (not `interface`) — Prisma's InputJsonObject is a mapped type
-// and interfaces lack the implicit index signature required to satisfy it.
 type SyncedJobStep = {
   name?: string;
   status?: string;
@@ -185,7 +177,6 @@ export async function syncRepository(
           },
         });
 
-        // Files and review comments are replaced wholesale on each sync.
         try {
           const files = await listPullRequestFiles(
             repo.owner,
@@ -206,9 +197,7 @@ export async function syncRepository(
               })),
             });
           }
-        } catch {
-          // Files are best-effort (secondary rate limit); keep the PR row.
-        }
+        } catch {}
         try {
           const comments = await listPullRequestReviewComments(
             repo.owner,
@@ -225,10 +214,6 @@ export async function syncRepository(
                 body: c.body != null ? String(c.body) : null,
                 path: c.path != null ? String(c.path) : null,
                 line: c.line != null ? Number(c.line) : null,
-                // legacy repos_sync.py:107 stored `line or original_line` in a
-                // single column; this port keeps `line` faithful (null on
-                // outdated comments) and persists original_line separately
-                // (PrReviewComment.originalLine).
                 originalLine:
                   c.original_line != null ? Number(c.original_line) : null,
                 author: loginOf(c.user),
@@ -236,9 +221,7 @@ export async function syncRepository(
               })),
             });
           }
-        } catch {
-          // Best-effort, same as files.
-        }
+        } catch {}
         synced.pullRequests += 1;
       }
     } catch (e) {
@@ -291,7 +274,6 @@ export async function syncRepository(
           jobs = [];
         }
 
-        // Only failed runs pay the extra log-fetch cost.
         let logsText: string | null = null;
         if (item.conclusion === "failure") {
           const failedJobs = jobs.filter((job) => job.conclusion === "failure");
@@ -304,15 +286,10 @@ export async function syncRepository(
                 Number(job.id),
                 ctx,
               );
-              // Sanitize BEFORE truncating: a head/tail cut could split a
-              // secret in half and leave it unrecognizable to the redaction
-              // patterns (same order as the Python original).
               parts.push(
                 `### Job: ${String(job.name ?? job.id)}\n${truncateLog(sanitizeCiLog(text))}`,
               );
-            } catch {
-              // Log download can 404 on expired runs; keep going.
-            }
+            } catch {}
           }
           logsText = parts.length > 0 ? parts.join("\n\n") : null;
         }
@@ -352,8 +329,6 @@ export async function syncRepository(
   ) {
     throw new Error(`GitHub sync failed — ${errors.join("; ")}`);
   }
-  // Legacy rebuilds the knowledge graph after every sync (legacy knowledge.py
-  // triggers); fire-and-forget so a graph failure never fails the sync.
   void rebuildGraph(repoId).catch((e) =>
     console.error(
       "[sync] knowledge graph rebuild failed:",
@@ -380,15 +355,6 @@ function describeError(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-// Milvus `source` prefixes to sweep when a repository is deleted. legacy
-// repos.py:429 removed every vector tagged with the repo id in one call; the
-// TS port keys vectors by source prefix instead, and each DevFlow indexer
-// owns one prefix:
-//   devflow:kb:<repoId>:      knowledge-base docs (rag.ts KB_PREFIX)
-//   devflow:project:<repoId>: project-doc index (project-index.ts PROJECT_PREFIX)
-//   devflow:item:<repoId>:    GitHub content index (introduced by the parallel
-//                             content-search workstream; cleanup follows the
-//                             same prefix convention)
 export function repoMilvusCleanupPrefixes(repoId: string): string[] {
   return [
     `devflow:kb:${repoId}:`,
@@ -397,7 +363,6 @@ export function repoMilvusCleanupPrefixes(repoId: string): string[] {
   ];
 }
 
-// Verify credentials + repo existence and return normalized repo metadata.
 export async function fetchRepoMeta(
   owner: string,
   name: string,

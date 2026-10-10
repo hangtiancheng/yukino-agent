@@ -1,13 +1,6 @@
-// Team-member profiles per repository. The legacy backend stored these as
-// `team_member` Documents (backend/app/api/routes/knowledge.py
-// /{repo_id}/team-members); here they live in the dedicated TeamMember table
-// (repoId + githubLogin unique). The Issue Triage agent consumes the profiles
-// both as suggestion fuel (skill/keyword matching) and as the owner
-// allow-list for validating LLM-proposed owners.
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
 
-// GitHub login charset (alnum + single hyphens between alnum), max 39.
 export const TeamMemberCreateSchema = z.object({
   githubLogin: z
     .string()
@@ -21,8 +14,6 @@ export const TeamMemberCreateSchema = z.object({
 });
 export type TeamMemberCreate = z.infer<typeof TeamMemberCreateSchema>;
 
-// PATCH body: every field optional, but at least one must be present to
-// avoid no-op updates.
 export const TeamMemberUpdateSchema = z
   .object({
     displayName: z.string().max(100).nullable().optional(),
@@ -52,8 +43,6 @@ export interface TeamMemberRow {
   updatedAt: Date;
 }
 
-// Profile shape the deterministic owner-suggestion engine scores against
-// (legacy context["team_members"] rows carried name/role/strengths/techStack).
 export interface TeamMemberProfile {
   name: string;
   displayName: string;
@@ -103,7 +92,6 @@ export async function listTeamMembers(
   });
 }
 
-// Logins only — used as part of the suggested_owner allow-list.
 export async function listTeamMemberLogins(repoId: string): Promise<string[]> {
   const rows = await prisma.teamMember.findMany({
     where: { repoId },
@@ -133,7 +121,6 @@ export async function createTeamMember(
   return { ok: true, member };
 }
 
-// memberId is scoped to repoId so one repo can never mutate another's rows.
 export async function updateTeamMember(
   repoId: string,
   memberId: string,

@@ -14,7 +14,6 @@ interface AIOpsButtonProps {
   disabled: boolean;
 }
 
-// Pointer movement below this many pixels counts as a click, not a drag.
 const DRAG_THRESHOLD = 4;
 
 interface DragState {
@@ -29,7 +28,6 @@ interface DragState {
 }
 
 export default function AIOpsBtn({ onClick, disabled }: AIOpsButtonProps) {
-  // null = never dragged: keep the default centered spot in the chat header.
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const suppressClickRef = useRef(false);
@@ -76,7 +74,6 @@ export default function AIOpsBtn({ onClick, disabled }: AIOpsButtonProps) {
   const handlePointerEnd = (e: ReactPointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== e.pointerId) return;
-    // The click event fires after pointerup; swallow it if this was a drag.
     suppressClickRef.current = drag.dragged;
     dragRef.current = null;
   };
@@ -91,8 +88,6 @@ export default function AIOpsBtn({ onClick, disabled }: AIOpsButtonProps) {
   };
 
   return (
-    // The wrapper owns position so motion transforms (hover/tap scale) never
-    // fight the Tailwind centering translate.
     <div
       className={cn(
         "z-10 select-none",
@@ -107,8 +102,6 @@ export default function AIOpsBtn({ onClick, disabled }: AIOpsButtonProps) {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
-        // aria-disabled instead of disabled: a natively disabled button swallows
-        // pointer events, which would make it undraggable while streaming.
         aria-disabled={disabled}
         render={
           <motion.button

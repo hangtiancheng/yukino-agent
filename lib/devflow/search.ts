@@ -1,14 +1,3 @@
-// DevFlow scoped retrieval pipeline. Mirrors the Python
-// knowledge_base.search_documents stage order over the shared Milvus
-// collection:
-//
-//   over-fetch → near-duplicate removal → per-parent cap →
-//   rerank (qwen API when configured, heuristic fallback on failure —
-//   heuristic only when no API is configured) → topK cut → sibling expansion.
-//
-// The recall legs (hybrid/dense/bm25) and the rerank gate are per-repo
-// overridable via KnowledgeBaseConfig (legacy retrieval_method/rerank_enabled).
-// OnCall keeps its own lighter path in lib/milvus/retriever.ts (retrieve()).
 import {
   retrieveRaw,
   type RetrievedDoc,
@@ -23,10 +12,7 @@ import {
 } from "./retrieval-post";
 
 export interface ScopedRetrieveOptions {
-  // Recall legs (legacy retrieval_method); default hybrid.
   method?: RetrievalMethod;
-  // Per-repo rerank toggle (legacy rerank_enabled). The global RERANK_API_KEY
-  // gate still applies: without a key the heuristic reranker runs instead.
   rerank?: boolean;
 }
 
@@ -37,7 +23,6 @@ export async function scopedRetrieve(
   opts: ScopedRetrieveOptions = {},
 ): Promise<RetrievedDoc[]> {
   const useApiRerank = (opts.rerank ?? true) && rerankEnabled();
-  // Legacy candidate_limit: min(max(top_k * 8 when rerank else *2, 20), 100).
   const candidateLimit = Math.min(
     Math.max(topK * (useApiRerank ? 8 : 2), 20),
     100,
@@ -63,7 +48,6 @@ export async function scopedRetrieve(
     }
   }
   if (ranked.length === 0) {
-    // Heuristic reranker (also the API-failure fallback, as in legacy).
     const heuristic = heuristicRerank(query, pool, topK);
     ranked = heuristic.ranked;
     for (const doc of ranked) {

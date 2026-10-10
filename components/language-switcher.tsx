@@ -1,10 +1,5 @@
 "use client";
 
-// Top-right locale dropdown: lists every supported language, persists the
-// choice to the yukino_locale cookie, then router.refresh() re-renders the
-// server tree so all messages, <html lang> and metadata flip in one shot.
-// Mounted at the top-right of each surface: floating in the OnCall page,
-// and in the DevFlow header.
 import { Languages } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";

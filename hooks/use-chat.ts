@@ -20,11 +20,9 @@ export interface ChatReference {
   source: string;
   score: number;
   excerpt: string;
-  /** Document classification carried from the knowledge index (legacy reference chip label). */
   knowledgeType?: KnowledgeType;
 }
 
-/** Live tool-call badge on a streaming assistant reply (legacy tool.call events). */
 export interface ChatToolCall {
   id: string;
   name: string;
@@ -34,17 +32,11 @@ export interface ChatToolCall {
 export interface ChatMessage {
   type: "user" | "assistant";
   content: string;
-  /** Optional step details for AI Ops results. */
   detail?: string[];
-  /** A2UI protocol messages attached to an assistant reply (unknown[] at this boundary; validated per-message by the web_core schema at render time). */
   a2ui?: unknown[];
-  /** Knowledge-base sources that grounded an assistant reply. */
   references?: ChatReference[];
-  /** Model reasoning (extended thinking) streamed alongside the reply. */
   reasoning?: string;
-  /** Tool calls observed while this reply was streaming. */
   toolCalls?: ChatToolCall[];
-  /** Transient: reply not yet arrived — render a thinking placeholder. */
   pending?: boolean;
 }
 
@@ -73,10 +65,6 @@ interface OverlayState {
 const MAX_HISTORIES = 50;
 const STORAGE_KEY = "yukino-agent-chat-histories";
 
-// Zod schemas for validating the localStorage-persisted chat history shape,
-// so JSON.parse results are checked instead of type-asserted. The new
-// fields are optional: histories written by older builds parse unchanged
-// (backward compatible), and unknown extra keys keep being stripped.
 const chatMessageSchema = z.object({
   type: z.enum(["user", "assistant"]),
   content: z.string(),
@@ -105,10 +93,6 @@ const chatHistorySchema = z.object({
 
 const chatHistoriesSchema = z.array(chatHistorySchema);
 
-// Widened views of the shared API schemas: the OnCall server now sends
-// reference knowledgeType and turn reasoning, and the shared schemas in
-// lib/schemas.ts (owned elsewhere) would strip them, so this client
-// declares the extra optional fields locally at the boundary.
 const chatReferenceExtSchema = chatReferenceSchema.extend({
   knowledgeType: z.enum(["sop", "document", "diagnostic-case"]).optional(),
 });
@@ -128,16 +112,10 @@ const toolEventSchema = z.object({
   state: z.enum(["call", "result", "error"]),
 });
 
-// P3-14 fix: use crypto.randomUUID() for cryptographically random session IDs
-// (browser-native, available in all modern browsers + Node.js 19+).
 function generateSessionId(): string {
   return "session_" + crypto.randomUUID();
 }
 
-// Read persisted chat histories from localStorage.
-// The `typeof localStorage` guard is a secondary server-safety check — if this
-// function is ever called during SSR (it shouldn't be, thanks to the hydration
-// guard above), it returns [] instead of throwing a ReferenceError.
 function loadHistories(): ChatHistory[] {
   if (typeof localStorage === "undefined") return [];
   try {
@@ -166,20 +144,12 @@ export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [histories, setHistories] = useState<ChatHistory[]>([]);
 
-  // Initialize client-only state (random session ID, localStorage histories)
-  // AFTER hydration completes. useEffect fires after React confirms the
-  // server HTML matches the client's first render, so the initial empty
-  // values (sessionId="", histories=[]) are consistent on both sides and
-  // no hydration mismatch occurs. The subsequent setState triggers a
-  // client-only re-render with the real values.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-once init for client-only state after hydration
     setSessionId(generateSessionId());
     setHistories(loadHistories());
   }, []);
 
-  // AbortController state — when set, the effect cleans it up on unmount or
-  // when replaced (P1-1 fix).
   const [streamController, setStreamController] =
     useState<AbortController | null>(null);
   useEffect(() => {
@@ -193,8 +163,6 @@ export function useChat() {
     subtext: "",
   });
 
-  // Notifications render through the base-ui toast system; keep the same
-  // (message, type) call signature so call sites stay untouched.
   const showNotification = useCallback(
     (message: string, type: NotificationType = "info") => {
       toast.add({ title: message, type, timeout: 3000 });
@@ -202,16 +170,12 @@ export function useChat() {
     [],
   );
 
-  // Persist histories to localStorage whenever they change.
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(histories));
-    } catch {
-      // ignore quota errors
-    }
+    } catch {}
   }, [histories]);
 
-  // Upsert the current conversation into histories (called after a turn).
   const upsertHistory = useCallback(
     (sid: string, msgs: ChatMessage[]) => {
       if (msgs.length === 0) return;
@@ -272,9 +236,6 @@ export function useChat() {
     async (text: string) => {
       if (!text || isStreaming) return;
 
-      // Track messages in a local variable so we can call upsertHistory in
-      // the finally block WITHOUT placing a side effect inside a state
-      // updater function (P1-2 fix).
       let currentMsgs: ChatMessage[] = [
         ...messages,
         { type: "user", content: text },
@@ -282,13 +243,11 @@ export function useChat() {
       setMessages(currentMsgs);
       setIsStreaming(true);
 
-      // AbortController for cancelling the stream on unmount (P1-1 fix).
       const controller = new AbortController();
       setStreamController(controller);
 
       try {
         if (mode === "quick") {
-          // Show a thinking placeholder until the reply arrives.
           currentMsgs = [
             ...currentMsgs,
             { type: "assistant", content: "", pending: true },
@@ -342,9 +301,6 @@ export function useChat() {
           ];
           setMessages(currentMsgs);
 
-          // Dispatch one complete SSE event: per spec, multiple `data:` lines
-          // belong to the same event and are joined with "\n" — this is how
-          // newlines inside streamed chunks survive the transport.
           const dispatchEvent = () => {
             if (dataLines.length === 0) {
               currentEvent = "";
@@ -370,8 +326,6 @@ export function useChat() {
               ];
               setMessages(currentMsgs);
             } else if (event === "reasoning") {
-              // Reasoning delta (legacy reasoning.delta): accumulate onto
-              // the pending assistant message.
               const last = currentMsgs.at(-1);
               currentMsgs = [
                 ...currentMsgs.slice(0, -1),
@@ -387,9 +341,6 @@ export function useChat() {
               ];
               setMessages(currentMsgs);
             } else if (event === "tool") {
-              // Tool lifecycle (legacy tool.call): {id,name,state}. A call
-              // appends a badge; result/error update the badge with that id
-              // (falls back to appending if the call frame was missed).
               try {
                 const parsedTool = toolEventSchema.safeParse(
                   JSON.parse(payload),
@@ -425,8 +376,6 @@ export function useChat() {
                 console.error("invalid tool event payload:", err);
               }
             } else if (event === "references") {
-              // Grounding sources for this turn, sent before the first text
-              // chunk; attach them to the pending assistant message.
               try {
                 const parsedRefs = z
                   .array(chatReferenceExtSchema)
@@ -451,9 +400,6 @@ export function useChat() {
                 console.error("invalid references event payload:", err);
               }
             } else if (event === "a2ui") {
-              // Payload is a JSON array of A2UI protocol messages; contents
-              // are validated per-message by the web_core schema at render
-              // time, so treat them as unknown[] here.
               try {
                 const messages = z
                   .array(z.unknown())
@@ -480,16 +426,11 @@ export function useChat() {
                 console.error("invalid a2ui event payload:", err);
               }
             } else if (event === "error") {
-              // P1-3 fix: surface server-side error events instead of
-              // silently ignoring them.
               throw new Error(payload || t("streamError"));
             }
-            // "done" event: clean termination — the reader will return
-            // done=true on the next read and the loop will break.
           };
 
           while (true) {
-            // Check abort before each read so unmount cancels promptly (P1-1 fix).
             if (controller.signal.aborted) break;
             const { done, value } = await reader.read();
             if (done) break;
@@ -497,11 +438,9 @@ export function useChat() {
             const lines = buffer.split("\n");
             buffer = lines.pop() ?? "";
             for (const rawLine of lines) {
-              // Strip trailing \r for SSE spec compliance (\r\n line endings).
               const line = rawLine.endsWith("\r")
                 ? rawLine.slice(0, -1)
                 : rawLine;
-              // Blank line terminates the current event.
               if (line === "") {
                 dispatchEvent();
                 continue;
@@ -520,14 +459,12 @@ export function useChat() {
           }
         }
       } catch (e) {
-        // AbortError: user navigated away — suppress the error message.
         if (e instanceof DOMException && e.name === "AbortError") return;
         const msg = e instanceof Error ? e.message : String(e);
         const errorMsg: ChatMessage = {
           type: "assistant",
           content: t("errorPrefix", { message: msg }),
         };
-        // Replace a trailing thinking placeholder instead of appending after it.
         currentMsgs = currentMsgs.at(-1)?.pending
           ? [...currentMsgs.slice(0, -1), errorMsg]
           : [...currentMsgs, errorMsg];
@@ -535,13 +472,10 @@ export function useChat() {
       } finally {
         setStreamController(null);
         setIsStreaming(false);
-        // Clear a leftover thinking placeholder (e.g. stream ended empty).
         if (currentMsgs.at(-1)?.pending) {
           currentMsgs = currentMsgs.slice(0, -1);
           setMessages(currentMsgs);
         }
-        // P1-2 fix: upsertHistory is called with the local messages array,
-        // NOT inside a setMessages state updater.
         if (!controller.signal.aborted && currentMsgs.length > 0) {
           upsertHistory(sessionId, currentMsgs);
         }
@@ -585,10 +519,6 @@ export function useChat() {
     }
   }, [showNotification, t, tCommon]);
 
-  // In-place surface action: POST the action + the owning message's current
-  // a2ui array; the reply is a batch of updateComponents/updateDataModel
-  // messages for the same surface, appended to that message so the A2uiView
-  // applies them in place (no user chat message involved).
   const sendA2uiAction = useCallback(
     async (messageIndex: number, action: A2uiClientAction) => {
       if (isStreaming) {
@@ -692,15 +622,11 @@ export function useChat() {
     [showNotification, t],
   );
 
-  // P1-6 fix: stabilize addMessage with useCallback so its reference is stable.
   const addMessage = useCallback(
     (msg: ChatMessage) => setMessages((prev) => [...prev, msg]),
     [],
   );
 
-  // P1-6 fix: wrap the return object in useMemo so callers that depend on
-  // individual fields (via destructuring) get stable references and their
-  // useCallback dependencies don't invalidate on every render.
   return useMemo(
     () => ({
       mode,

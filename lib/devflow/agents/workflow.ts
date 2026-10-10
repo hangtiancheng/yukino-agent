@@ -1,23 +1,3 @@
-// DevFlow multi-agent workflow orchestration — port of the legacy Python
-// subsystem (the largest single DevFlow subsystem; Yukino.md #24):
-//   - planner_agent.py    → planWorkflow / deterministicPlanSpec / replanClaims
-//   - observer_agent.py   → observeWorkflow (findings + confidence synthesis)
-//   - synthesis_agent.py  → synthesize / deterministicMemo (decision memo)
-//   - workflow_orchestrator.py → executeWorkflow (task graph, parallel cap,
-//                           90 s task timeout, ≤2 replan rounds)
-//   - chat.py /plan + /plan/execute/stream → the two-phase protocol served by
-//                           app/api/devflow/chat/plan{,/execute}/route.ts
-//
-// Like the legacy orchestrator, every stage has a deterministic fallback: with
-// no LLM key the planner degrades to a bounded "latest open issue / failed CI /
-// open PR" spec, the observer is pure rules, and synthesis is a template memo —
-// the whole pipeline runs offline. Task execution reuses the three analysis
-// agents (analysis.ts analyzeIssue / reviewPull / debugRun), which already
-// carry their own deterministic-first guarantees.
-//
-// Safety note: the legacy SafetyAgent (safety_agent.py) gate is preserved
-// structurally — workflow tasks are read-only analyses and every GitHub write
-// still flows exclusively through ActionDraft confirmation (lib/devflow/drafts.ts).
 import { Output, generateText } from "ai";
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
@@ -31,21 +11,9 @@ import {
 } from "@/lib/devflow/agents/analysis";
 import { AI_META_RULES } from "@/lib/devflow/agents/prompts";
 
-// ---------------------------------------------------------------------------
-// Constants (workflow_orchestrator.py: _task_timeout_seconds default from
-// settings.workflow_task_timeout_seconds = 90; _max_replans clamps to 2;
-// WorkflowSpec.max_parallel_tasks default 3)
-// ---------------------------------------------------------------------------
-
 export const TASK_TIMEOUT_MS = 90_000;
 export const MAX_PARALLEL_TASKS = 3;
 export const MAX_REPLANS = 2;
-
-// ---------------------------------------------------------------------------
-// WorkflowSpec schema (assignment spec: goal + bounded claims; legacy
-// schemas/workflow.py WorkflowSpec/WorkflowClaim/WorkflowTask collapsed into
-// one claim-per-task shape — each claim IS the task boundary)
-// ---------------------------------------------------------------------------
 
 export const WorkflowEntityTypeSchema = z.enum([
   "issue",
@@ -66,9 +34,6 @@ export type WorkflowTaskType = z.infer<typeof WorkflowTaskTypeSchema>;
 export const WorkflowClaimSchema = z.object({
   id: z.string().min(1).max(64),
   entity_type: WorkflowEntityTypeSchema,
-  // issue / pull_request: GitHub number ("123", "#123" tolerated);
-  // workflow_run: synced WorkflowRun id, GitHub run id, or workflow name;
-  // repository: repo id or "owner/name".
   entity_ref: z.string().max(200),
   task_type: WorkflowTaskTypeSchema,
   acceptance_criteria: z.array(z.string().min(1)).min(1).max(8),
@@ -81,8 +46,6 @@ export const WorkflowSpecSchema = z.object({
 });
 export type WorkflowSpec = z.infer<typeof WorkflowSpecSchema>;
 
-// Request payloads for the two-phase protocol (schemas.ts is frozen for this
-// task, so the workflow request schemas live beside the workflow logic).
 export const WorkflowPlanRequestSchema = z.object({
   repoId: z.string().min(1),
   goal: z.string().trim().min(1).max(2000),
@@ -92,7 +55,6 @@ export const WorkflowExecuteRequestSchema = z.object({
   runId: z.string().min(1),
 });
 
-// Observation (legacy schemas/workflow.py WorkflowFinding/WorkflowObservation).
 export const WorkflowFindingSeveritySchema = z.enum([
   "info",
   "warning",
@@ -116,8 +78,6 @@ export const WorkflowObservationSchema = z.object({
 });
 export type WorkflowObservation = z.infer<typeof WorkflowObservationSchema>;
 
-// Per-task result (legacy WorkflowTaskResult; status "error" is renamed
-// "failed" to match the AgentTaskRun status comment in prisma/schema.prisma).
 export type WorkflowTaskStatus = "success" | "failed" | "skipped";
 
 export interface WorkflowTaskResult {
@@ -148,7 +108,6 @@ export interface WorkflowMetrics {
   observerFindings: number;
 }
 
-// legacy planner_agent.py agent naming (WorkflowTask.agent_name).
 const AGENT_NAMES: Record<WorkflowTaskType, string> = {
   issue_analysis: "issue_analyst_agent",
   pr_review: "pr_review_agent",
@@ -160,8 +119,6 @@ export function agentNameForTaskType(taskType: WorkflowTaskType): string {
   return AGENT_NAMES[taskType];
 }
 
-// Entity/task coherence guard: a claim's task_type must be the analysis that
-// belongs to its entity_type (validateClaims rejects mismatches).
 const TASK_TYPE_FOR_ENTITY: Record<WorkflowEntityType, WorkflowTaskType> = {
   issue: "issue_analysis",
   pull_request: "pr_review",
@@ -169,8 +126,6 @@ const TASK_TYPE_FOR_ENTITY: Record<WorkflowEntityType, WorkflowTaskType> = {
   repository: "repo_health",
 };
 
-// Deterministic acceptance criteria per task type (legacy planner_agent.py
-// WorkflowSpec.acceptance_criteria, pushed down to claim level).
 const ACCEPTANCE_CRITERIA: Record<WorkflowTaskType, string[]> = {
   issue_analysis: [
     "Priority and category are assigned with cited evidence",
@@ -192,12 +147,6 @@ const ACCEPTANCE_CRITERIA: Record<WorkflowTaskType, string[]> = {
     "The most recent signals are listed with identifiers",
   ],
 };
-
-// ---------------------------------------------------------------------------
-// Entity snapshot — the boundary a claim may reference (legacy planner built
-// this from repo evidence via _build_engineering_workflow_runtime in chat.py;
-// validateClaims rejects any entity_ref outside it)
-// ---------------------------------------------------------------------------
 
 export interface SnapshotIssue {
   id: string;
@@ -285,12 +234,6 @@ export async function loadEntitySnapshot(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Claim validation (assignment: validateClaims rejects vague / out-of-bounds
-// claims — the legacy boundary lived in WorkflowClaim.allowed_sources and the
-// planner only ever emitted refs from the assembled repo context)
-// ---------------------------------------------------------------------------
-
 export interface ResolvedEntity {
   id: string;
   label: string;
@@ -328,7 +271,6 @@ export function resolveClaimEntity(
     );
     return run ? { id: run.id, label: `CI run "${run.name}"` } : null;
   }
-  // repository
   if (
     ref === snapshot.repoId ||
     ref.toLowerCase() === snapshot.fullName.toLowerCase()
@@ -386,12 +328,6 @@ export function validateClaims(
   }
   return { claims, violations };
 }
-
-// ---------------------------------------------------------------------------
-// Planner (legacy planner_agent.py run(); deterministic fallback per the
-// assignment: one claim each for the latest open issue / failed CI run /
-// open PR from the synced snapshot)
-// ---------------------------------------------------------------------------
 
 export function deterministicPlanSpec(
   goal: string,
@@ -484,9 +420,6 @@ Rules:
 Return a JSON object that exactly matches the required schema. No markdown, no code fences.`;
 }
 
-// Structured generation with one strict retry — mirrors the (frozen)
-// generateStructured in analysis.ts; some OpenAI-compatible gateways wrap JSON
-// in prose on the first attempt.
 async function generateSpec(
   goal: string,
   snapshot: EntitySnapshot,
@@ -543,7 +476,6 @@ export async function planWorkflow(
   if (llmConfigured()) {
     try {
       const llmSpec = await generateSpec(goal, snapshot);
-      // The user's goal is authoritative (legacy: spec.goal = message).
       const { claims, violations } = validateClaims(
         { goal, claims: llmSpec.claims },
         snapshot,
@@ -568,8 +500,6 @@ export async function planWorkflow(
   }
 
   const spec = deterministicPlanSpec(goal, snapshot);
-  // The deterministic spec is built from the snapshot, but re-validate so the
-  // contract (only in-bounds claims are persisted) holds on every path.
   const { claims, violations } = validateClaims(spec, snapshot);
   return {
     spec: { goal, claims },
@@ -578,14 +508,7 @@ export async function planWorkflow(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Task graph scheduling (legacy workflow_orchestrator.py _run_task_graph;
-// assignment topology: same entity sequential, different entities parallel,
-// global cap 3). Returns ordered waves; a wave runs concurrently.
-// ---------------------------------------------------------------------------
-
 export function claimEntityKey(claim: WorkflowClaim): string {
-  // "#12" and "12" are the same issue entity (resolveClaimEntity parity).
   const ref = claim.entity_ref.trim().replace(/^#/, "").toLowerCase();
   return `${claim.entity_type}:${ref}`;
 }
@@ -624,12 +547,6 @@ export function scheduleClaims(
   return waves;
 }
 
-// ---------------------------------------------------------------------------
-// Observer (legacy observer_agent.py — status/evidence/confidence/merge-gate
-// findings + confidence synthesis; assignment adds the deterministic rule
-// "issue triaged P0/P1 → blocker")
-// ---------------------------------------------------------------------------
-
 function byType(
   results: WorkflowTaskResult[],
   taskType: WorkflowTaskType,
@@ -663,7 +580,6 @@ export function observeWorkflow(
   const findings: WorkflowFinding[] = [];
   void spec;
 
-  // legacy _status_findings
   for (const result of results) {
     if (result.status === "failed") {
       findings.push(
@@ -690,7 +606,6 @@ export function observeWorkflow(
     }
   }
 
-  // assignment rule: P0/P1 triage → blocker (deterministic)
   for (const result of results) {
     if (result.status !== "success" || result.taskType !== "issue_analysis") {
       continue;
@@ -713,7 +628,6 @@ export function observeWorkflow(
     }
   }
 
-  // legacy _merge_gate_findings
   const prResult = byType(results, "pr_review");
   const ciResult = byType(results, "ci_debug");
   if (ciResult && ciResult.output.is_merge_blocking === true) {
@@ -764,7 +678,6 @@ export function observeWorkflow(
     );
   }
 
-  // legacy _evidence_findings / _confidence_findings
   for (const result of results) {
     if (result.status !== "success" || result.taskType === "repo_health")
       continue;
@@ -794,9 +707,6 @@ export function observeWorkflow(
     }
   }
 
-  // legacy confidence synthesis (observer_agent.py L26-30): mean of successful
-  // task confidences (0.55 when absent) − 0.2·blockers − 0.05·warnings,
-  // clamped to [0.1, 0.95].
   const confidences = results
     .filter((r) => r.status === "success" && r.confidence !== null)
     .map((r) => r.confidence as number);
@@ -825,12 +735,6 @@ export function observeWorkflow(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Replan (legacy planner_agent.py replan() + orchestrator _max_replans clamp;
-// assignment rule: replan when a blocker appeared and entities in the snapshot
-// are still uncovered, at most MAX_REPLANS times)
-// ---------------------------------------------------------------------------
-
 export function shouldReplan(
   observation: WorkflowObservation,
   replanCount: number,
@@ -849,9 +753,6 @@ function uniqueClaimId(spec: WorkflowSpec, base: string): string {
   return `${base}_${index}`;
 }
 
-// Deterministic replan: add claims for the strongest uncovered signals
-// (latest open issue / failed CI run / open PR). Returns [] when everything
-// strong is already covered — the caller then stops the replan loop.
 export function replanClaims(
   spec: WorkflowSpec,
   snapshot: EntitySnapshot,
@@ -915,11 +816,6 @@ export function replanClaims(
   return extra;
 }
 
-// ---------------------------------------------------------------------------
-// Synthesis (legacy synthesis_agent.py — decision memo; deterministic template
-// fallback keeps the pipeline honest without an LLM)
-// ---------------------------------------------------------------------------
-
 function memoDecision(
   observation: WorkflowObservation,
   results: WorkflowTaskResult[],
@@ -963,7 +859,6 @@ function memoNextSteps(
           .filter((item) => item.trim().length > 0)
       : [];
 
-  // legacy _next_steps
   if (ciResult && ciResult.output.is_merge_blocking === true) {
     const debugSteps = strings(ciResult.output.debug_steps);
     steps.push(
@@ -1105,12 +1000,6 @@ export async function synthesize(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Executor (legacy workflow_orchestrator.py run_spec / _run_single_task;
-// assignment: reuse analysis.ts per task_type, 90 s per-task timeout → failed,
-// same entity sequential / different entities parallel ≤3, ≤2 replans)
-// ---------------------------------------------------------------------------
-
 export type WorkflowStreamEvent =
   | {
       type: "task_start";
@@ -1251,7 +1140,6 @@ export async function executeWorkflow(
   };
 
   try {
-    // legacy run_spec loop: run graph → observe → maybe replan (≤ MAX_REPLANS)
     let pendingClaims = spec.claims;
     for (;;) {
       rounds += 1;
@@ -1266,8 +1154,6 @@ export async function executeWorkflow(
               taskTimeoutMs,
               emit,
             );
-            // Latest result per task wins (deviation from legacy, which kept
-            // stale error results across rounds and re-flagged them forever).
             resultsByTask.set(claim.id, result);
           }),
         );
@@ -1300,7 +1186,6 @@ export async function executeWorkflow(
           emit({
             type: "observation",
             iteration: rounds - 1,
-            // isReplan = this observation triggered a replan round.
             isReplan: true,
             observation,
             replannedClaims,
@@ -1363,8 +1248,6 @@ export async function executeWorkflow(
     throw e;
   }
 
-  // Runs one claim: task_start → resolve entity → analysis agent with the
-  // 90 s timeout (legacy _run_single_task) → persist AgentTaskRun → task_result.
   async function runClaim(
     claim: WorkflowClaim,
     workflowId: string,
@@ -1426,7 +1309,6 @@ export async function executeWorkflow(
 
     const resolved = resolveClaimEntity(claim, entities);
     if (!resolved) {
-      // legacy _dependency_blocked_result semantics: not runnable → skipped
       return finish(
         {
           ...base,
@@ -1465,7 +1347,6 @@ export async function executeWorkflow(
       return finish(
         {
           ...base,
-          // legacy status "error" → "failed" (AgentTaskRun status comment)
           status: "failed",
           summary: `${agentName} failed.`,
           confidence: null,
@@ -1480,9 +1361,6 @@ export async function executeWorkflow(
   }
 }
 
-// Maps a claim to the reused analysis agent (assignment: analyzeIssue /
-// reviewPull / debugRun by task_type) and normalizes its record into the
-// legacy WorkflowTaskResult fields the observer consumes.
 async function runAnalysis(
   taskType: WorkflowTaskType,
   entityId: string,
@@ -1520,9 +1398,6 @@ async function runAnalysis(
       output: record.result as unknown as Record<string, unknown>,
     };
   }
-  // repo_health: deterministic snapshot summary (no legacy analysis agent to
-  // reuse; repo_health_agent stayed in the legacy runtime and only assembled
-  // counts that sync.ts already provides).
   const health = repoHealthOutput(snapshot);
   return {
     summary: health.summary,

@@ -1,9 +1,3 @@
-// Server-side chat conversation persistence. Port of the Python
-// services/conversations.py, trimmed to the models that exist in this stack
-// (Conversation + ChatMessage). The B-only cascade targets (ChatSession,
-// AgentRun, ConversationMemory, EvidenceItem, MemoryCandidate, RecallEvent,
-// AgentWorkflowRun, AgentTaskRun) are absent, so delete only clears messages
-// and feedback, then soft-deletes the conversation row.
 import { prisma } from "@/lib/db";
 import {
   Prisma,
@@ -16,8 +10,6 @@ export type MessageWithFeedback = ChatMessage & {
   feedback: ChatFeedback | null;
 };
 
-// Prisma's InputJsonValue rejects `unknown` leaves; the persisted payloads are
-// already JSON-serializable, so assert once at the boundary.
 const asJson = (value: unknown): Prisma.InputJsonValue =>
   value as Prisma.InputJsonValue;
 
@@ -68,8 +60,6 @@ export function toMessageView(m: ChatMessage): MessageView {
   };
 }
 
-// The oldest active conversation for a repo, creating "Default conversation"
-// when none exists. Mirrors ensure_default_conversation.
 export async function ensureDefaultConversation(
   repoId: string,
 ): Promise<Conversation> {
@@ -83,7 +73,6 @@ export async function ensureDefaultConversation(
   });
 }
 
-// Resolve a specific active conversation, falling back to the default.
 export async function ensureConversation(
   repoId: string,
   conversationId?: string | null,
@@ -131,9 +120,6 @@ export async function getConversation(
   });
 }
 
-// Soft-delete a conversation and hard-delete its messages + feedback. Returns
-// the replacement active conversation (most recently updated, else a fresh
-// default) so the client always has something selected.
 export async function deleteConversation(
   repoId: string,
   conversationId: string,
@@ -159,8 +145,6 @@ export async function deleteConversation(
   return replacement ?? createConversation(repoId, DEFAULT_TITLE);
 }
 
-// Promote the title from the first user message while it is still a default,
-// bump the message count and refresh updated_at. Mirrors touch_conversation.
 async function touchConversation(
   conversationId: string,
   opts: { userMessage?: string | null; increment?: number } = {},
@@ -194,7 +178,6 @@ export interface AppendMessageInput {
   meta?: Record<string, unknown>;
 }
 
-// Persist one chat message and touch its conversation.
 export async function appendMessage(
   input: AppendMessageInput,
 ): Promise<ChatMessage> {
@@ -215,13 +198,6 @@ export async function appendMessage(
   return message;
 }
 
-// The most recent `limit` messages of a conversation, in chronological order,
-// each with its feedback record (if any) for rendering rating state.
-// `beforeMessageId` is the history cursor from legacy
-// chat_memory.MessageStore.timeline:165-206: return the page of messages
-// strictly before the anchor. The legacy keyset also compared id strings as a
-// tiebreaker; Prisma uuid ids here are not chronological, so this port anchors
-// on createdAt only (never on id lexicographic order).
 export function messagesWherePage(
   conversationId: string,
   before: { createdAt: Date } | null,

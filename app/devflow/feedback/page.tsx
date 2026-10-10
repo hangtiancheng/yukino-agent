@@ -1,9 +1,5 @@
 "use client";
 
-// Feedback review: aggregate quality metrics for the selected repository plus a
-// review queue over rated answers. Negative feedback can be resolved/dismissed
-// with a note, and any entry can be opened as a trace (question + answer +
-// tool calls). Backed by /api/devflow/feedback* (Category C).
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations, type Messages } from "next-intl";
 import { CheckCircle2, Eye, ThumbsDown, ThumbsUp, XCircle } from "lucide-react";
@@ -49,7 +45,6 @@ type ReviewStatusKey = keyof Messages["devflow"]["feedback"]["reviewStatus"];
 type NotificationStatusKey =
   keyof Messages["devflow"]["feedback"]["notificationStatus"];
 
-// API values → typed message keys; unmapped values fall back to the raw string.
 const REASON_KEYS: Record<string, ReasonKey | undefined> = {
   inaccurate: "inaccurate",
   not_relevant: "notRelevant",
@@ -430,7 +425,6 @@ export default function DevflowFeedbackPage() {
         </CardContent>
       </Card>
 
-      {/* Trace dialog */}
       <Dialog
         open={trace !== null || traceLoading}
         onOpenChange={(o) => !o && setTrace(null)}
@@ -484,7 +478,6 @@ export default function DevflowFeedbackPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Review dialog */}
       <Dialog
         open={reviewTarget !== null}
         onOpenChange={(o) => !o && setReviewTarget(null)}

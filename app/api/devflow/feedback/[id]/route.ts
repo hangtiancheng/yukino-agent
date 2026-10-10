@@ -1,4 +1,3 @@
-// PATCH /api/devflow/feedback/:id — human review of a feedback record.
 import {
   FeedbackNotFoundError,
   reviewFeedback,

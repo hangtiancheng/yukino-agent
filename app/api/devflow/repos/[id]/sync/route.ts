@@ -1,4 +1,3 @@
-// POST /api/devflow/repos/:id/sync — pull issues / PRs / CI runs from GitHub.
 import { RepoSyncSchema } from "@/lib/devflow/schemas";
 import { syncRepository } from "@/lib/devflow/sync";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";

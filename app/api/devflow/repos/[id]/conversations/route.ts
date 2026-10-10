@@ -1,5 +1,3 @@
-// GET  /api/devflow/repos/:id/conversations — list a repo's chat conversations
-// POST /api/devflow/repos/:id/conversations — start a new conversation
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
 import {

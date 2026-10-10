@@ -1,8 +1,3 @@
-// GET /api/devflow/memory?repoId= — the repo's thread memory + per-conversation
-//   memories (#25, legacy routes/knowledge.py memory surface).
-// PUT /api/devflow/memory?repoId= — fold sealed ConversationMemory rows into
-//   the ThreadMemory (legacy merge semantics; skipped when the thread already
-//   counted every sealed session).
 import { prisma } from "@/lib/db";
 import {
   getRepoMemoryOverview,
@@ -19,7 +14,6 @@ async function resolveRepoId(request: Request): Promise<string | null> {
     Object.fromEntries(url.searchParams),
   );
   if (fromQuery.success) return fromQuery.data.repoId;
-  // PUT also accepts {repoId} in the body for clients that prefer JSON.
   const body = await request.json().catch(() => null);
   const fromBody = MemoryRepoQuerySchema.safeParse(body);
   return fromBody.success ? fromBody.data.repoId : null;

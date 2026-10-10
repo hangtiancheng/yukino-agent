@@ -1,9 +1,3 @@
-// Chat feedback (thumbs up / down on assistant answers) with metrics, a human
-// review workflow, and an optional Feishu/Lark notification for negative
-// feedback. Port of the Python feedback route + feedback_notifications service,
-// re-anchored on the assistant ChatMessage id (this stack persists chat turns
-// as ChatMessage rows rather than the legacy AgentRun run-log, so feedback
-// anchors on the message id).
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
 import { ensureDemoUser } from "./permissions";
@@ -77,8 +71,6 @@ export interface FeedbackNotificationContext {
   reporterName: string | null;
 }
 
-// Fire-and-await the Feishu notification. A notification failure never loses
-// the persisted feedback — the caller records the returned status/error.
 export async function sendNegativeFeedbackNotification(
   feedback: ChatFeedback,
   ctx: FeedbackNotificationContext,
@@ -208,7 +200,6 @@ export async function createFeedback(
         conversationId: conversation.id,
         assistantMessageId: message.id,
         ...baseData,
-        // Sensible initial state; corrected just below for unhelpful ratings.
         reviewStatus: input.rating === "unhelpful" ? "open" : "resolved",
         ...(input.rating === "helpful"
           ? { reviewedAt: new Date(), notificationStatus: "not_applicable" }
@@ -374,8 +365,6 @@ export interface FeedbackTrace {
   };
 }
 
-// Evidence for one rated answer: the assistant message, the question that
-// produced it, the surrounding conversation/repo, and the feedback record.
 export async function feedbackTrace(
   assistantMessageId: string,
 ): Promise<FeedbackTrace> {

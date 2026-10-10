@@ -1,11 +1,3 @@
-/**
- * Direct JSON inference format system prompt generator.
- *
- * Ported from the A2UI Python agent SDK `DirectJsonPromptGenerator`
- * (`a2ui/inference_formats/direct_json/prompt_generator.py`) and
- * `A2uiCatalog.render_as_llm_instructions` (`a2ui/schema/catalog.py`).
- */
-
 import {
   A2UI_SCHEMA_BLOCK_END,
   A2UI_SCHEMA_BLOCK_START,
@@ -20,11 +12,6 @@ import type {
 } from "./types";
 import { isJsonObject } from "./types";
 
-/**
- * Matches Python `json.dumps(obj, separators=(",", ":"))` with the default
- * `ensure_ascii=True`, which escapes every code unit >= 0x7f as \uXXXX
- * (astral characters become surrogate-pair escapes, as in Python).
- */
 function jsonDumpsCompact(value: JsonValue): string {
   return JSON.stringify(value).replace(
     /[\u007f-\uffff]/g,
@@ -32,7 +19,6 @@ function jsonDumpsCompact(value: JsonValue): string {
   );
 }
 
-/** Renders the catalog and schemas as LLM instructions (compact JSON blocks). */
 export function renderAsLlmInstructions(catalog: A2uiCatalogSchemas): string {
   const allSchemas: string[] = [A2UI_SCHEMA_BLOCK_START];
 
@@ -57,7 +43,6 @@ export function renderAsLlmInstructions(catalog: A2uiCatalogSchemas): string {
   return allSchemas.join("\n\n");
 }
 
-/** Formats standard JSON schema system prompt instructions (Direct JSON format). */
 export class DirectJsonPromptGenerator implements PromptGenerator {
   private readonly catalog: A2uiCatalogSchemas;
 

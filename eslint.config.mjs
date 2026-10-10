@@ -6,25 +6,17 @@ import globals from "globals";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
     "eslint.config.mjs",
     "postcss.config.mjs",
-    // Vendored shadcn/ui + catalog implementation ported from the a2ui repo
-    // (upstream excludes them from linting as well).
     "catalog/components/**",
     "components/ui/**",
-    // Generated Prisma client.
     "generated/**",
-    // Category B managed git checkouts (cloned third-party repos, not our source).
     "data/workspaces/**",
-    // Legacy source trees (agent_py / DevFlow-AI) kept under .legacy/ as
-    // reference during migration — data, not our source.
     ".legacy/**",
   ]),
   {

@@ -1,7 +1,3 @@
-// GET /api/devflow/knowledge/status?repoId= — RAG studio status for one repo
-// (legacy routes/rag.py:353-357 get_rag_status → qa.py rag_status): document
-// counts by source type, the live indexed chunk count, the embedding model and
-// the generation mode.
 import { prisma } from "@/lib/db";
 import { ragStatus } from "@/lib/devflow/rag";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";

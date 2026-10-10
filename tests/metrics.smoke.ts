@@ -1,11 +1,3 @@
-// Offline smoke test for lib/metrics.ts (yukino-sentry → prom-client bridge).
-// Feeds one sample report of every yukino-sentry report type through
-// recordReportBatch and asserts the Prometheus exposition carries the
-// expected yukino_sentry_* series. This is the regression net for the
-// globalThis registry-cache trap documented in AGENTS.md: when the metric
-// set changes without bumping METRICS_VERSION, a long-lived process serves a
-// cached object whose new fields are undefined and the first .inc() throws.
-//   npx tsx tests/metrics.smoke.ts
 import assert from "node:assert/strict";
 import {
   recordInvalidReportBatch,
@@ -156,14 +148,9 @@ const BATCH: ReportItem[] = [
     name: "feature_used",
     projectId: PROJECT,
   },
-  // ScreenRecord only lands in the generic events counter (documented
-  // exclusion) — assert exactly that.
   { type: "ScreenRecord", status: "success", projectId: PROJECT },
 ];
 
-// Assert one exposition series exists with (at least) the given label pairs
-// and, when provided, the exact trailing value. Label ORDER is deliberately
-// not part of the match so reordering labelNames does not break the smoke.
 function assertSeries(
   exposition: string,
   metric: string,
@@ -193,7 +180,6 @@ function assertSeries(
 }
 
 async function main() {
-  // The /api/log route validates with the same schema before recording.
   const parsed = reportBatchSchema.safeParse(BATCH);
   assert.ok(parsed.success, "sample batch must satisfy reportBatchSchema");
 
@@ -202,7 +188,6 @@ async function main() {
 
   const exposition = await sentryMetrics.registry.metrics();
 
-  // Generic event counters.
   assertSeries(
     exposition,
     "yukino_sentry_events_total",
@@ -232,7 +217,6 @@ async function main() {
     "batch-size histogram did not observe the batch",
   );
 
-  // HTTP bridge (XHR/fetch events + the "HTTP GET" performance variant).
   assertSeries(
     exposition,
     "yukino_sentry_http_requests_total",
@@ -268,7 +252,6 @@ async function main() {
     2,
   );
 
-  // Errors: single + batched group + framework crashes + resource failures.
   assertSeries(
     exposition,
     "yukino_sentry_errors_total",
@@ -294,7 +277,6 @@ async function main() {
     1,
   );
 
-  // Web vitals.
   assertSeries(
     exposition,
     "yukino_sentry_web_vitals",
@@ -308,7 +290,6 @@ async function main() {
     1,
   );
 
-  // Navigation / resource timing / long tasks / browser memory.
   assertSeries(
     exposition,
     "yukino_sentry_navigation_timing_ms_count",
@@ -352,7 +333,6 @@ async function main() {
     2000,
   );
 
-  // Interaction / visibility / page lifecycle / custom events.
   assertSeries(
     exposition,
     "yukino_sentry_clicks_total",
@@ -402,7 +382,6 @@ async function main() {
     42,
   );
 
-  // Node/V8 runtime collectors registered alongside the SDK bridge.
   assert.ok(
     exposition.includes('yukino_node_v8_heap_bytes{kind="heap_size_limit"}'),
     "runtime heap-limit gauge missing",
@@ -412,8 +391,6 @@ async function main() {
     "event-loop utilization gauge missing",
   );
 
-  // Label-value bounding: 60 distinct click ids must collapse the tail into
-  // "other" instead of exploding series count (MAX_LABEL_VALUES = 50).
   for (let i = 0; i < 60; i++) {
     recordReportBatch([
       {

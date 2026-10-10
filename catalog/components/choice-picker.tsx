@@ -10,8 +10,6 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-// The option type is deeply nested in the ChoicePickerApi schema and does not
-// infer cleanly through zod, mirroring the upstream basic catalog implementation.
 type Option = { label?: unknown; value?: unknown };
 
 export const ChoicePicker = createComponentImplementation(
@@ -63,8 +61,6 @@ export const ChoicePicker = createComponentImplementation(
             value={values}
             onValueChange={(groupValue) => {
               const next = groupValue as string[];
-              // Exclusive chips must keep exactly one selection, matching the
-              // radio branch; base-ui would otherwise report [] on deselect.
               if (!exclusive || next.length > 0) props.setValue(next);
             }}
             className="flex-wrap"

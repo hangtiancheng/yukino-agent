@@ -1,4 +1,3 @@
-// GET /api/devflow/repos/:id/issues — synced issues with latest analysis state.
 import { prisma } from "@/lib/db";
 import { errorMessage, failRaw, ok } from "@/lib/devflow/http";
 
@@ -12,7 +11,7 @@ export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const url = new URL(request.url);
-    const state = url.searchParams.get("state"); // open | closed | null(all)
+    const state = url.searchParams.get("state");
     const q = url.searchParams.get("q")?.toLowerCase() ?? "";
 
     const issues = await prisma.issue.findMany({
@@ -32,7 +31,6 @@ export async function GET(request: Request, context: RouteContext) {
       take: 200,
     });
 
-    // Attach the latest analysis id per issue in one query.
     const analyses = await prisma.analysisResult.findMany({
       where: {
         targetType: "issue",

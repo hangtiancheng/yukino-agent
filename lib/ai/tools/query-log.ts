@@ -1,15 +1,3 @@
-// Multi-connection MCP tool provider — restores the agent_py
-// mcp_connections capability (multi-connection CRUD + connectivity probe +
-// duplicate-tool detection) on top of the single-MCP_URL design.
-//
-// Connections come from two places:
-//   1. the built-in log source: MCP_URL env (kept first for zero-config parity
-//      with the previous single-connection behavior);
-//   2. enabled rows in the McpConnection table (managed via /api/mcp_connections).
-// Each connection is connected once and cached in-process; on failure the
-// connection degrades to "no tools" with the error recorded (same honest
-// fallback as the previous single-client code). Duplicate tool names across
-// connections are renamed `<connection>__<tool>` instead of silently dropped.
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -47,7 +35,7 @@ export const mcpConnectionInputSchema = z.object({
 export type McpConnectionInput = z.infer<typeof mcpConnectionInputSchema>;
 
 interface ResolvedConnection {
-  id: string; // "env" or the row id
+  id: string;
   name: string;
   transport: "sse" | "http";
   url: string;
@@ -55,7 +43,6 @@ interface ResolvedConnection {
 }
 
 const envHeaders: Record<string, string> = ((): Record<string, string> => {
-  // Optional bearer token for the built-in log MCP server.
   const token = process.env.MCP_TOKEN ?? "";
   return token === "" ? {} : { Authorization: `Bearer ${token}` };
 })();
@@ -92,7 +79,6 @@ async function resolveConnections(): Promise<ResolvedConnection[]> {
       });
     }
   } catch (e) {
-    // DB unavailable: fall back to the env connection only (never fail chat).
     console.warn(
       "[mcp] connection list unavailable, using env only:",
       e instanceof Error ? e.message : e,
@@ -160,8 +146,6 @@ interface ConnectionCacheEntry {
   error?: string;
 }
 
-// In-process cache keyed by connection id; invalidated when the connection
-// definition changes (signature) or on invalidateMcpConnections() (CRUD).
 const cache = new Map<string, ConnectionCacheEntry>();
 const liveClients = new Map<string, Client>();
 
@@ -219,7 +203,6 @@ async function getToolsForConnection(
   return entry;
 }
 
-// Drop every cached connection (called after CRUD so the next chat rebuilds).
 export async function invalidateMcpConnections(): Promise<void> {
   cache.clear();
   const closing = [...liveClients.values()].map((c) =>
@@ -229,7 +212,6 @@ export async function invalidateMcpConnections(): Promise<void> {
   await Promise.all(closing);
 }
 
-// Probe helper for the :check endpoint — never cached, always closed.
 export async function checkMcpConnection(conn: {
   transport: "sse" | "http";
   url: string;
@@ -256,7 +238,6 @@ export async function checkMcpConnection(conn: {
   }
 }
 
-// All MCP tools for the chat pipeline (kept export name for compatibility).
 export async function getLogMcpTools(): Promise<Record<string, Tool>> {
   const connections = await resolveConnections();
   const merged: Record<string, Tool> = {};
@@ -277,7 +258,6 @@ export async function getLogMcpTools(): Promise<Record<string, Tool>> {
   return merged;
 }
 
-// Test/observability helper.
 export async function closeLogMcpClient(): Promise<void> {
   await invalidateMcpConnections();
 }

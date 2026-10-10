@@ -1,16 +1,6 @@
-/**
- * Catalog pruning utilities.
- *
- * Ported from `a2ui/schema/catalog.py` (`_collect_refs`,
- * `_prune_defs_by_reachability`, `A2uiCatalog._with_pruned_components`,
- * `A2uiCatalog._with_pruned_messages`, `A2uiCatalog._with_pruned_common_types`,
- * `A2uiCatalog.with_pruning`) targeting protocol v0.9 schemas.
- */
-
 import type { A2uiCatalogSchemas, JsonObject, JsonValue } from "./types";
 import { isJsonObject } from "./types";
 
-/** Recursively collects all `$ref` values from a JSON value. */
 export function collectRefs(value: JsonValue | undefined): Set<string> {
   const refs = new Set<string>();
   const visit = (node: JsonValue | undefined): void => {
@@ -31,7 +21,6 @@ export function collectRefs(value: JsonValue | undefined): Set<string> {
   return refs;
 }
 
-/** Prunes definitions not reachable from the provided root definition names. */
 export function pruneDefsByReachability(
   defs: JsonObject,
   rootDefNames: string[],
@@ -104,7 +93,6 @@ function withPrunedMessages(
   const schemaCopy = structuredClone(s2cSchema);
   const allowed = new Set(allowedMessages);
 
-  // 0.9+ style: messages live in $defs and are referenced via oneOf.
   const oneOf = schemaCopy["oneOf"];
   if (Array.isArray(oneOf)) {
     schemaCopy["oneOf"] = oneOf.filter(
@@ -130,7 +118,6 @@ function withPrunedCommonTypes(
   const defs = catalog.commonTypesSchema["$defs"];
   if (!isJsonObject(defs)) return catalog;
 
-  // Roots are ONLY the refs targeting common_types.json from external schemas.
   const externalRefs = collectRefs(catalog.catalogSchema);
   for (const ref of collectRefs(catalog.s2cSchema)) externalRefs.add(ref);
 
@@ -150,11 +137,6 @@ function withPrunedCommonTypes(
   return { ...catalog, commonTypesSchema: commonTypesCopy };
 }
 
-/**
- * Returns a new set of catalog schemas with pruned components and messages.
- * Unused common types are always pruned by reachability, mirroring
- * `A2uiCatalog.with_pruning`.
- */
 export function withPruning(
   catalog: A2uiCatalogSchemas,
   allowedComponents?: string[],

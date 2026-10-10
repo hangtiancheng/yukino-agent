@@ -1,6 +1,3 @@
-// GET /api/ai_ops/runs/[id] — one full AI Ops run (report + step detail +
-// optional A2UI surface) for the history drawer. Legacy counterpart: the
-// per-task diagnostic payload (agent_py app.py _diagnostic_task_payload).
 import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/db";
 

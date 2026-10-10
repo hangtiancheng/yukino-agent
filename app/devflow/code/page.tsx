@@ -1,8 +1,5 @@
 "use client";
 
-// Code workspace (Category B): clone/refresh a repository's source checkout,
-// browse + lexically search the code, and build a semantic project-doc index.
-// Backed by /api/devflow/repos/:id/workspace* and /project-index.
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -44,9 +41,6 @@ function shortSha(sha: string | null): string {
   return sha ? sha.slice(0, 8) : "—";
 }
 
-// Typed value→key map for the API's free-form index status string, so the
-// badges template literal stays compile-time checked; the guard rejects
-// unknown values, which fall back to the raw string.
 const INDEX_STATUS_KEYS = {
   idle: "idle",
   building: "building",
@@ -89,7 +83,6 @@ export default function DevflowCodePage() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  // Load workspace + project-index status for the selected repo.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -125,7 +118,6 @@ export default function DevflowCodePage() {
     };
   }, [repoId]);
 
-  // Load directory entries for the current browse path.
   useEffect(() => {
     let cancelled = false;
     (async () => {

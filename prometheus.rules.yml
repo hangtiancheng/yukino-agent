@@ -1,13 +1,3 @@
-# Alert rules for yukino-agent.
-#
-# Alert names are contract: the AI Ops pipeline calls query_prometheus_alerts,
-# then query_internal_docs with the alert name, so every alert here must have a
-# matching heading in data/docs/alert-handling-guide.md.
-#
-# Install to the path referenced by prometheus.yml rule_files, then reload:
-#   cp prometheus.rules.yml /opt/homebrew/etc/prometheus.rules.yml
-#   brew services restart prometheus
-
 groups:
   - name: targets
     rules:

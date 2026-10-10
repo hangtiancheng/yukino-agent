@@ -1,5 +1,3 @@
-// Milvus smoke test: embed → lazy collection create → upsert → hybrid/dense
-// retrieval → filtered delete. Run: npx tsx tests/milvus.smoke.ts
 import { indexChunks, deleteBySource } from "@/lib/milvus/indexer";
 import { retrieve, retrieveDense } from "@/lib/milvus/retriever";
 import { count, close } from "@/lib/milvus/client";

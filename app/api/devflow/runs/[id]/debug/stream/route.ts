@@ -1,13 +1,3 @@
-// POST /api/devflow/runs/:id/debug/stream — SSE-streamed CI Debug.
-// Legacy port: ci.py:546 analyze_workflow_run_stream / :455-495
-// _ci_analysis_sse (trace events → final result → error). Same input
-// semantics as the synchronous POST /api/devflow/runs/:id/debug: an
-// unknown workflow run returns the JSON 404 envelope before the stream
-// starts; mid-analysis failures emit an `error` event. Documented
-// divergences from legacy: (1) trace granularity is coarse — the
-// rules/LLM/merge stages run as one unit inside analysis.ts's orchestrator;
-// (2) legacy's `thinking_delta` second-LLM-pass reasoning stream is NOT
-// ported — see the HONEST SCOPE NOTE in lib/devflow/analyze-stream.ts.
 import { getTranslations } from "next-intl/server";
 import {
   debugRun,

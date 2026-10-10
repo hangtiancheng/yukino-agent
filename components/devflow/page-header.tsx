@@ -1,6 +1,5 @@
 "use client";
 
-// Shared page header: title, description and optional right-aligned actions.
 import type { ReactNode } from "react";
 
 interface PageHeaderProps {

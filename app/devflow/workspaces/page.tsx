@@ -1,11 +1,5 @@
 "use client";
 
-// Workspaces: group repositories into a workspace, inspect aggregated
-// engineering stats and generate the cross-repository weekly report.
-// UI port of legacy DevFlow-AI/frontend/app/workspaces/page.tsx
-// (list + create with multi-select repos + date-ranged multi-repo report),
-// rebuilt on this repo's shadcn primitives and the round-2 detail view
-// (aggregate stat cards + risk list + markdown preview).
 import { useEffect, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import {
@@ -66,8 +60,6 @@ import {
   useDevflow,
 } from "@/components/devflow/provider";
 
-// Local response types (lib/devflow/types.ts is shared/owned elsewhere; the
-// workspace API shapes are defined here like the legacy page's local types).
 interface WorkspaceRepoCount {
   repoId: string;
   fullName: string | null;
@@ -310,8 +302,6 @@ export default function DevflowWorkspacesPage() {
   const [report, setReport] = useState<MultiRepoReport | null>(null);
   const [generating, setGenerating] = useState(false);
 
-  // Mount + manual reload via reloadKey: inline async IIFE per the React
-  // Compiler effect rule (components/devflow/provider.tsx documents it).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -335,8 +325,6 @@ export default function DevflowWorkspacesPage() {
     };
   }, []);
 
-  // Detail fetch per selection; same inline-IIFE pattern (every setState lives
-  // inside the async closure — see the note in components/devflow/provider.tsx).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -362,9 +350,6 @@ export default function DevflowWorkspacesPage() {
     };
   }, [selectedId, detailReloadKey]);
 
-  // Selection changes clear the previous workspace's report (event handlers
-  // only — no effect, so the delayed detailReloadKey refresh keeps a freshly
-  // generated report on screen).
   const selectWorkspace = (id: string) => {
     setSelectedId(id);
     setReport(null);
@@ -401,8 +386,6 @@ export default function DevflowWorkspacesPage() {
       );
       setReport(result);
       notify.success(t("generated"));
-      // Per-repo weekly reports land in the KBs fire-and-forget; refresh the
-      // doc counts shortly after (no polling loop — one delayed reload).
       setTimeout(() => setDetailReloadKey((key) => key + 1), 3_000);
     } catch (e) {
       notify.error(e instanceof Error ? e.message : String(e));
@@ -411,7 +394,6 @@ export default function DevflowWorkspacesPage() {
     }
   };
 
-  // Narrowed together with `detail` in the render branch below.
   const totals = detail ? detail.stats.totals : null;
 
   return (
@@ -446,7 +428,6 @@ export default function DevflowWorkspacesPage() {
         </Card>
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-[320px_1fr]">
-          {/* Workspace list */}
           <Card>
             <CardHeader className="py-3">
               <CardTitle className="text-sm">{t("list")}</CardTitle>
@@ -496,7 +477,6 @@ export default function DevflowWorkspacesPage() {
             </CardContent>
           </Card>
 
-          {/* Detail panel */}
           <div className="space-y-4">
             {detailLoading || !detail || !totals ? (
               <div className="space-y-3">
@@ -604,7 +584,6 @@ export default function DevflowWorkspacesPage() {
                   </CardContent>
                 </Card>
 
-                {/* Report generation */}
                 <Card>
                   <CardHeader className="py-3">
                     <CardTitle className="flex items-center gap-2 text-sm">
@@ -679,7 +658,6 @@ export default function DevflowWorkspacesPage() {
                           ) : null}
                         </div>
 
-                        {/* Risk list from the report grading */}
                         <div className="space-y-2">
                           <h3 className="text-sm font-medium">
                             {t("riskTitle")}
@@ -742,7 +720,6 @@ export default function DevflowWorkspacesPage() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={async (id) => {
-          // Reload the list, then select the freshly created workspace.
           const items = await dfGet<WorkspaceListItem[]>("/workspaces");
           setWorkspaces(items);
           selectWorkspace(id);

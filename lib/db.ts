@@ -1,5 +1,3 @@
-// Single Prisma client bound to PostgreSQL via the pg driver adapter.
-// Cached on globalThis so Next.js dev hot-reload doesn't leak connection pools.
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 import { config } from "@/lib/config";

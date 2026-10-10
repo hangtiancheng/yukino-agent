@@ -1,9 +1,3 @@
-/**
- * Constants shared by the A2UI prompt generators.
- *
- * Ported from `a2ui/schema/constants.py` in the A2UI Python agent SDK.
- */
-
 export const A2UI_OPEN_TAG = "<a2ui-json>";
 export const A2UI_CLOSE_TAG = "</a2ui-json>";
 

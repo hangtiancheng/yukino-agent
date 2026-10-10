@@ -1,17 +1,3 @@
-// Structure-aware document chunking — TS port of the Python
-// DevFlow-AI `services/rag/chunking.py` (structure_aware_v1). Splits on
-// structural boundaries (markdown sections + fences, JSON key paths, CSV
-// header-aware rows, code symbols) instead of naive paragraph packing, and
-// carries retrieval metadata (stable chunk/parent ids, section path, line
-// ranges) that the search post-processing (near-duplicate dedup, per-parent
-// caps, parent expansion) depends on.
-//
-// Deliberate deviation from the Python original: `.py` regions used CPython's
-// `ast` module for exact symbol spans. There is no Python parser in this
-// stack, so `.py` goes through the same regex symbol scan as every other
-// language (with Python patterns added), which is a superset of the legacy
-// non-Python behaviour and strictly better than the legacy regex-less
-// fallback.
 import { createHash } from "node:crypto";
 
 export const MAX_CHUNKS_PER_DOCUMENT = 5000;
@@ -167,8 +153,6 @@ function splitLongCodeFence(b: Block, maxChars: number): Block[] {
   if (b.text.length <= maxChars) return [b];
   const lines = b.text.split("\n");
   if (lines.length === 0) return [];
-  // Python splitlines() drops a trailing empty line for a final "\n"; mimic
-  // by not emitting chunks for whitespace-only content below.
   if (maxChars <= 8) {
     return splitLongText(
       block(
@@ -790,11 +774,6 @@ function jsonBlocks(text: string, maxChars: number): Block[] {
   return blocks;
 }
 
-// --- CSV -------------------------------------------------------------------
-// Minimal Python-csv.reader/writer semantics for the default dialect:
-// comma-separated, double-quoted fields ("" escape), embedded newlines
-// allowed inside quotes.
-
 export function parseCsvRows(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
@@ -852,8 +831,6 @@ export function parseCsvRows(text: string): string[][] {
     i += 1;
   }
   if (field !== "" || row.length > 0) pushRow();
-  // Python's csv.reader yields [] for blank lines; drop them to keep row
-  // numbering aligned with the rendered output.
   return rows.filter((r) => !(r.length === 1 && r[0] === ""));
 }
 
@@ -1043,8 +1020,6 @@ function csvChunks(
   return chunks;
 }
 
-// --- Public API -------------------------------------------------------------
-
 function suffixOf(path: string): string {
   const base = path.split(/[\\/]/).pop() ?? path;
   const dot = base.lastIndexOf(".");
@@ -1090,7 +1065,6 @@ export function chunkDocument(
   return chunks;
 }
 
-// Backward-compatible plain-text API (returns content strings only).
 export function chunkDocumentText(
   text: string,
   maxChars = 1600,
@@ -1224,8 +1198,6 @@ function patternsForSuffix(suffix: string): SymbolPattern[] {
     ];
   }
   if (suffix === ".py") {
-    // Regex stand-in for the legacy CPython `ast` scan (no Python parser in
-    // this stack): top-level-ish def/class lines.
     return [
       { pattern: /^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)/, kind: "function" },
       { pattern: /^\s*class\s+([A-Za-z_]\w*)/, kind: "class" },
@@ -1415,9 +1387,6 @@ export function chunkPrFiles(
   return chunks;
 }
 
-// Milvus row ids of each chunk's parent neighbors, aligned with the chunk
-// array: [prevId | "", ownId, nextId | ""]. Parents are packed as contiguous
-// runs, so siblings are located by child_index within each parent group.
 export function siblingIdsByParent(
   chunks: Chunk[],
   idFor: (runningIndex: number) => string,

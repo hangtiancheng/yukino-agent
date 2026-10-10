@@ -1,6 +1,3 @@
-// Client-side TypeScript types for the DevFlow API responses.
-// Mirrors the shapes returned by app/api/devflow/* routes.
-
 export interface RepoSummary {
   id: string;
   owner: string;
@@ -13,8 +10,6 @@ export interface RepoSummary {
   lastSyncAt: string | null;
   lastSyncError: string | null;
   hasToken: boolean;
-  // Checkout shape (local_path connect / clone_parent_dir, port of the legacy
-  // repos.py connect modes).
   checkoutMode: string;
   localPath: string | null;
   cloneParentDir: string | null;
@@ -101,8 +96,6 @@ export interface AnalysisRecord {
   createdAt: string;
 }
 
-// --- agent structured outputs (mirror lib/devflow/schemas.ts) ---
-
 export type IssueConclusion =
   | "start_development"
   | "needs_clarification"
@@ -183,8 +176,6 @@ export interface CIDebug {
   confidence: number;
 }
 
-// --- knowledge ---
-
 export interface KnowledgeDoc {
   id: string;
   name: string;
@@ -213,8 +204,6 @@ export interface KnowledgeCitation {
   score: number;
 }
 
-// --- action drafts ---
-
 export interface ActionDraft {
   id: string;
   repoId: string;
@@ -232,8 +221,6 @@ export interface ActionDraft {
   createdAt: string;
   updatedAt: string;
 }
-
-// --- conversations & chat feedback (category C) ---
 
 export interface ConversationSummary {
   id: string;
@@ -321,8 +308,6 @@ export interface FeedbackTrace {
   };
 }
 
-// --- workspace / project index (category B) ---
-
 export interface WorkspaceStatus {
   cloned: boolean;
   path: string;
@@ -369,12 +354,9 @@ export interface ProjectIndexState {
   lastIndexedAt: string | null;
   stale: boolean;
   checkoutCloned: boolean;
-  // Reminder snooze (legacy project_index.py :snooze).
   snoozedUntil?: string | null;
   snoozed?: boolean;
 }
-
-// --- dashboard ---
 
 export interface DevflowStats {
   repos: number;

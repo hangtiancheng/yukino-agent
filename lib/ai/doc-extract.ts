@@ -1,15 +1,3 @@
-// PDF/DOCX text extraction for knowledge uploads — port of the Python
-// `document_extraction.py` (DevFlow-AI services/rag) with its safety limits:
-// 12 MB input, 500 PDF pages, 4M extracted chars, DOCX zip-bomb defenses
-// (<=10000 entries, <=64 MB decompressed, OLE-encrypted files rejected),
-// per-page `<!-- page: N -->` markers so chunker section labels align to pages.
-//
-// Previously recorded as an "ecosystem limit" (Yukino.md #12); the audit pass
-// reclassified it as portable — pdf.js text extraction (via unpdf) and
-// mammoth's docx->markdown cover the legacy behavior. Fidelity caveat: mammoth
-// table rendering is weaker than the python-docx markdown tables, and
-// scanned/image-only PDFs extract no text (rejected as in legacy).
-
 export const MAX_DOCUMENT_BYTES = 12 * 1024 * 1024;
 export const MAX_EXTRACTED_CHARS = 4_000_000;
 export const MAX_PDF_PAGES = 500;
@@ -92,20 +80,12 @@ async function extractPdf(buffer: Buffer): Promise<string> {
   return ensureTextLimit(pages.join("\n\n"), "PDF");
 }
 
-// Zip-bomb + encryption guard shared by DOCX: parses the ZIP central
-// directory (no decompression) and enforces the legacy zipfile.infolist()
-// caps: <=10000 entries, <=64 MB declared decompressed total, per-entry
-// encryption flag rejected — plus the OLE compound-file magic (Word's
-// "encrypted document" container).
 function guardDocxZip(buffer: Buffer): void {
-  // OLE compound file magic => Word "encrypted document" container.
   const ole = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe2];
   if (ole.every((byte, i) => buffer[i] === byte)) {
     throw new DocumentExtractionError("encrypted DOCX files are not supported");
   }
 
-  // Locate the End Of Central Directory record (sig 0x06054b50) in the last
-  // 66 KB (EOCD is <= 22 bytes + 64 KB comment).
   let eocd = -1;
   const scanFrom = Math.max(0, buffer.length - 66_000);
   for (let i = buffer.length - 22; i >= scanFrom; i--) {
@@ -119,7 +99,6 @@ function guardDocxZip(buffer: Buffer): void {
   }
   let totalEntries = buffer.readUInt16LE(eocd + 10);
   let cdOffset = buffer.readUInt32LE(eocd + 16);
-  // Zip64 EOCD (locator sig 0x07064b50 in the 20 bytes before the EOCD).
   if (
     totalEntries === 0xffff ||
     buffer.readUInt32LE(eocd + 12) === 0xffffffff ||
@@ -154,7 +133,6 @@ function guardDocxZip(buffer: Buffer): void {
     }
     let size = buffer.readUInt32LE(pos + 24);
     if (size === 0xffffffff) {
-      // Zip64 extended information extra field (header id 0x0001) carries it.
       const nameLen = buffer.readUInt16LE(pos + 28);
       const extraLen = buffer.readUInt16LE(pos + 30);
       const extraStart = pos + 46 + nameLen;
@@ -186,9 +164,6 @@ function guardDocxZip(buffer: Buffer): void {
 
 async function extractDocx(buffer: Buffer): Promise<string> {
   guardDocxZip(buffer);
-  // mammoth's bundled lib/index.d.ts predates the convertToMarkdown runtime
-  // API (it exists since mammoth 1.5 and is exported at runtime), so the
-  // boundary is typed explicitly here.
   type ConvertToMarkdown = (
     input: { buffer: Buffer },
     options?: unknown,
@@ -218,8 +193,6 @@ async function extractDocx(buffer: Buffer): Promise<string> {
   return ensureTextLimit(text, "DOCX");
 }
 
-// Returns the extracted text for .pdf/.docx, or null when the extension is
-// not a binary document type (caller falls back to plain text handling).
 export async function extractBinaryDocumentText(
   filename: string,
   buffer: Buffer,
@@ -244,8 +217,6 @@ export async function extractBinaryDocumentText(
   return null;
 }
 
-// Multi-encoding text decode (port of decode_text: NUL sniff + utf-8-sig /
-// utf-8 / gb18030 / latin-1 cascade).
 export function decodeTextBytes(data: Buffer): string {
   if (data.subarray(0, 8192).includes(0)) {
     throw new DocumentExtractionError(
@@ -258,9 +229,7 @@ export function decodeTextBytes(data: Buffer): string {
       if (!decoded.includes("\uFFFD")) {
         return ensureTextLimit(decoded, "text");
       }
-    } catch {
-      // try the next encoding
-    }
+    } catch {}
   }
   return ensureTextLimit(new TextDecoder("windows-1252").decode(data), "text");
 }

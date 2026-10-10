@@ -5,13 +5,9 @@ import { Streamdown } from "streamdown";
 interface MdRenderProps {
   content: string;
   className?: string;
-  /** True while the content is still being streamed in. */
   streaming?: boolean;
 }
 
-// Markdown renderer built on Streamdown (streaming-native react-markdown
-// replacement): repairs unterminated markdown mid-stream, memoizes settled
-// blocks, and syntax-highlights code with Shiki.
 export default function MdRender({
   content,
   className,

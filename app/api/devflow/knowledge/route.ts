@@ -1,5 +1,3 @@
-// GET  /api/devflow/knowledge?repoId= — list knowledge documents of a repo.
-// POST /api/devflow/knowledge — multipart upload (fields: repoId, file).
 import { prisma } from "@/lib/db";
 import {
   addKnowledgeDocument,
@@ -64,8 +62,6 @@ export async function POST(request: Request) {
       return fail(422, "fileEmptyAfterExtraction");
     }
 
-    // Chunking follows the per-repo KnowledgeBaseConfig (legacy
-    // knowledge_base_config; defaults apply when no row exists).
     const chunkConfig = await getKnowledgeConfig(repoId);
     const result = await addKnowledgeDocument({
       repoId,

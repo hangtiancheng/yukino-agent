@@ -1,8 +1,3 @@
-// DevFlow per-repository knowledge base on Milvus.
-// Replaces the Python RAG stack (Milvus + pgvector hybrid): documents are
-// chunked, embedded and stored in the shared Milvus collection with a
-// source tag "devflow:kb:<repoId>:<docId>", so retrieval is scoped to one
-// repository via a filter expression. Document metadata lives in PostgreSQL.
 import { createHash } from "node:crypto";
 import { generateText } from "ai";
 import { z } from "zod/v4";
@@ -22,23 +17,13 @@ export function kbSource(repoId: string, docId: string): string {
   return `${KB_PREFIX}:${repoId}:${docId}`;
 }
 
-// Milvus filter expression scoping retrieval to one repository's KB.
 export function kbFilter(repoId: string): string {
   return `source like "${KB_PREFIX}:${repoId}:%"`;
 }
 
-// ---------------------------------------------------------------------------
-// Chunking — structure-aware (port of the Python structure_aware_v1
-// strategy): markdown sections/fences, CSV header-aware rows, JSON key paths
-// and code symbol regions, with stable ids + parent/sibling metadata the
-// retrieval pipeline (dedup, per-parent cap, expansion) builds on.
-// ---------------------------------------------------------------------------
-
 const CHUNK_SIZE = 800;
 const CHUNK_OVERLAP = 100;
 
-// Legacy chunk titles (document_processing.py): `${docName} · ${label}` where
-// label = section title | Page N | Chunk i.
 function chunkLabel(chunk: Chunk, runningIndex: number): string {
   const sectionTitle = chunk.section_title;
   if (typeof sectionTitle === "string" && sectionTitle !== "")
@@ -48,9 +33,6 @@ function chunkLabel(chunk: Chunk, runningIndex: number): string {
   return `Chunk ${runningIndex + 1}`;
 }
 
-// Metadata for one indexed chunk: chunk structure fields (minus content and
-// nulls, like the legacy payload builder) + document identity + sibling row
-// ids for parent expansion.
 export function chunkRowMetadata(
   chunk: Chunk,
   docIdentity: Record<string, unknown>,
@@ -69,10 +51,6 @@ export function chunkRowMetadata(
   };
 }
 
-// Chunk + stamp sibling row ids (row id = `${docId}#${runningIndex}`).
-// Optional chunking override lets callers apply the per-repo
-// KnowledgeBaseConfig (chunkSize/chunkOverlap); the module constants stay
-// the default so existing callers are unchanged.
 export function buildChunkRows(
   content: string,
   name: string,
@@ -109,11 +87,6 @@ export function buildChunkRows(
     };
   });
 }
-
-// ---------------------------------------------------------------------------
-// Text extraction for uploads — text-like files plus PDF/DOCX (unpdf /
-// mammoth with the legacy zip-bomb caps; see lib/ai/doc-extract.ts).
-// ---------------------------------------------------------------------------
 
 const TEXT_EXTENSIONS = new Set([
   ".md",
@@ -177,10 +150,6 @@ export async function extractText(
   return decodeTextBytes(buffer);
 }
 
-// ---------------------------------------------------------------------------
-// Document lifecycle
-// ---------------------------------------------------------------------------
-
 export interface KnowledgeHit {
   docId: string;
   docName: string;
@@ -199,11 +168,6 @@ export interface AddDocumentResult {
   existingName?: string;
 }
 
-// Index a document: SHA-256 dedup per repository (same as the Python
-// original), chunk + embed into Milvus, record metadata in PostgreSQL.
-// Optional chunkSize/chunkOverlap carry the per-repo KnowledgeBaseConfig
-// (legacy routes/rag.py knowledge_base_config); omitting them keeps the
-// module defaults.
 export async function addKnowledgeDocument(input: {
   repoId: string;
   name: string;
@@ -235,8 +199,6 @@ export async function addKnowledgeDocument(input: {
       status: "indexing",
       contentHash,
       charCount: content.length,
-      // The raw text is kept so a failed index can be retried without
-      // re-uploading (legacy routes/rag.py documents/{id}/retry).
       body: { create: { content } },
     },
   });
@@ -251,8 +213,6 @@ export async function addKnowledgeDocument(input: {
   });
 }
 
-// Chunk + embed one document's text and settle its status row. Shared by the
-// first index (addKnowledgeDocument) and the retry path (retryDocument).
 async function indexDocumentContent(
   docId: string,
   input: {
@@ -301,9 +261,6 @@ async function indexDocumentContent(
   }
 }
 
-// Retry a failed document — port of routes/rag.py:262-280 retry_document.
-// The stored body is re-chunked and re-embedded; only documents that actually
-// failed are retriable (legacy raised otherwise).
 export async function retryDocument(docId: string): Promise<AddDocumentResult> {
   const doc = await prisma.knowledgeDocument.findUnique({
     where: { id: docId },
@@ -347,15 +304,6 @@ export async function listKnowledgeDocuments(repoId: string) {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Per-repo knowledge-base configuration (legacy routes/rag.py:119-398 —
-// the knowledge_base_config + retrieval-tests slice of the RAG studio).
-// retrievalMethod/rerankEnabled are honored live by scopedRetrieve (see
-// lib/devflow/search.ts): dense/bm25 select single-leg recall and the rerank
-// flag gates the API rerank stage (heuristic rerank still runs as the
-// no-API-key fallback, same as legacy).
-// ---------------------------------------------------------------------------
-
 export const KB_RETRIEVAL_METHODS = ["hybrid", "dense", "bm25"] as const;
 export type KbRetrievalMethod = (typeof KB_RETRIEVAL_METHODS)[number];
 
@@ -367,8 +315,6 @@ export interface KnowledgeConfigValues {
   chunkOverlap: number;
 }
 
-// Fallback when no config row exists: the current code constants, so behavior
-// stays backward compatible.
 export const KB_CONFIG_FALLBACK: KnowledgeConfigValues = {
   retrievalMethod: "hybrid",
   rerankEnabled: true,
@@ -386,7 +332,6 @@ export const KnowledgeConfigUpdateSchema = z
     chunkSize: z.number().int().min(100).max(8_000).optional(),
     chunkOverlap: z.number().int().min(0).max(4_000).optional(),
   })
-  // Legacy _validate_chunking (routes/rag.py:149-151).
   .refine(
     (v) =>
       v.chunkOverlap === undefined ||
@@ -437,28 +382,17 @@ export async function upsertKnowledgeConfig(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Retrieval + QA
-// ---------------------------------------------------------------------------
-
 export async function searchKnowledge(
   repoId: string,
   query: string,
   topK = 5,
   opts?: {
-    // Overrides the KB-scope filter expression (legacy search.py
-    // metadata_filters minimal set: scope/docId select the source slice).
     filter?: string;
-    // Post-retrieval filter on chunk metadata.source_type — the metadata JSON
-    // is not a filterable Milvus scalar field, so we over-fetch and cut.
     sourceType?: string;
   },
 ): Promise<KnowledgeHit[]> {
   const filter = opts?.filter ?? kbFilter(repoId);
   const fetchK = opts?.sourceType ? topK * 2 : topK;
-  // Per-repo retrieval settings (legacy KnowledgeBaseConfig): method + rerank
-  // toggle. A missing row falls back to hybrid + rerank-enabled, matching the
-  // previous behavior.
   const cfg = await getKnowledgeConfig(repoId);
   const docs = await scopedRetrieve(query, fetchK, filter, {
     method: cfg.retrievalMethod,
@@ -499,23 +433,8 @@ export interface KnowledgeCitation {
 export interface KnowledgeAnswer {
   answer: string;
   citations: KnowledgeCitation[];
-  // Port of the legacy generation_mode (qa.py:190,200): "llm" when a model
-  // produced the answer, "extractive" for the no-LLM quote splice, and
-  // "no_evidence" for refusals.
   generationMode?: "llm" | "extractive" | "no_evidence";
 }
-
-// ---------------------------------------------------------------------------
-// Answer gate — port of the Python answer_gate.py (DevFlow-AI), adapted to
-// this stack: the legacy absolute score-threshold assumed comparable [0, 1]
-// relevance scores, which Milvus RRF fusion ranks do not provide — the
-// conflict state therefore treats the top-ranked candidates as the
-// high-confidence evidence. The three language-level checks are ported:
-// strong-signal evidence matching (anti-fabrication), polarity conflict, and
-// ambiguous-query clarification (Chinese markers kept verbatim; explicit
-// English phrases added because the legacy Chinese-only list could never
-// fire in the now-bilingual product).
-// ---------------------------------------------------------------------------
 
 const AMBIGUOUS_MARKERS = [
   "这个",
@@ -527,8 +446,6 @@ const AMBIGUOUS_MARKERS = [
   "怎么处理",
 ];
 
-// Conservative English stand-ins for the Chinese demonstratives — explicit
-// phrases only, so ordinary "this function" questions do not trigger.
 const AMBIGUOUS_ENGLISH = [
   "this one",
   "that thing",
@@ -538,7 +455,6 @@ const AMBIGUOUS_ENGLISH = [
   "how to handle",
 ];
 
-// Ported polarity table (answer_gate.py CONFLICT_POLARITIES).
 const CONFLICT_POLARITIES: Array<[string, string[], string[]]> = [
   [
     "permission",
@@ -558,8 +474,6 @@ const STRONG_SIGNAL_RE = /[A-Za-z][A-Za-z0-9_./-]*|#\d+|\b\d{3,}\b/g;
 export type AnswerGateDecision =
   "answer" | "insufficient_evidence" | "conflict" | "ask_clarification";
 
-// Identifiers in the question that any honest answer must be able to point at
-// in the evidence (names with separators/digits, #123 refs, long numbers).
 export function strongQuerySignals(query: string): string[] {
   const candidates = query.match(STRONG_SIGNAL_RE) ?? [];
   const signals: string[] = [];
@@ -584,9 +498,6 @@ function evidenceText(hit: { docName: string; content: string }): string {
   return `${hit.docName}\n${hit.content}`.toLowerCase().split(/\s+/).join(" ");
 }
 
-// Polarity conflict among the top-ranked (high-confidence) evidence, mirroring
-// _detect_conflict: one top source states a positive polarity while another
-// states the negative one for the same dimension.
 function detectConflict(
   hits: Array<{ docName: string; content: string }>,
 ): { type: string } | null {
@@ -606,10 +517,6 @@ function detectConflict(
           !negatives.some((marker) => text.includes(marker)),
       )
       .map(([id]) => id);
-    // Legacy: `positive_ids && negative_ids && set(pos) != set(neg)`. The
-    // positive filter excludes any doc containing a negative marker, so the
-    // two id sets can only be equal when one is empty — both non-empty is
-    // exactly the legacy conflict condition.
     if (positiveIds.length > 0 && negativeIds.length > 0) {
       return { type: conflictType };
     }
@@ -626,8 +533,6 @@ export function evaluateAnswerGate(
   const evidence = hits.map((h) => evidenceText(h)).join(" ");
   const signals = strongQuerySignals(query);
   const missingSignals = signals.filter((s) => !evidence.includes(s));
-  // ALL strong signals absent → the evidence cannot possibly ground an answer
-  // naming them; refuse instead of letting the model fabricate.
   if (signals.length > 0 && missingSignals.length === signals.length) {
     return { decision: "insufficient_evidence", missingSignals };
   }
@@ -666,9 +571,6 @@ const ASK_CLARIFICATION_ANSWER =
 const CONFLICT_ANSWER =
   "The top-ranked evidence in this repository's knowledge base contradicts itself, so a confident answer is not possible. Please check the affected sources or versions first.";
 
-// Evidence-grounded QA: retrieve scoped hits, gate them (refuse on missing
-// evidence or ambiguity instead of fabricating), then generate an answer that
-// cites them by number (same policy as the Python answer gate).
 export async function askKnowledge(
   repoId: string,
   question: string,
@@ -742,16 +644,6 @@ export async function askKnowledge(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Extractive fallback (port of qa.py:96-148 + the qa.py:197-202 degradation:
-// when no LLM is configured — or the call fails — the answer is built by
-// splicing the query's best-matching sentences out of the evidence, with the
-// same numbered citations. Pure quoting, so it cannot fabricate; that is also
-// why the answer gate is not re-applied here).
-// ---------------------------------------------------------------------------
-
-// Python _answer_terms (qa.py:96-104): ASCII words + CJK segments (whole
-// segment when ≤3 chars, plus every 2-gram and 3-gram).
 export function answerTerms(text: string): Set<string> {
   const lowered = text.toLowerCase();
   const terms = new Set<string>(lowered.match(/[a-z0-9_-]+/g) ?? []);
@@ -778,10 +670,6 @@ export interface ExtractiveSelection {
   selected: Array<{ citation: number; sentence: string }>;
 }
 
-// Port of extractive_answer (qa.py:107-148): sentence-split each snippet,
-// score by query-term overlap, prefer earlier sentences within a source and
-// later sources on ties (legacy sorts the (overlap, -position, citation)
-// tuples descending), drop near-identical sentences, keep at most 4.
 export function buildExtractiveAnswer(
   question: string,
   sources: ExtractiveSource[],
@@ -852,7 +740,6 @@ export function buildExtractiveAnswer(
   }
 
   if (selected.length === 0) {
-    // Legacy fallback: quote the first source verbatim.
     const first = sources[0];
     selected.push({
       citation: 1,
@@ -898,15 +785,6 @@ export async function askKnowledgeExtractive(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Document-level surfaces from the legacy RAG studio (routes/rag.py) that the
-// per-repo KB page needs on top of list/upload/delete:
-//   - chunk preview   GET  documents/{document_id}/chunks
-//   - retry failed    POST documents/{document_id}/retry  (content re-index)
-//   - memory note     POST /knowledge/notes
-//   - rag status      GET  /knowledge/status
-// ---------------------------------------------------------------------------
-
 export interface KnowledgeChunkView {
   id: string;
   position: number;
@@ -915,11 +793,6 @@ export interface KnowledgeChunkView {
   characterCount: number;
 }
 
-// Chunk preview — port of routes/rag.py:237-258 list_document_chunks. Chunks
-// live in Milvus (PostgreSQL keeps only document metadata in this stack), so
-// the preview reads the exact indexed rows for the document via a scalar
-// source filter instead of the legacy SQL Document rows. Ordered by
-// chunk_index; `position` is 1-based like the legacy response.
 export async function listDocumentChunks(
   repoId: string,
   docId: string,
@@ -955,10 +828,6 @@ export async function listDocumentChunks(
   }));
 }
 
-// Memory note — port of routes/knowledge.py:234-256 create_memory_note:
-// a user-authored note lands directly in the repo KB as a `memory_note`
-// document (the candidate-approval path in memory.ts uses the same
-// source_type). Title or content must be non-empty.
 export async function addMemoryNote(input: {
   repoId: string;
   title: string;
@@ -991,11 +860,6 @@ export interface RagStatusView {
   supportedFiles: string[];
 }
 
-// RAG status — port of qa.py:278-309 rag_status reduced to what this stack
-// can honestly report: per-source-type document counts + the total indexed
-// chunk count from Milvus, the configured embedding provider/model, and the
-// generation mode (LLM vs extractive fallback). The legacy vector-store
-// runtime probe is replaced by the readiness endpoint (GET /api/ready).
 export async function ragStatus(repoId: string): Promise<RagStatusView> {
   const docs = await prisma.knowledgeDocument.findMany({
     where: { repoId },
@@ -1007,8 +871,6 @@ export async function ragStatus(repoId: string): Promise<RagStatusView> {
     sourceTypes[doc.sourceType] = (sourceTypes[doc.sourceType] ?? 0) + 1;
     chunkCount += doc.chunkCount;
   }
-  // Live chunk total actually present in Milvus for this repo's KB (may lag
-  // the metadata counts if an index was swept out of band).
   let milvusChunks = 0;
   try {
     milvusChunks = await count(kbFilter(repoId));

@@ -1,13 +1,3 @@
-// POST /api/devflow/pulls/:id/analyze/stream — SSE-streamed PR Review.
-// Legacy port: pull_requests.py:493-499 analyze_pull_stream / :414-450
-// _pr_analysis_sse (trace events → final result → error). Same input
-// semantics as the synchronous POST /api/devflow/pulls/:id/analyze: an
-// unknown PR returns the JSON 404 envelope before the stream starts;
-// mid-analysis failures emit an `error` event. Documented divergences from
-// legacy: (1) trace granularity is coarse — the rules/LLM/merge stages run
-// as one unit inside analysis.ts's orchestrator; (2) legacy's
-// `thinking_delta` second-LLM-pass reasoning stream is NOT ported — see the
-// HONEST SCOPE NOTE in lib/devflow/analyze-stream.ts.
 import { getTranslations } from "next-intl/server";
 import {
   reviewPull,

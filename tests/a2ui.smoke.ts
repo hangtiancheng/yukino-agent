@@ -1,12 +1,3 @@
-// Offline smoke test for the A2UI server-side plumbing (no LLM needed):
-//   1. the few-shot examples embedded in the chat prompt validate against the
-//      web_core v0.9 protocol schema (the builders in lib/ai/a2ui/prompt.ts
-//      are the single source of truth — this catches drift);
-//   2. createA2uiStreamFilter() survives chunk splits at every awkward
-//      boundary (mid-tag, mid-json, one-char-at-a-time);
-//   3. parse/extract validation semantics (invalid JSON, invalid messages,
-//      missing tags, unterminated blocks at stream end).
-//   npx tsx tests/a2ui.smoke.ts
 import assert from "node:assert/strict";
 import {
   createA2uiStreamFilter,
@@ -34,10 +25,6 @@ function checkPromptExamples() {
     "prompt section must reference the shadcn catalog id",
   );
 
-  // Every tagged block embedded in the prompt must parse AND validate —
-  // a broken few-shot example teaches the model to emit invalid UI. The
-  // rules prose also mentions the tags inside backticks; those mentions do
-  // not start with JSON and are skipped.
   let cursor = 0;
   let found = 0;
   for (;;) {
@@ -52,7 +39,7 @@ function checkPromptExamples() {
     cursor = end + A2UI_CLOSE_TAG.length;
     const trimmed = raw.trim();
     if (!trimmed.startsWith("[") && !trimmed.startsWith("{")) {
-      continue; // inline prose mention of the tags, not an example
+      continue;
     }
     const parsed = parseA2uiBlock(raw);
     assert.equal(
@@ -66,7 +53,6 @@ function checkPromptExamples() {
     );
     found++;
   }
-  // ALERT_LIST / METRICS_REPORT / FORM few-shot builders feed the section.
   assert.ok(
     found >= 3,
     `expected the OnCall few-shot examples (>=3), found ${found}`,
@@ -99,22 +85,18 @@ function checkStreamFilter() {
   const full = `before ${A2UI_OPEN_TAG}${inner}${A2UI_CLOSE_TAG} after`;
   const expectedText = "before  after";
 
-  // Whole stream in one chunk.
   let blocks = runFilterChunked([full], expectedText);
   assert.deepEqual(blocks, [inner], "single-chunk block mismatch");
 
-  // One character at a time (worst-case splits through both tags).
   blocks = runFilterChunked(full.split(""), expectedText);
   assert.deepEqual(blocks, [inner], "char-by-char block mismatch");
 
-  // Split inside the opening tag.
   blocks = runFilterChunked(
     ["before <a2u", `i-json>${inner}${A2UI_CLOSE_TAG} after`],
     expectedText,
   );
   assert.deepEqual(blocks, [inner], "mid-open-tag split mismatch");
 
-  // Split inside the closing tag and inside the JSON body.
   blocks = runFilterChunked(
     [
       `before ${A2UI_OPEN_TAG}${inner.slice(0, 5)}`,
@@ -125,12 +107,9 @@ function checkStreamFilter() {
   );
   assert.deepEqual(blocks, [inner], "mid-close-tag split mismatch");
 
-  // No tags at all: everything passes through, flush is empty.
   blocks = runFilterChunked(["hello ", "world"], "hello world");
   assert.deepEqual(blocks, [], "plain text must not yield blocks");
 
-  // Unterminated block at stream end: flush restores the opening tag so the
-  // caller can treat it as an invalid block instead of losing the content.
   const filter = createA2uiStreamFilter();
   const out = filter.push(`prefix ${A2UI_OPEN_TAG}[{"version"`);
   assert.equal(out.text, "prefix ");
@@ -147,7 +126,6 @@ function checkStreamFilter() {
 }
 
 function checkValidationSemantics() {
-  // Invalid JSON.
   const badJson = parseA2uiBlock("{not json");
   assert.ok(
     badJson.error?.startsWith("invalid JSON"),
@@ -155,7 +133,6 @@ function checkValidationSemantics() {
   );
   assert.equal(badJson.messages, undefined);
 
-  // Valid minimal message array.
   const good = parseA2uiBlock(
     JSON.stringify([
       {
@@ -167,7 +144,6 @@ function checkValidationSemantics() {
   assert.equal(good.error, undefined, `valid block errored: ${good.error}`);
   assert.equal(good.messages?.length, 1);
 
-  // Invalid message (missing version) fails the web_core schema.
   const badMessage = parseA2uiBlock(
     JSON.stringify([{ createSurface: { surfaceId: "s" } }]),
   );
@@ -177,13 +153,11 @@ function checkValidationSemantics() {
   );
   assert.equal(badMessage.messages, undefined);
 
-  // Plain markdown: no block, no error.
   const plain = extractA2ui("just an answer");
   assert.equal(plain.cleanText, "just an answer");
   assert.equal(plain.error, undefined);
   assert.equal(plain.messages, undefined);
 
-  // Open tag without close tag: error, text before the tag preserved.
   const unclosed = extractA2ui(`answer ${A2UI_OPEN_TAG}[`);
   assert.equal(unclosed.cleanText, "answer");
   assert.ok(
@@ -191,7 +165,6 @@ function checkValidationSemantics() {
     "unclosed tag must error",
   );
 
-  // Valid tagged reply: clean text = surrounding markdown, messages validated.
   const tagged = extractA2ui(
     `intro ${A2UI_OPEN_TAG}${JSON.stringify([
       {

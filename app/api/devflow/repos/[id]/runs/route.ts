@@ -1,4 +1,3 @@
-// GET /api/devflow/repos/:id/runs — synced GitHub Actions workflow runs.
 import { prisma } from "@/lib/db";
 import { errorMessage, failRaw, ok } from "@/lib/devflow/http";
 
@@ -12,7 +11,7 @@ export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const url = new URL(request.url);
-    const conclusion = url.searchParams.get("conclusion"); // failure | success | null(all)
+    const conclusion = url.searchParams.get("conclusion");
 
     const runs = await prisma.workflowRun.findMany({
       where: { repoId: id, ...(conclusion ? { conclusion } : {}) },

@@ -7,8 +7,6 @@ const isolationSchema = z.object({
   privileged: z.boolean(),
 });
 
-// Kept separate from RAG imports so the database boundary can be tested directly.
-// connectionString is an internal test seam, never an AI tool / HTTP parameter.
 export async function executeOncallSql(
   sql: string,
   operateType: string,
@@ -32,8 +30,6 @@ export async function executeOncallSql(
       "OnCall SQL cannot reuse the application database or database role.",
     );
   }
-  // A fresh connection prevents caller-supplied SET ROLE / session settings from
-  // contaminating another request. PostgreSQL permissions remain the final guard.
   const client = new Client({
     connectionString,
     connectionTimeoutMillis: 5000,
@@ -56,7 +52,6 @@ export async function executeOncallSql(
         "OnCall SQL requires an isolated database and a non-administrative role with no application-role membership.",
       );
     }
-    // Extended query protocol disallows multiple statements in a single request.
     const result = await client.query({ text: sql, name: "oncall-query" });
     if (operateType === "query") return result.rows;
     return {

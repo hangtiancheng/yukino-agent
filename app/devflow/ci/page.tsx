@@ -1,7 +1,5 @@
 "use client";
 
-// CI / Actions: workflow runs with jobs & steps, plus AI debugging of failed
-// runs (root cause, first error, fix steps).
 import { useEffect, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import {
@@ -45,8 +43,6 @@ export default function DevflowCiPage() {
   const [debugging, setDebugging] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Fetches live in inline async IIFEs — see the note in provider.tsx
-  // (react-hooks/set-state-in-effect). Manual reloads bump reloadKey.
   useEffect(() => {
     if (!repoId) {
       return;

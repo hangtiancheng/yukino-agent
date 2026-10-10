@@ -1,14 +1,3 @@
-// DevFlow analysis agents: Issue Triage, PR Review, CI Debug.
-//
-// Architecture ported from the legacy Python agents
-// (backend/app/services/agents/issue_agent.py / pr_review_agent.py /
-// ci_debug_agent.py): a deterministic rule engine ALWAYS runs first and
-// produces a complete, schema-valid structured result. The LLM call is an
-// enrichment layer on top: when it succeeds its fields override the rule
-// output (subject to the validation constraints below); when no LLM key is
-// configured or both generation attempts fail, the deterministic result is
-// persisted as-is with "generationMode": "deterministic" — the API routes
-// never 500 and the UI always has a full report.
 import { Output, generateText } from "ai";
 import type { z } from "zod/v4";
 import { prisma } from "@/lib/db";
@@ -45,19 +34,12 @@ const SIMILAR_ISSUES = 20;
 
 export type GenerationMode = "llm" | "deterministic";
 
-// Provenance attached to every persisted AnalysisResult.resultJson (and
-// returned to the client) so the UI can tell rule-only output from
-// LLM-enriched output.
 export interface AnalysisProvenance {
   generationMode: GenerationMode;
   ownerValidation?: OwnerValidation;
 }
 
 export interface OwnerValidation {
-  // "replaced" = the LLM proposed an owner outside the allow-list (or a
-  // generic placeholder while the rule engine had a concrete name) and the
-  // rule value was restored. Ports issue_agent.py _is_allowed_owner /
-  // _should_prefer_fallback_owner.
   status: "accepted" | "replaced";
   original: string;
   final: string;
@@ -68,15 +50,11 @@ function clip(text: string | null | undefined, max: number): string {
   return text.length > max ? `${text.slice(0, max)}\n…[truncated]` : text;
 }
 
-// Legacy issue_agent.py _clip: inline clip with an ellipsis (evidence
-// snippets, summaries).
 function clipInline(text: string, limit: number): string {
   const t = (text ?? "").trim();
   return t.length <= limit ? t : `${t.slice(0, limit - 1).trimEnd()}…`;
 }
 
-// Mirrors the legacy LLMClient, which short-circuited to the deterministic
-// fallback when no api_key was configured (llm/client.py chat_json).
 export function llmConfigured(): boolean {
   return config.provider === "anthropic"
     ? Boolean(config.anthropic.think.apiKey)
@@ -112,11 +90,6 @@ function modelId(): string {
   return "unknown";
 }
 
-// Structured generation with one corrective retry. Some OpenAI-compatible
-// gateways ignore the JSON-schema instruction on the first attempt and wrap
-// the object in prose/fences; a stricter retry usually recovers. Callers now
-// catch the throw and fall back to the deterministic baseline (legacy
-// behavior: chat_json returned None on any failure → fallback).
 async function generateStructured<T>(input: {
   name: string;
   system: string;
@@ -146,7 +119,6 @@ async function generateStructured<T>(input: {
     firstError = e;
   }
 
-  // Retry once with an explicit JSON-only reminder.
   const retryPrompt = `${input.prompt}\n\nIMPORTANT: respond with ONLY a JSON object that matches the required schema. No markdown, no code fences, no commentary.`;
   try {
     const res = await runOnce(retryPrompt);
@@ -172,11 +144,6 @@ function countOccurrences(haystack: string, needle: string): number {
   return haystack.split(needle).length - 1;
 }
 
-// ---------------------------------------------------------------------------
-// Issue triage — deterministic rule engine
-// (port of issue_agent.py IssueAgent._fallback_analysis and helpers)
-// ---------------------------------------------------------------------------
-
 export interface IssueFacts {
   number: number;
   title: string;
@@ -189,8 +156,6 @@ export interface IssueFacts {
 
 export interface IssueEngineContext {
   duplicateCandidates: Array<{ number: number; title: string; score: number }>;
-  // Legacy context["code_references"] + ["project_documents"]; here the repo
-  // knowledge-base hits.
   knowledgeEvidence: Array<{ docName: string; snippet: string }>;
   teamMembers: TeamMemberProfile[];
 }
@@ -202,8 +167,6 @@ type IssueCategory = IssueAnalysis["category"];
 type IssuePriority = IssueAnalysis["priority"];
 type IssueComplexity = IssueAnalysis["complexity"];
 
-// issue_agent.py _classify_category (order-sensitive first match; the TS enum
-// is the lowercase form of the legacy values).
 export function classifyIssueCategory(
   text: string,
   labels: string[],
@@ -242,7 +205,6 @@ export function classifyIssueCategory(
   return "feature";
 }
 
-// issue_agent.py _classify_priority.
 export function classifyIssuePriority(
   text: string,
   labels: string[],
@@ -282,7 +244,6 @@ export function classifyIssuePriority(
   return "P2";
 }
 
-// issue_agent.py _estimate_complexity.
 export function estimateIssueComplexity(
   text: string,
   labels: string[],
@@ -308,7 +269,6 @@ export function estimateIssueComplexity(
   return text.length < 1400 ? "M" : "L";
 }
 
-// issue_agent.py _infer_area.
 export function inferIssueArea(text: string): string {
   const areaKeywords: Record<string, string[]> = {
     backend: [
@@ -346,8 +306,6 @@ export function inferIssueArea(text: string): string {
   return ISSUE_UNASSIGNED;
 }
 
-// issue_agent.py _owner_domain_rules: (label, issue-signal tokens,
-// profile tokens). Kept verbatim (data tokens, not UI copy).
 export function ownerDomainRules(): Array<[string, string[], string[]]> {
   return [
     [
@@ -432,7 +390,6 @@ export function ownerDomainRules(): Array<[string, string[], string[]]> {
   ];
 }
 
-// issue_agent.py _profile_terms.
 export function profileTerms(profile: string): string[] {
   const normalized = profile
     .replaceAll("擅长", " ")
@@ -441,9 +398,6 @@ export function profileTerms(profile: string): string[] {
   return normalized.toLowerCase().match(/[a-zA-Z0-9_+#.\u4e00-\u9fff]+/g) ?? [];
 }
 
-// Profile text the matcher scores against. Legacy used role/strengths/
-// techStack from team_member Documents; the TeamMember table carries
-// displayName/skills/availability/notes instead (documented shape shift).
 export function memberProfileText(member: TeamMemberProfile): string {
   return [
     member.displayName,
@@ -455,7 +409,6 @@ export function memberProfileText(member: TeamMemberProfile): string {
     .toLowerCase();
 }
 
-// issue_agent.py _suggest_owner_from_team.
 export function matchOwnerFromTeam(
   members: TeamMemberProfile[],
   signalText: string,
@@ -494,8 +447,6 @@ export function matchOwnerFromTeam(
   };
 }
 
-// issue_agent.py _owner_signal_text: issue text plus bounded context, with
-// the desktop/electron enrichment.
 export function ownerSignalText(
   issueText: string,
   ctx: IssueEngineContext,
@@ -515,7 +466,6 @@ export function ownerSignalText(
   return text;
 }
 
-// issue_agent.py _suggest_owner.
 export function suggestIssueOwner(
   facts: IssueFacts,
   issueText: string,
@@ -559,8 +509,6 @@ export function suggestIssueOwner(
   };
 }
 
-// issue_agent.py _validated_duplicates (rows carry score; the TS schema keys
-// duplicates by issue number with a textual reason).
 export function validatedDuplicates(
   candidates: IssueEngineContext["duplicateCandidates"],
 ): Array<{ number: number; title: string; score: number }> {
@@ -576,11 +524,6 @@ export function validatedDuplicates(
   return rows;
 }
 
-// Keyless stand-in for the legacy embedding-based duplicate search
-// (search_similar_documents → RRF scores). Titles are tokenized into
-// cross-lingual tokens (latin words + CJK bigrams) and scored by Jaccard;
-// identical issues score 1.0 which matches the legacy 0.86 merge threshold.
-// Residual difference: not semantic like the Milvus-backed legacy path.
 export function lexicalDuplicateScore(a: string, b: string): number {
   const tokensA = lexicalTokens(a);
   const tokensB = lexicalTokens(b);
@@ -601,7 +544,6 @@ function lexicalTokens(text: string): Set<string> {
   return tokens;
 }
 
-// issue_agent.py _looks_like_multi_scope.
 export function looksLikeMultiScope(text: string): boolean {
   const separators =
     countOccurrences(text, "\n-") +
@@ -621,7 +563,6 @@ export function looksLikeMultiScope(text: string): boolean {
   return separators >= 5 || broadTerms.some((term) => text.includes(term));
 }
 
-// issue_agent.py _needs_clarification.
 export function needsClarification(text: string, category: string): boolean {
   if (text.trim().length < 80) return true;
   if (category === "bug") {
@@ -660,8 +601,6 @@ export function needsClarification(text: string, category: string): boolean {
   return false;
 }
 
-// issue_agent.py _choose_conclusion (Chinese conclusion values mapped onto the
-// TS IssueConclusion enum).
 export function chooseIssueConclusion(
   facts: IssueFacts,
   text: string,
@@ -712,7 +651,6 @@ export function chooseIssueConclusion(
   };
 }
 
-// issue_agent.py _build_checklist.
 export function buildIssueChecklist(
   conclusion: IssueAnalysis["conclusion"],
   category: IssueCategory,
@@ -765,7 +703,6 @@ export function buildIssueChecklist(
   return baseline;
 }
 
-// issue_agent.py _build_drafts.
 export function buildIssueDrafts(
   facts: IssueFacts,
   conclusion: string,
@@ -791,7 +728,6 @@ export function buildIssueDrafts(
   };
 }
 
-// issue_agent.py _estimate_confidence.
 export function estimateIssueConfidence(
   body: string,
   evidenceCount: number,
@@ -806,8 +742,6 @@ export function estimateIssueConfidence(
   return Math.round(Math.max(0.35, Math.min(0.86, score)) * 100) / 100;
 }
 
-// issue_agent.py _collect_evidence + _dedupe_evidence (reference/confidence
-// columns dropped: the TS evidence shape is source_type/title/snippet).
 export function collectIssueEvidence(
   facts: IssueFacts,
   ctx: IssueEngineContext,
@@ -856,7 +790,6 @@ export function collectIssueEvidence(
   return deduped.slice(0, 10);
 }
 
-// issue_agent.py _fallback_analysis — full deterministic IssueTriage.
 export function deterministicIssueAnalysis(
   facts: IssueFacts,
   ctx: IssueEngineContext,
@@ -908,14 +841,6 @@ export function deterministicIssueAnalysis(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Issue triage — owner allow-list + LLM merge
-// ---------------------------------------------------------------------------
-
-// suggested_owner must be one of: issue assignees ∪ repository historical
-// authors (issues + PRs) ∪ team members ∪ the issue author itself
-// (task-specified extension of issue_agent.py _is_allowed_owner, which only
-// allowed assignees ∪ team members).
 export function buildOwnerAllowList(input: {
   assignees: string[];
   author: string | null;
@@ -943,7 +868,6 @@ export function isAllowedOwner(owner: string, allowed: Set<string>): boolean {
   return allowed.has(normalized);
 }
 
-// Generic placeholder owners (issue_agent.py _should_prefer_fallback_owner).
 const GENERIC_OWNERS = new Set([
   "",
   "待分配",
@@ -954,8 +878,6 @@ const GENERIC_OWNERS = new Set([
   "docs",
 ]);
 
-// issue_agent.py _merge_with_fallback: LLM fields override the rule baseline,
-// then the validation constraints are re-applied.
 export function mergeIssueAnalysis(
   llm: IssueAnalysis,
   rule: IssueAnalysis,
@@ -966,8 +888,6 @@ export function mergeIssueAnalysis(
   if (merged.duplicate_candidates.length === 0) {
     merged.duplicate_candidates = rule.duplicate_candidates;
   }
-  // Legacy action_items↔checklist sync is dropped here: the TS schema only
-  // has checklist (documented residual difference).
   if (
     !merged.drafts.clarification_comment &&
     !merged.drafts.task_breakdown &&
@@ -997,8 +917,6 @@ export function mergeIssueAnalysis(
     }
   }
 
-  // A "question" category is only trusted when the rules did not find a more
-  // specific signal (issue_agent.py _merge_with_fallback category guard).
   if (merged.category === "question" && rule.category !== "question") {
     merged.category = rule.category;
   }
@@ -1012,13 +930,6 @@ export function mergeIssueAnalysis(
     },
   };
 }
-
-// ---------------------------------------------------------------------------
-// PR review — deterministic rule engine
-// (port of pr_review_agent.py PRReviewAgent._fallback_review; Chinese
-// recommendation values mapped: 建议合入→approve, 修改后合入→merge_with_changes,
-// 暂缓→hold, 拒绝→reject)
-// ---------------------------------------------------------------------------
 
 export interface PrFileFact {
   filename: string;
@@ -1036,7 +947,7 @@ export interface PrFacts {
   author: string | null;
   mergedAt: boolean;
   files: PrFileFact[];
-  comments: string[]; // review-comment bodies
+  comments: string[];
 }
 
 export interface PrEngineContext {
@@ -1055,9 +966,6 @@ export interface PrEngineContext {
   conversationEvidence: number;
 }
 
-// Token tables from pr_review_agent.py _fallback_review /
-// pull_requests.py _build_pr_analysis_context (sensitive_files). Substring
-// semantics kept verbatim from the legacy `token in name.lower()` checks.
 export const SENSITIVE_FILE_TOKENS = [
   "auth",
   "security",
@@ -1090,8 +998,6 @@ export function findTestFiles(filenames: string[]): string[] {
   );
 }
 
-// Approximation of the legacy chunk_pr_files count (1800-char chunks per
-// file patch; empty patches contribute no chunk).
 export function estimateDiffChunkCount(files: PrFileFact[]): number {
   return files.reduce(
     (total, file) => total + Math.ceil((file.patch ?? "").length / 1800),
@@ -1210,7 +1116,6 @@ export function prRiskFindings(
   return { riskPoints, blockingIssues, reviewFindings, failedCi };
 }
 
-// pr_review_agent.py _choose_recommendation.
 export function chooseMergeRecommendation(
   facts: PrFacts,
   riskPoints: string[],
@@ -1277,7 +1182,6 @@ export function chooseMergeRecommendation(
   };
 }
 
-// pr_review_agent.py _test_suggestions.
 export function buildTestSuggestions(
   filenames: string[],
   riskyFiles: string[],
@@ -1312,7 +1216,6 @@ export function buildTestSuggestions(
   return [...new Set(suggestions)];
 }
 
-// pr_review_agent.py _estimate_confidence.
 export function estimatePrConfidence(
   hasFiles: boolean,
   ctx: PrEngineContext,
@@ -1329,7 +1232,6 @@ export function estimatePrConfidence(
   return Math.round(Math.max(0.38, Math.min(0.88, score)) * 100) / 100;
 }
 
-// pr_review_agent.py _fallback_review — full deterministic PRReview.
 export function deterministicPrReview(
   facts: PrFacts,
   ctx: PrEngineContext,
@@ -1401,8 +1303,6 @@ export function deterministicPrReview(
   };
 }
 
-// pr_review_agent.py _normalize_review_findings (severity enum already
-// enforced by zod; the fallback-field behavior is ported for empty strings).
 export function normalizeReviewFindings(
   items: ReviewFinding[],
   rule: ReviewFinding[],
@@ -1420,15 +1320,12 @@ export function normalizeReviewFindings(
       evidence: evidence || title,
       required_action:
         item.required_action.trim() || "Add a verifiable follow-up note.",
-      // Legacy honored the LLM's explicit blocking flag; severity P1/P2
-      // findings still count towards blocking_issues below regardless.
       blocking: item.blocking,
     });
   }
   return normalized.length > 0 ? normalized : rule;
 }
 
-// pr_review_agent.py _blocking_issues_from_findings.
 export function blockingIssuesFromFindings(
   blockingIssues: string[],
   findings: ReviewFinding[],
@@ -1449,8 +1346,6 @@ export function blockingIssuesFromFindings(
   return [...new Set(rows)];
 }
 
-// pr_review_agent.py _merge_with_fallback, including the hard constraint:
-// any remaining blocker downgrades "approve" to "merge_with_changes".
 export function mergePrReview(llm: PRReview, rule: PRReview): PRReview {
   const merged: PRReview = { ...rule, ...llm };
   const listKeys = [
@@ -1497,11 +1392,6 @@ export function mergePrReview(llm: PRReview, rule: PRReview): PRReview {
   return merged;
 }
 
-// ---------------------------------------------------------------------------
-// CI debug — deterministic rule engine
-// (port of ci_debug_agent.py CIDebugAgent._fallback_debug)
-// ---------------------------------------------------------------------------
-
 export interface CiJobFact {
   name?: string;
   conclusion?: string;
@@ -1522,7 +1412,6 @@ export interface CiEngineContext {
   codeReferences: number;
 }
 
-// ci_debug_agent.py _classify_failure (ordered; first match wins).
 export function classifyCiFailure(logs: string): CIDebug["failure_type"] {
   const orderedRules: Array<[CIDebug["failure_type"], string[]]> = [
     ["permission", ["permission", "denied", "forbidden", "eacces", "权限"]],
@@ -1575,7 +1464,6 @@ export function classifyCiFailure(logs: string): CIDebug["failure_type"] {
   return "unknown";
 }
 
-// ci_debug_agent.py _extract_first_error.
 export function extractFirstError(logs: string): string | undefined {
   if (!logs.trim()) return undefined;
   const lines = logs
@@ -1603,7 +1491,6 @@ export function extractFirstError(logs: string): string | undefined {
   return lines.slice(0, 6).join("\n").slice(0, 900);
 }
 
-// ci_debug_agent.py _extract_related_files (log path regex + normalization).
 export function extractRelatedFiles(logs: string): string[] {
   const candidates =
     logs.match(
@@ -1619,7 +1506,6 @@ export function extractRelatedFiles(logs: string): string[] {
   return normalized.slice(0, 8);
 }
 
-// ci_debug_agent.py _infer_root_cause.
 export function inferCiRootCause(
   failureType: CIDebug["failure_type"],
   firstError: string | undefined,
@@ -1653,7 +1539,6 @@ export function inferCiRootCause(
   }
 }
 
-// ci_debug_agent.py _possible_causes.
 export function ciPossibleCauses(
   failureType: CIDebug["failure_type"],
 ): string[] {
@@ -1697,7 +1582,6 @@ export function ciPossibleCauses(
   return mapping[failureType];
 }
 
-// ci_debug_agent.py _fix_steps.
 export function ciFixSteps(
   failureType: CIDebug["failure_type"],
   relatedFiles: string[],
@@ -1746,7 +1630,6 @@ export function ciFixSteps(
   return mapping[failureType];
 }
 
-// ci_debug_agent.py _is_merge_blocking.
 export function isCiMergeBlocking(
   facts: Pick<CiFacts, "status" | "conclusion">,
   failureType: CIDebug["failure_type"],
@@ -1759,7 +1642,6 @@ export function isCiMergeBlocking(
   );
 }
 
-// ci_debug_agent.py _estimate_confidence.
 export function estimateCiConfidence(
   firstError: string | undefined,
   failedJobCount: number,
@@ -1775,7 +1657,6 @@ export function estimateCiConfidence(
   return Math.round(Math.max(0.36, Math.min(0.86, score)) * 100) / 100;
 }
 
-// ci_debug_agent.py _fallback_debug — full deterministic CIDebug.
 export function deterministicCiDebug(
   facts: CiFacts,
   ctx: CiEngineContext,
@@ -1804,7 +1685,6 @@ export function deterministicCiDebug(
       : "";
   const isBlocking = isCiMergeBlocking(facts, failureType);
   return {
-    // Legacy quirk preserved: the summary always states the run failed.
     failure_summary: `${facts.name || "CI run"} execution failed.${jobHint}${stepHint} Inspect the logs to locate the first error block.`,
     failure_type: failureType,
     plan: [
@@ -1852,9 +1732,6 @@ export function deterministicCiDebug(
   };
 }
 
-// ci_debug_agent.py _merge_with_fallback, including the reverse repair: when
-// the LLM says "unknown" but the rules classified a concrete type, the rule
-// type wins (and vice versa the concrete fields are backfilled).
 export function mergeCiDebug(llm: CIDebug, rule: CIDebug): CIDebug {
   const merged: CIDebug = { ...rule, ...llm };
   for (const key of [
@@ -1885,10 +1762,6 @@ export function mergeCiDebug(llm: CIDebug, rule: CIDebug): CIDebug {
   return merged;
 }
 
-// ---------------------------------------------------------------------------
-// Orchestrators
-// ---------------------------------------------------------------------------
-
 export async function analyzeIssue(
   issueId: string,
 ): Promise<AnalysisRecord<IssueAnalysis>> {
@@ -1898,10 +1771,6 @@ export async function analyzeIssue(
   });
   if (!issue) throw new Error(`Issue ${issueId} not found`);
 
-  // Duplicate candidates: recent issues from the same repo. The legacy route
-  // ranked these by Milvus similarity (issues.py _build_issue_analysis_context);
-  // without embeddings we keep a deterministic lexical proxy score, and the
-  // LLM still judges similarity from the same candidate list.
   const siblings = await prisma.issue.findMany({
     where: { repoId: issue.repoId, id: { not: issueId } },
     orderBy: { githubUpdatedAt: "desc" },
@@ -1922,7 +1791,6 @@ export async function analyzeIssue(
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
 
-  // Knowledge-base evidence scoped to the repository.
   let knowledge: Array<{ docName: string; snippet: string }> = [];
   try {
     const hits = await searchKnowledge(
@@ -1934,12 +1802,8 @@ export async function analyzeIssue(
       docName: h.docName,
       snippet: clip(h.content, 800),
     }));
-  } catch {
-    // KB retrieval is best-effort context; triage still works without it.
-  }
+  } catch {}
 
-  // Team profiles + owner allow-list sources (issue_agent.py team_members
-  // context; task extension adds repository historical authors + author).
   const [teamRows, issueAuthors, prAuthors] = await Promise.all([
     listTeamMembers(issue.repoId),
     prisma.issue.findMany({
@@ -1980,8 +1844,6 @@ export async function analyzeIssue(
     teamMembers,
   };
 
-  // Deterministic baseline always computed first (legacy run():
-  // fallback → LLM → merge; failure of either LLM path keeps the fallback).
   const rule = deterministicIssueAnalysis(facts, engineContext);
 
   const input = {
@@ -2074,9 +1936,6 @@ export async function reviewPull(
     };
   });
 
-  // Recent failed CI summary — ports pull_requests.py ci_summary block:
-  // last 8 runs, failed runs contribute name/conclusion + the first 260
-  // characters of the stored logs.
   const recentRuns = await prisma.workflowRun.findMany({
     where: { repoId: pr.repoId },
     orderBy: { githubCreatedAt: "desc" },
@@ -2094,9 +1953,6 @@ export async function reviewPull(
     })),
   };
 
-  // Related issues — ports the legacy semantic search with the
-  // task-specified deterministic rules: #number references in the PR
-  // title/body plus head-branch keywords appearing in issue titles.
   const refNumbers = [
     ...new Set(
       [...`${pr.title}\n${pr.body ?? ""}`.matchAll(/#(\d+)/g)].map((m) =>
@@ -2136,9 +1992,6 @@ export async function reviewPull(
     state: row.state,
   }));
 
-  // Code-impact injection (legacy pull_requests.py fed code-graph impact into
-  // the PR review context): one-hop dependents of the changed files from the
-  // code graph. Honest null when the graph was never built for this repo.
   const codeImpact = await impactForFiles(
     pr.repoId,
     pr.files.map((file) => file.filename),
@@ -2193,7 +2046,6 @@ export async function reviewPull(
       line: c.line,
       body: clip(c.body, 800),
     })),
-    // Context augmentation ports pull_requests.py _build_pr_analysis_context.
     ci_summary: ciSummary,
     related_issues: relatedIssues,
     code_impact: codeImpactSummary,
@@ -2248,9 +2100,6 @@ export async function reviewPull(
   return { id, result: { ...result, ...provenance }, createdAt: new Date() };
 }
 
-// Code-graph impact summary for analysis contexts (legacy code-impact
-// injection). Null when the graph has not been built or nothing depends on
-// the changed files — the context stays honest either way.
 function summarizeCodeImpact(impact: ImpactReport | null) {
   if (impact === null) return null;
   const symbols = impact.symbols.slice(0, 20).map((s) => ({
@@ -2274,8 +2123,6 @@ function summarizeCodeImpact(impact: ImpactReport | null) {
   };
 }
 
-// Runtime guard for the loosely-typed WorkflowRun.jobs JSON
-// (sync.ts writes the normalized shape from GitHubWorkflowJobSchema).
 function parseCiJobs(jobs: unknown): CiJobFact[] {
   if (!Array.isArray(jobs)) return [];
   const rows: CiJobFact[] = [];
@@ -2313,8 +2160,6 @@ export async function debugRun(
   });
   if (!run) throw new Error(`Workflow run ${runId} not found`);
 
-  // Related PRs — ports ci.py _build_ci_analysis_context recent_prs (top 5 by
-  // updated time) and _related_pr_for_run branch-name-in-log matching.
   const recentPrRows = await prisma.pullRequest.findMany({
     where: { repoId: run.repoId },
     orderBy: { githubUpdatedAt: "desc" },
@@ -2348,9 +2193,6 @@ export async function debugRun(
 
   const rule = deterministicCiDebug(facts, engineContext);
 
-  // Code-impact injection for CI debug (legacy ci.py fed code leads into the
-  // debug context): use the file paths extracted from the failed logs as the
-  // changed-file set and ask the code graph for one-hop dependents.
   const ciCodeImpact =
     rule.related_files.length > 0
       ? await impactForFiles(run.repoId, rule.related_files).catch(() => null)
@@ -2367,7 +2209,6 @@ export async function debugRun(
     },
     jobs: run.jobs,
     failed_logs: clip(run.logsText, LOG_CHARS) || null,
-    // Precomputed rule signals, mirroring ci.py context assembly.
     context: {
       first_error: rule.first_error ?? null,
       related_files_from_logs: rule.related_files,
@@ -2419,7 +2260,6 @@ export async function debugRun(
   return { id, result: { ...result, ...provenance }, createdAt: new Date() };
 }
 
-// Latest saved analysis for a target (used to show previous results).
 export async function latestAnalysis(targetType: string, targetId: string) {
   return prisma.analysisResult.findFirst({
     where: { targetType, targetId },

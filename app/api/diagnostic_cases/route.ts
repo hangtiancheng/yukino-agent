@@ -1,8 +1,3 @@
-// GET /api/diagnostic_cases — case library listing (port of the legacy
-// aiops case-library surface): structured DiagnosticCaseRecord rows written by
-// persistDiagnosticCase. Public read-only; the markdown bodies live in
-// FILE_DIR and are retrievable through normal RAG (knowledgeType
-// "diagnostic-case").
 import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/db";
 

@@ -1,8 +1,3 @@
-// GET  /api/devflow/workspaces — list workspaces with per-repo counts.
-// POST /api/devflow/workspaces — create a workspace (repo ids validated).
-// Port of legacy workspaces.py:50-78 (create_workspace / list_workspaces),
-// including the permission split: creation is settings:manage, listing is
-// repo:read. Creation is audited as "workspace.create" (legacy action name).
 import {
   PermissionError,
   requirePermission,
@@ -49,7 +44,6 @@ export async function POST(request: Request) {
 
   try {
     const workspace = await createWorkspace(parsed.data);
-    // legacy workspaces.py:67 — audit the create with the request payload.
     await writeAuditLog({
       user,
       action: "workspace.create",

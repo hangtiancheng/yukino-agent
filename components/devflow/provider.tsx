@@ -1,8 +1,5 @@
 "use client";
 
-// DevFlow workspace context: repository list + the globally selected repo
-// (persisted in localStorage), plus typed fetch helpers that unwrap the
-// project-wide { message, data } envelope.
 import {
   createContext,
   useCallback,
@@ -13,10 +10,6 @@ import {
   type ReactNode,
 } from "react";
 import type { RepoSummary } from "@/lib/devflow/types";
-
-// ---------------------------------------------------------------------------
-// API helpers
-// ---------------------------------------------------------------------------
 
 export class DevflowApiError extends Error {
   constructor(
@@ -78,14 +71,8 @@ export async function dfUpload<T>(path: string, form: FormData): Promise<T> {
   return unwrap<T>(response);
 }
 
-// ---------------------------------------------------------------------------
-// Repository context
-// ---------------------------------------------------------------------------
-
 const STORAGE_KEY = "devflow.selectedRepoId";
 
-// Pure reconciliation: pick which repo should be selected given the fresh
-// list, the current selection and the persisted one.
 function pickRepoId(
   items: RepoSummary[],
   current: string,
@@ -134,11 +121,6 @@ export function DevflowProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Mount-time load. The fetch lives in an inline async IIFE: the
-  // react-hooks/set-state-in-effect rule (React Compiler) flags effects that
-  // call a tracked setState function, but allows setState inside an inline
-  // async closure. refreshRepos (same logic) stays available for event
-  // handlers, where calling it is fine.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -164,9 +146,7 @@ export function DevflowProvider({ children }: { children: ReactNode }) {
     setRepoIdState(id);
     try {
       localStorage.setItem(STORAGE_KEY, id);
-    } catch {
-      // localStorage may be unavailable (private mode); selection stays in memory.
-    }
+    } catch {}
   }, []);
 
   const value = useMemo<DevflowContextValue>(

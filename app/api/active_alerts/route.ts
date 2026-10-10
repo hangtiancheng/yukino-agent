@@ -1,10 +1,3 @@
-// GET /api/active_alerts — public active-alert panel feed.
-// Port of the legacy provider-backed alert listing (agent_py
-// api/app.py:1417-1434 GET /aiops/alerts/active; audit gap G4 — the whole
-// panel endpoint was missing). Differences kept honest: the legacy route
-// raised SYSTEM_UNAVAILABLE whenever the aggregated provider failed; here a
-// PARTIAL provider failure still serves results and the per-source errors
-// travel in `sourceErrors`, while a total failure keeps the legacy 503.
 import { getTranslations } from "next-intl/server";
 import { aggregateAlerts } from "@/lib/ai/alerts";
 

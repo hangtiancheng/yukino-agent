@@ -1,11 +1,3 @@
-// DevFlow Chat Agent: native tool calling over one repository's synced data.
-// Port of the Python ChatAgent's tool surface (issues / PRs / CI / knowledge /
-// workspace-style queries / safe action drafts) onto AI SDK v7 streamText.
-// The resilience layer below ports the legacy elastic behaviors from
-// DevFlow-AI/backend/app/services/agents/chat_agent.py: duplicate
-// tool-call circuit breaker, error-classified single retry, empty-answer
-// fallback, failure-turn persistence and a minimal context-overflow history
-// projection.
 import {
   streamText,
   tool,
@@ -45,9 +37,6 @@ export type DevflowChatEvent =
   | { type: "text"; content: string }
   | { type: "tool"; name: string; state: "call" | "result"; input?: unknown }
   | {
-      // B-3: the stream failed. The localized failure note was already
-      // persisted as the assistant message (so the user message is never an
-      // orphan and feedback keeps an anchor); the id rides along for the UI.
       type: "error";
       message: string;
       assistantMessageId?: string;
@@ -57,9 +46,6 @@ export type DevflowChatEvent =
       conversationId: string;
       userMessageId: string;
       assistantMessageId: string;
-      // Knowledge hits (document + score) collected from the retrieval tools
-      // during the turn (legacy chat citation rendering); also persisted on
-      // the assistant message's meta.citations for reloads.
       citations?: ChatCitation[];
     };
 
@@ -78,22 +64,14 @@ function clipBody(body: string | null, max = 2000): string | null {
   return body.length > max ? `${body.slice(0, max)}\n…[truncated]` : body;
 }
 
-// ---------------------------------------------------------------------------
-// Citations — the search tools record their hits (document + score) while the
-// turn runs; the done event and the persisted assistant message carry them so
-// the UI can render citation chips (legacy chat citation rendering).
-// ---------------------------------------------------------------------------
-
 export interface ChatCitation {
   docName: string;
   score: number;
-  // "knowledge" (search_knowledge) | "project_docs" (search_project_docs)
   source: string;
 }
 
 export const MAX_CITATIONS = 12;
 
-// Pure hit → citation mappers, exported for tests.
 export function knowledgeCitations(
   hits: readonly { docName: string; score: number }[],
 ): ChatCitation[] {
@@ -118,8 +96,6 @@ export function projectDocCitations(
     }));
 }
 
-// Dedupe by source:docName keeping the highest score, best-score first,
-// capped at MAX_CITATIONS (legacy recall payloads capped at 12).
 export function dedupeCitations(
   citations: readonly ChatCitation[],
   max: number = MAX_CITATIONS,
@@ -133,13 +109,6 @@ export function dedupeCitations(
   return [...byKey.values()].sort((a, b) => b.score - a.score).slice(0, max);
 }
 
-// ---------------------------------------------------------------------------
-// Resilience layer — pure, exported for tests/devflow-chat-resilience.smoke.ts.
-// ---------------------------------------------------------------------------
-
-// Legacy chat_agent.py ToolErrorKind (all 8 kinds kept for classification
-// fidelity; unknown_tool is unreachable here because the AI SDK rejects tool
-// names before execute, but the union stays true to the legacy contract).
 export type ToolErrorKind =
   | "unknown_tool"
   | "timeout"
@@ -150,10 +119,7 @@ export type ToolErrorKind =
   | "model_output_invalid"
   | "tool_runtime_error";
 
-// Legacy max_repeated_tool_calls = 2: the 3rd identical call (same tool name +
-// same canonicalized args fingerprint) is short-circuited without running.
 export const MAX_REPEATED_TOOL_CALLS = 2;
-// Legacy tool_retry_attempts = 1: retriable tool failures run at most twice.
 export const TOOL_RETRY_ATTEMPTS = 1;
 
 function errorNameOf(error: unknown): string {
@@ -165,8 +131,6 @@ function errorNameOf(error: unknown): string {
   return "";
 }
 
-// Walk the message + cause chain so wrapped fetch failures ("fetch failed"
-// with an ECONNRESET cause) classify like the legacy direct exceptions.
 function errorTextChain(error: unknown): string {
   const parts: string[] = [];
   let current: unknown = error;
@@ -187,8 +151,6 @@ function errorTextChain(error: unknown): string {
   return parts.join(" ").toLowerCase();
 }
 
-// Port of _classify_tool_error: narrow message markers over the error chain,
-// AbortError/TimeoutError by name first.
 export function classifyToolError(error: unknown): ToolErrorKind {
   const name = errorNameOf(error);
   if (name === "AbortError" || name === "TimeoutError") return "timeout";
@@ -232,10 +194,6 @@ export function classifyToolError(error: unknown): ToolErrorKind {
   return "tool_runtime_error";
 }
 
-// Port of _is_retriable_tool_error: only transient kinds get an automatic
-// retry (legacy also excluded its slow composite workflow tools; this repo's
-// tools are all cheap and idempotent except create_action_draft, which the
-// duplicate-call guard dedupes).
 export function isRetriableToolError(kind: ToolErrorKind): boolean {
   return (
     kind === "timeout" ||
@@ -254,9 +212,6 @@ export type ToolRetryOutcome<T> =
       attempts: number;
     };
 
-// Port of _invoke_tool_with_recovery: one automatic retry for classified
-// transient failures; anything else is surfaced as a structured outcome the
-// caller turns into an observation (never rethrown).
 export async function executeWithRetry<T>(
   run: () => PromiseLike<T>,
   maxRetries: number = TOOL_RETRY_ATTEMPTS,
@@ -276,7 +231,6 @@ export async function executeWithRetry<T>(
   }
 }
 
-// json.dumps(sort_keys=True, default=str) equivalent for fingerprints.
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (typeof value === "object" && value !== null) {
@@ -289,7 +243,6 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 
-// Legacy _tool_call_fingerprint: `name:canonical-json(args)`.
 export function toolCallFingerprint(name: string, input: unknown): string {
   return `${name}:${JSON.stringify(canonicalize(input) ?? null)}`;
 }
@@ -300,7 +253,6 @@ export interface LoopGuardVerdict {
   blocked: boolean;
 }
 
-// Shared per-turn call counter (legacy tool_call_counts state).
 export class ToolLoopGuard {
   private readonly counts = new Map<string, number>();
   private readonly maxRepeated: number;
@@ -309,7 +261,6 @@ export class ToolLoopGuard {
     this.maxRepeated = maxRepeated;
   }
 
-  // Records one execution attempt and decides whether it may run.
   check(name: string, input: unknown): LoopGuardVerdict {
     const fingerprint = toolCallFingerprint(name, input);
     const repeatCount = (this.counts.get(fingerprint) ?? 0) + 1;
@@ -360,10 +311,6 @@ export function toolErrorObservation(
   };
 }
 
-// B-5: budget exhausted without any model text. Compose an honest
-// "queried X, Y but reached no conclusion" note from the tool trace instead
-// of persisting an empty answer (legacy _local_observation_answer).
-// Templates arrive pre-localized with a literal {tools} placeholder (t.raw).
 export function buildEmptyAnswerFallback(input: {
   toolNames: readonly string[];
   withToolsTemplate: string;
@@ -377,9 +324,6 @@ export function buildEmptyAnswerFallback(input: {
   return input.withToolsTemplate.replaceAll("{tools}", unique.join(", "));
 }
 
-// Port of context_compression.is_context_overflow_error: provider gateways do
-// not expose one stable exception type, so match a narrow marker set and let
-// the caller retry once only.
 export function isContextOverflowError(error: unknown): boolean {
   const message = errorTextChain(error);
   const markers = [
@@ -394,9 +338,6 @@ export function isContextOverflowError(error: unknown): boolean {
   return markers.some((marker) => message.includes(marker));
 }
 
-// Build the repository-scoped tool set. Every tool reads from the synced
-// PostgreSQL data; the only write path is create_action_draft, which produces
-// a pending draft that requires human confirmation before touching GitHub.
 function buildTools(
   repo: Repository,
   conversationId: string,
@@ -575,7 +516,6 @@ function buildTools(
       }),
       execute: async ({ query, topK }) => {
         const hits = await searchKnowledge(repoId, query, topK);
-        // Citations ride the done event (legacy chat citation rendering).
         citations.push(...knowledgeCitations(hits));
         return pack({
           count: hits.length,
@@ -706,8 +646,6 @@ function buildTools(
         }
       },
     }),
-    // #25 memory tools (legacy MemoryTools surface, trimmed): recall the
-    // persisted memory, or propose a pending candidate for human review.
     memory_recall: tool({
       description:
         "Recall persisted memory for this repository: the long-term thread summary plus the current conversation's decisions, open questions and tasks. Use when the user refers to earlier work or the request context is ambiguous.",
@@ -756,14 +694,8 @@ function buildTools(
 }
 
 const HISTORY_LIMIT = 20;
-// #34 (minimal history projection): retry budget after a provider context
-// overflow — the legacy aggressive projection shrinks the prompt hard.
 export const HISTORY_RETRY_LIMIT = 8;
 
-// Wrap every tool's execute with the shared duplicate-call guard and the
-// classified single retry. Blocked/error outcomes are returned to the model as
-// structured observations; nothing is rethrown, so AI SDK tool semantics and
-// the SSE event names stay untouched.
 function resilientTools(
   tools: Record<string, Tool>,
   guard: ToolLoopGuard,
@@ -800,8 +732,6 @@ interface AttemptResult {
   streamError?: unknown;
 }
 
-// One streamText pass. Text/tool events are yielded live, so the caller may
-// only re-run the attempt when nothing has reached the client yet.
 async function* streamAssistantAttempt(params: {
   repo: Repository;
   conversationId: string;
@@ -827,8 +757,6 @@ async function* streamAssistantAttempt(params: {
 
   let streamError: unknown;
   const toolTrace: Array<{ name: string; input?: unknown }> = [];
-  // Retrieval hits are recorded by the search tools as they execute; the
-  // resilient wrapper still forwards to the same execute, so nothing is lost.
   const citations: ChatCitation[] = [];
   let assistantText = "";
   const result = streamText({
@@ -869,11 +797,6 @@ async function* streamAssistantAttempt(params: {
   return { assistantText, toolTrace, citations };
 }
 
-// Stream one DevFlow chat turn. Persists the user message, streams the
-// assistant answer, then persists it (with its tool trace) so conversations are
-// durable server-side and each answer can be rated. The `done` event carries
-// the ids the client needs to attach feedback; the `error` event (B-3) carries
-// the id of the persisted failure turn so the user message is never an orphan.
 export async function* devflowChatStream(
   repoId: string,
   input: { conversationId?: string; message: string },
@@ -891,21 +814,11 @@ export async function* devflowChatStream(
 
   let system = `${DEVFLOW_CHAT_SYSTEM_PROMPT}\n\nCurrent repository: ${repo.fullName} (${repo.owner}/${repo.name})${repo.description ? `\nDescription: ${repo.description}` : ""}`;
 
-  // #25: inject persisted memory (thread summary + current conversation
-  // decisions/open questions/tasks — legacy ContextAssembler folded memory
-  // into the system context). Memory is an enhancement: failure stays silent.
   try {
     const memoryContext = await buildMemoryContext(repoId, conversation.id);
     if (memoryContext) system += `\n\n${memoryContext}`;
-  } catch {
-    // Keep chatting without memory.
-  }
+  } catch {}
 
-  // DevFlow skills (legacy services/skills/registry.py): a lightweight catalog
-  // of the registered SKILL.md playbooks always rides in the prompt, and the
-  // skills whose triggers match this message have their full workflow
-  // instructions injected (progressive disclosure). Skills are an enhancement:
-  // a registry load/activation failure never blocks the turn.
   try {
     const registry = await getSkillRegistry();
     if (registry.listSkills().length > 0) {
@@ -916,13 +829,9 @@ export async function* devflowChatStream(
         system += `\n\n# Active skill instructions for this turn\n${block}`;
       }
     }
-  } catch {
-    // Keep chatting without skills.
-  }
+  } catch {}
 
   const t = await getTranslations("api.devflow");
-  // One guard instance per turn: duplicate-call accounting (and the
-  // overflow-retry below) share the same counters.
   const guard = new ToolLoopGuard();
   const attemptParams = {
     repo,
@@ -938,9 +847,6 @@ export async function* devflowChatStream(
     historyLimit: HISTORY_LIMIT,
   });
 
-  // #34 (minimal reactive compaction): provider context-overflow errors retry
-  // exactly once with a short history projection, and only while the client
-  // has seen nothing from the failed pass.
   if (
     result.streamError !== undefined &&
     isContextOverflowError(result.streamError) &&
@@ -954,10 +860,6 @@ export async function* devflowChatStream(
   }
 
   if (result.streamError !== undefined) {
-    // B-3: legacy persisted the failed turn as an assistant "request failed"
-    // message too (chat.py 请求失败 branch) — the transcript keeps the record
-    // and feedback keeps an anchor. End the SSE here; the route still emits a
-    // single `error` frame.
     const reason =
       result.streamError instanceof Error
         ? result.streamError.message
@@ -979,8 +881,6 @@ export async function* devflowChatStream(
       message: content,
       assistantMessageId: assistantMessage.id,
     };
-    // #25: the failed turn still counts toward the sealing threshold
-    // (legacy SessionSealer ran after every turn). Fire-and-forget.
     void maybeSealAndMerge(repoId, conversation.id).catch(() => {});
     return;
   }
@@ -995,7 +895,6 @@ export async function* devflowChatStream(
     yield { type: "text", content };
   }
 
-  // Retrieval hits gathered during the turn (deduped, best-score first).
   const citations = dedupeCitations(result.citations);
 
   const assistantMessage = await appendMessage({
@@ -1004,8 +903,6 @@ export async function* devflowChatStream(
     role: "assistant",
     content,
     toolCalls: result.toolTrace,
-    // Persisted so chips survive reloads (ChatMessageView.meta is already
-    // part of the message payload).
     ...(citations.length > 0 ? { meta: { citations } } : {}),
   });
 
@@ -1017,9 +914,5 @@ export async function* devflowChatStream(
     citations,
   };
 
-  // #25: seal the conversation into memory once ≥ SEAL_MESSAGE_THRESHOLD new
-  // messages accumulated, then fold it into the repo thread memory. Legacy
-  // sealed every turn; fire-and-forget here — memory failures never surface
-  // to the chat stream.
   void maybeSealAndMerge(repoId, conversation.id).catch(() => {});
 }

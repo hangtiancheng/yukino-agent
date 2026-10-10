@@ -1,6 +1,3 @@
-// GET /api/devflow/workflow-runs?repoId= — list multi-agent workflow runs for
-// a repository (newest first, capped at 100) with per-status task counts.
-// Legacy equivalent: the workflow-run history behind /workflow-runs.
 import { prisma } from "@/lib/db";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 

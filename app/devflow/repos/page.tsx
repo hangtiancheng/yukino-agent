@@ -1,6 +1,5 @@
 "use client";
 
-// Repositories: connect GitHub repos, sync data, inspect sync health, delete.
 import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -50,17 +49,12 @@ import type { RepoSummary } from "@/lib/devflow/types";
 
 type ReposTranslations = ReturnType<typeof useTranslations<"devflow.repos">>;
 
-// The lead-owned RepoSummary (lib/devflow/types.ts) has not picked up the
-// checkout columns yet; the /repos API already returns them, so this page
-// reads them through a local extension (RepoSummary is assignable to it).
 type RepoRow = RepoSummary & {
   checkoutMode?: string;
   localPath?: string | null;
   cloneParentDir?: string | null;
 };
 
-// Module-level (called during render): Date.now() is impure, so the React
-// Compiler rejects it inside the component body.
 function timeAgo(t: ReposTranslations, iso: string | null): string {
   if (!iso) return t("never");
   const diff = Date.now() - new Date(iso).getTime();
@@ -83,8 +77,6 @@ function ConnectDialog({
 }) {
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
-  // legacy repos.py:157-175 — connect either a GitHub repo or a local git
-  // working tree (checkout_mode="local", browsed read-only, never cloned).
   const [mode, setMode] = useState<"github" | "local">("github");
   const [localPath, setLocalPath] = useState("");
   const [cloneParentDir, setCloneParentDir] = useState("");
@@ -131,7 +123,6 @@ function ConnectDialog({
       });
       notify.success(t("connect.connected", { repo: result.fullName }));
       if (result.note) {
-        // Raw server diagnostic (local-mode metadata degraded to git-derived).
         notify.info(result.note);
       }
       if (result.syncError) {

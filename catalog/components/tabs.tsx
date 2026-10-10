@@ -8,8 +8,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 
-// The tab item type is deeply nested in the TabsApi schema and does not infer
-// cleanly through zod, mirroring the upstream basic catalog implementation.
 type Tab = { title?: unknown; child?: unknown };
 
 export const Tabs = createComponentImplementation(

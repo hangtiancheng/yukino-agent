@@ -1,4 +1,3 @@
-// Knowledge index pipeline: FileLoader → RecursiveCharacterTextSplitter → MilvusIndexer
 import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -16,10 +15,6 @@ interface MarkdownChunk {
   title: string;
 }
 
-// Document classification carried on every chunk as metadata.knowledgeType
-// (port of legacy agent_py indexing.py `_knowledge_type`): drives the
-// reference chips in the OnCall chat UI (SOP / knowledge doc / diagnostic
-// case). Values must stay in sync with the frontend label map.
 export const KNOWLEDGE_TYPES = ["sop", "document", "diagnostic-case"] as const;
 export type KnowledgeType = (typeof KNOWLEDGE_TYPES)[number];
 
@@ -29,9 +24,6 @@ export function isKnowledgeType(v: unknown): v is KnowledgeType {
   );
 }
 
-// Optional `knowledgeType: <value>` line inside a leading --- frontmatter
-// block. Only the first block is scanned; an invalid value is ignored so the
-// heuristics below still get a chance.
 export function parseFrontmatterKnowledgeType(
   content: string,
 ): KnowledgeType | undefined {
@@ -47,9 +39,6 @@ export function parseFrontmatterKnowledgeType(
   return undefined;
 }
 
-// Classification order (legacy parity): explicit frontmatter wins, then the
-// AI Ops case prefix (legacy source "aiops-diagnostic"), then the sop
-// filename/body heuristic, else plain document.
 export function classifyKnowledgeType(
   fileName: string,
   content: string,
@@ -65,9 +54,6 @@ export function classifyKnowledgeType(
   return "document";
 }
 
-// Sizes match the proven yukino-chatbot RAG setup; 1000 chars stays far below
-// both the indexer's 8192-char storage cap and embedding-provider input
-// limits, so the embedded text is always identical to the stored text.
 const CHUNK_SIZE = 1000;
 const CHUNK_OVERLAP = 200;
 
@@ -89,10 +75,6 @@ function headingsIn(chunk: string): string[] {
   return titles;
 }
 
-// Split markdown into retrieval chunks via LangChain's markdown-aware
-// recursive splitter. Each chunk is annotated with a section title: the first
-// heading inside the chunk, or the nearest heading carried over from earlier
-// chunks (chunks arrive in document order).
 async function splitMarkdown(content: string): Promise<MarkdownChunk[]> {
   const parts = await splitter.splitText(content);
   const chunks: MarkdownChunk[] = [];
@@ -107,11 +89,6 @@ async function splitMarkdown(content: string): Promise<MarkdownChunk[]> {
   return chunks;
 }
 
-// Build the knowledge index for a file: delete old records with the same
-// _source, split into chunks, embed and insert. `knowledgeTypeOverride` pins
-// the classification (diagnostic cases and explicit upload choices) and
-// bypasses the filename/content heuristics. PDF/DOCX originals are extracted
-// first (unpdf/mammoth, legacy caps) so startup re-indexing stays idempotent.
 export async function buildKnowledgeIndex(
   filePath: string,
   knowledgeTypeOverride?: KnowledgeType,
@@ -159,8 +136,6 @@ const SUPPORTED_EXTENSIONS = new Set([
   ".docx",
 ]);
 
-// Read + chunk a knowledge file WITHOUT touching Milvus (legacy chunk
-// preview endpoint): returns the first `limit` chunks and the total count.
 export async function previewChunks(
   filePath: string,
   limit = 12,
@@ -189,10 +164,6 @@ export async function previewChunks(
   return { total: parts.length, chunks: parts.slice(0, limit) };
 }
 
-// Index every supported document in the knowledge-base directory
-// (config.fileDir). Called at server startup from instrumentation.ts.
-// Per-file failures are logged and skipped so one bad file doesn't block
-// the rest — or the server boot.
 export async function indexDataDir(): Promise<void> {
   const dir = path.resolve(config.fileDir);
   let entries;

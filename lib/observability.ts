@@ -1,7 +1,3 @@
-// Langfuse observability for the AI Ops pipeline: OTEL export through
-// NodeSDK + LangfuseSpanProcessor, a LangChain CallbackHandler for
-// LangGraph run/node spans, and generation observations around AI SDK calls.
-// Everything degrades to a no-op when the LANGFUSE_* env vars are unset.
 import { CallbackHandler } from "@langfuse/langchain";
 import { LangfuseSpanProcessor } from "@langfuse/otel";
 import {
@@ -15,8 +11,6 @@ import { config } from "@/lib/config";
 const AI_OPS_TAGS = ["ai-ops"];
 const AI_OPS_METADATA = { pipeline: "plan-execute-replan" };
 
-// Cached on globalThis: Next.js dev reloads modules across HMR, but the OTEL
-// global provider registration persists for the process lifetime.
 const globalStore = globalThis as typeof globalThis & {
   __yukinoObservabilitySdk?: NodeSDK;
 };
@@ -65,8 +59,6 @@ export async function shutdownObservability(): Promise<void> {
   await sdk.shutdown();
 }
 
-// One Langfuse trace per graph run (node-level spans included); sessionId
-// groups runs that belong to the same AI Ops invocation.
 export function aiOpsCallbacks(sessionId: string): CallbackHandler[] {
   if (!langfuseEnabled()) {
     return [];
@@ -80,9 +72,6 @@ export function aiOpsCallbacks(sessionId: string): CallbackHandler[] {
   ];
 }
 
-// Propagates session/tags so spans created inside fn — including observations
-// that are not parented under the graph trace — group into the same Langfuse
-// session.
 export async function withAiOpsTrace<T>(
   sessionId: string,
   fn: () => Promise<T>,
@@ -96,8 +85,6 @@ export async function withAiOpsTrace<T>(
   );
 }
 
-// Records a single LLM call as a Langfuse generation; when disabled the
-// function runs without an observation object.
 export async function observeGeneration<T>(
   name: string,
   fn: (generation?: LangfuseGeneration) => Promise<T>,

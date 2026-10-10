@@ -1,17 +1,3 @@
-// Multi-repository workspaces + cross-repository weekly report.
-// Port of the legacy DevFlow-AI workspaces surface:
-//   DevFlow-AI/backend/app/api/routes/workspaces.py
-//     - create_workspace  (workspaces.py:50-70)  → createWorkspace
-//     - list_workspaces   (workspaces.py:73-78)  → listWorkspaces
-//     - multi_repo_report (workspaces.py:81-162) → generateMultiRepoReport
-//   DevFlow-AI/frontend/app/workspaces/page.tsx (UI counterpart)
-// The legacy multi-repo report was a pure deterministic template (the legacy
-// ReportAgent in services/agents/report_agent.py had no multi-repo LLM path);
-// this port keeps the deterministic baseline exact and layers an optional
-// quickModel narrative on top, following the generationMode pattern of
-// lib/devflow/agents/report.ts (LLM failure degrades to the template, never
-// a 500). Chinese template copy is translated to English to match this
-// repo's agent outputs — same documented residual difference as report.ts.
 import { generateText } from "ai";
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
@@ -24,13 +10,6 @@ import {
 } from "@/lib/devflow/agents/analysis";
 import { generateWeeklyReport } from "@/lib/devflow/agents/report";
 
-// ---------------------------------------------------------------------------
-// Request schemas (schemas.ts is shared/owned elsewhere; workspace payloads
-// live next to their service like rag.ts does with KnowledgeConfigUpdateSchema)
-// ---------------------------------------------------------------------------
-
-// legacy schemas/workspaces.py WorkspaceCreateRequest — repo_ids may be empty
-// at creation (the report route enforces non-empty), deduped on persist.
 export const WorkspaceCreateSchema = z.object({
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().max(1000).optional(),
@@ -38,8 +17,6 @@ export const WorkspaceCreateSchema = z.object({
 });
 export type WorkspaceCreate = z.infer<typeof WorkspaceCreateSchema>;
 
-// PATCH body: every field optional, at least one required (same shape as
-// TeamMemberUpdateSchema in team.ts).
 export const WorkspaceUpdateSchema = z
   .object({
     name: z.string().trim().min(1).max(100).optional(),
@@ -55,17 +32,11 @@ export const WorkspaceUpdateSchema = z
   );
 export type WorkspaceUpdate = z.infer<typeof WorkspaceUpdateSchema>;
 
-// legacy MultiRepoReportRequest (workspaces.py:16-20 _bounds): the workspace
-// supplies the repo set, dates bound the range like WeeklyReportSchema.
 export const MultiRepoReportSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 export type MultiRepoReportRequest = z.infer<typeof MultiRepoReportSchema>;
-
-// ---------------------------------------------------------------------------
-// Errors
-// ---------------------------------------------------------------------------
 
 export type WorkspaceErrorCode =
   "notFound" | "nameTaken" | "reposMissing" | "noRepos";
@@ -74,7 +45,6 @@ export class WorkspaceError extends Error {
   constructor(
     public code: WorkspaceErrorCode,
     message: string,
-    // Populated for "reposMissing": the unknown ids, for the {repos} ICU arg.
     public missingRepoIds: string[] = [],
   ) {
     super(message);
@@ -88,11 +58,6 @@ function isUniqueViolation(e: unknown): boolean {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Pure helpers (unit-tested offline in tests/devflow-workspaces.smoke.ts)
-// ---------------------------------------------------------------------------
-
-// legacy workspaces.py:41-47 (_repo_ids_from_payload) — order-preserving dedup.
 export function dedupeRepoIds(repoIds: string[]): string[] {
   const seen = new Set<string>();
   const output: string[] = [];
@@ -105,21 +70,15 @@ export function dedupeRepoIds(repoIds: string[]): string[] {
   return output;
 }
 
-// legacy workspaces.py:56-59 — requested ids minus the rows that exist.
 export function missingRepoIds(requested: string[], known: string[]): string[] {
   const knownSet = new Set(known);
   return requested.filter((id) => !knownSet.has(id));
 }
 
-// Risk thresholds. legacy workspaces.py:119 graded high when failed_ci or
-// open_prs > 5 and medium when open_issues > 5; the migration spec adds
-// long-untouched open PRs as a P0 signal (Yukino.md #29 round-2 assignment).
 export const STALE_PR_DAYS = 14;
 export const OPEN_PR_BACKLOG = 5;
 export const OPEN_ISSUE_BACKLOG = 5;
 
-// legacy high/medium/low → P0/P1/P2 (P-prefixed to match the analysis
-// agents' severity vocabulary).
 export type WorkspaceRiskLevel = "P0" | "P1" | "P2";
 
 export interface RepoRiskInput {
@@ -129,15 +88,11 @@ export interface RepoRiskInput {
   openIssues: number;
 }
 
-// Pure grading rule. Reasons are plain English data strings rendered as-is by
-// the template and the UI risk list (like lastSyncError — dynamic diagnostics,
-// not catalog copy).
 export function classifyRepoRisk(input: RepoRiskInput): {
   level: WorkspaceRiskLevel;
   reasons: string[];
 } {
   const reasons: string[] = [];
-  // P0 signals, in priority order.
   if (input.failedCi > 0) {
     reasons.push(`${input.failedCi} failed CI run(s) in range`);
   }
@@ -150,7 +105,6 @@ export function classifyRepoRisk(input: RepoRiskInput): {
     reasons.push(`open PR backlog of ${input.openPrs} (> ${OPEN_PR_BACKLOG})`);
   }
   if (reasons.length > 0) return { level: "P0", reasons };
-  // legacy medium: open_issues > 5
   if (input.openIssues > OPEN_ISSUE_BACKLOG) {
     return {
       level: "P1",
@@ -162,14 +116,8 @@ export function classifyRepoRisk(input: RepoRiskInput): {
   return { level: "P2", reasons: [] };
 }
 
-// ---------------------------------------------------------------------------
-// Aggregate stats (lifetime counts — the detail-page stat cards)
-// ---------------------------------------------------------------------------
-
 export interface RepoAggregate {
   repoId: string;
-  // null when the repository row is gone (repoIds is a plain String[] with no
-  // FK, so a deleted repo leaves a stale id behind).
   fullName: string | null;
   issues: number;
   openIssues: number;
@@ -193,7 +141,6 @@ export interface WorkspaceTotals {
   knowledgeDocs: number;
 }
 
-// Pure fold — keeps the totals computation offline-testable.
 export function totalsFromRepoStats(stats: RepoAggregate[]): WorkspaceTotals {
   const totals: WorkspaceTotals = {
     repos: stats.length,
@@ -240,8 +187,6 @@ async function mustGetWorkspace(id: string): Promise<{
   return workspace;
 }
 
-// Cross-repo lifetime statistics for one workspace, computed with prisma
-// groupBy (one pass per table, no full-row scans).
 export async function aggregateWorkspaceStats(
   workspaceId: string,
 ): Promise<WorkspaceStats> {
@@ -335,7 +280,6 @@ export async function aggregateWorkspaceStats(
     if (entry) entry.knowledgeDocs += row._count._all;
   }
 
-  // Preserve the workspace's configured repo order.
   const repos = repoIds
     .map((repoId) => stats.get(repoId))
     .filter((row): row is RepoAggregate => row !== undefined);
@@ -345,10 +289,6 @@ export async function aggregateWorkspaceStats(
     totals: totalsFromRepoStats(repos),
   };
 }
-
-// ---------------------------------------------------------------------------
-// CRUD
-// ---------------------------------------------------------------------------
 
 export interface WorkspaceView {
   id: string;
@@ -377,7 +317,6 @@ export function toWorkspaceView(workspace: {
   };
 }
 
-// Per-repo counts carried by the list view (assignment: "带每仓计数").
 export interface WorkspaceRepoCount {
   repoId: string;
   fullName: string | null;
@@ -390,9 +329,6 @@ export interface WorkspaceListItem extends WorkspaceView {
   repos: WorkspaceRepoCount[];
 }
 
-// legacy workspaces.py:50-70 — verify every repo id exists, reject unknowns
-// with the missing-id list, persist deduped ids. Name uniqueness is enforced
-// by the schema (@unique) plus an explicit pre-check for a friendly error.
 export async function createWorkspace(
   input: WorkspaceCreate,
 ): Promise<WorkspaceView> {
@@ -434,7 +370,6 @@ export async function createWorkspace(
     });
     return toWorkspaceView(workspace);
   } catch (e) {
-    // Concurrent create won the race — same friendly error as the pre-check.
     if (isUniqueViolation(e)) {
       throw new WorkspaceError(
         "nameTaken",
@@ -513,9 +448,6 @@ export async function deleteWorkspace(id: string): Promise<WorkspaceView> {
   return toWorkspaceView(workspace);
 }
 
-// legacy workspaces.py:73-78 — updated_at desc. The per-repo counts extend
-// the legacy bare repo_ids with live table counts (3 groupBys for all
-// workspaces at once, not per workspace).
 export async function listWorkspaces(): Promise<WorkspaceListItem[]> {
   const items = await prisma.workspace.findMany({
     orderBy: { updatedAt: "desc" },
@@ -569,15 +501,9 @@ export async function listWorkspaces(): Promise<WorkspaceListItem[]> {
   }));
 }
 
-// ---------------------------------------------------------------------------
-// Multi-repo weekly report (legacy workspaces.py:81-162 multi_repo_report)
-// ---------------------------------------------------------------------------
-
 export interface RepoReportSummary {
   repoId: string;
   fullName: string | null;
-  // legacy summaries dict keys (workspaces.py:109-121): range activity +
-  // standing backlog + graded risk.
   rangeIssues: number;
   rangePrs: number;
   rangeRuns: number;
@@ -603,7 +529,6 @@ export interface MultiRepoTotals {
   staleOpenPrs: number;
 }
 
-// Pure fold over the per-repo summaries (legacy totals dict, workspaces.py:93).
 export function reportTotalsFromSummaries(
   summaries: RepoReportSummary[],
 ): MultiRepoTotals {
@@ -638,7 +563,6 @@ export interface RiskItem {
   reasons: string[];
 }
 
-// P0 first, then P1 (P2 repos carry no reasons and are not risk items).
 export function buildRiskItems(summaries: RepoReportSummary[]): RiskItem[] {
   const rank: Record<WorkspaceRiskLevel, number> = { P0: 0, P1: 1, P2: 2 };
   return summaries
@@ -660,15 +584,12 @@ export interface MultiRepoTemplateInput {
   summaries: RepoReportSummary[];
 }
 
-// Deterministic template — port of the legacy markdown builder
-// (workspaces.py:123-141), translated to English (report.ts convention).
 export function deterministicMultiRepoReport(
   input: MultiRepoTemplateInput,
 ): string {
   const { totals } = input;
   const label = (name: string | null, repoId: string): string =>
     name ?? `deleted repo (${repoId})`;
-  // legacy risk_repos = high-risk only → P0 here (workspaces.py:122).
   const focus = input.summaries.filter((row) => row.riskLevel === "P0");
 
   const lines = [
@@ -694,14 +615,11 @@ export function deterministicMultiRepoReport(
       : []),
     ``,
     `## Key focus`,
-    // legacy workspaces.py:138: one line per high-risk repo; this port lists
-    // the concrete grading reasons.
     ...focus.flatMap((row) =>
       row.riskReasons.map(
         (reason) => `- ${label(row.fullName, row.repoId)}: ${reason}.`,
       ),
     ),
-    // legacy workspaces.py:139-140 fallback line.
     ...(focus.length === 0
       ? [
           `- No high-risk repositories; keep watching PR dwell time and review backlog.`,
@@ -711,8 +629,6 @@ export function deterministicMultiRepoReport(
   return lines.join("\n") + "\n";
 }
 
-// prompts.ts is shared/owned elsewhere; the multi-repo system prompt lives
-// with its agent (same wording discipline as WEEKLY_REPORT_PROMPT).
 export const MULTI_REPO_REPORT_PROMPT = `You are the Multi-Repository Report Agent of DevFlow.
 The input contains the aggregate statistics and risk grading of EVERY repository
 in one workspace within a date range.
@@ -738,8 +654,6 @@ export interface MultiRepoReportResult {
   repoSummaries: RepoReportSummary[];
   riskItems: RiskItem[];
   generationMode: GenerationMode;
-  // Persistence marker (assignment: "落库标记"): the repos whose single-repo
-  // weekly report + KB landing was triggered fire-and-forget.
   repoReportsTriggered: string[];
 }
 
@@ -756,7 +670,6 @@ export async function generateMultiRepoReport(input: {
         select: { id: true, fullName: true },
       })
     : [];
-  // legacy workspaces.py:88-89 — an empty repo set cannot produce a report.
   if (repos.length === 0) {
     throw new WorkspaceError(
       "noRepos",
@@ -765,15 +678,10 @@ export async function generateMultiRepoReport(input: {
   }
   const byId = new Map(repos.map((row) => [row.id, row.fullName]));
 
-  // legacy _bounds (workspaces.py:16-20): start-of-day → end-of-day UTC.
   const start = new Date(`${input.startDate}T00:00:00.000Z`);
   const end = new Date(`${input.endDate}T23:59:59.999Z`);
-  // An open PR whose last update predates this cutoff counts as "long
-  // untouched" (assignment risk rule; legacy had no stale-PR signal).
   const staleCutoff = new Date(Date.now() - STALE_PR_DAYS * 86_400_000);
 
-  // Range filters identical to agents/report.ts (created/updated/closed or
-  // merged touching the window), legacy workspaces.py:98-100 _in_range.
   const issueRangeWhere = {
     repoId: { in: repoIds },
     OR: [
@@ -798,8 +706,6 @@ export async function generateMultiRepoReport(input: {
     ],
   };
 
-  // Exact per-repo aggregates in one pass each (legacy counted in Python over
-  // full row lists; groupBy keeps the numbers exact without loading rows).
   const [
     rangeIssueRows,
     rangePrRows,
@@ -826,8 +732,6 @@ export async function generateMultiRepoReport(input: {
       where: { ...prRangeWhere, mergedAt: { not: null } },
       _count: { _all: true },
     }),
-    // legacy open_issues/open_prs count the FULL standing backlog, not the
-    // range (workspaces.py:101-102).
     prisma.issue.groupBy({
       by: ["repoId"],
       where: { repoId: { in: repoIds }, state: "open" },
@@ -876,8 +780,6 @@ export async function generateMultiRepoReport(input: {
   const staleOpenPrs = countOf(stalePrRows);
   const knowledgeDocs = countOf(docRows);
 
-  // Workspace order (legacy iterated the repo query; keeping the configured
-  // order makes the report stable across runs).
   const summaries: RepoReportSummary[] = repoIds
     .filter((repoId) => byId.has(repoId))
     .map((repoId) => {
@@ -914,9 +816,6 @@ export async function generateMultiRepoReport(input: {
     summaries,
   };
 
-  // LLM narrative over the bounded aggregate payload (no entity lists — the
-  // per-repo numbers ARE the content). Same degrade-to-template contract as
-  // agents/report.ts: an LLM failure never discards the report.
   let reportMarkdown: string;
   let generationMode: GenerationMode = "deterministic";
   if (llmConfigured()) {
@@ -960,11 +859,6 @@ export async function generateMultiRepoReport(input: {
     reportMarkdown = deterministicMultiRepoReport(templateInput);
   }
 
-  // Fire-and-forget per-repo weekly reports (assignment): each repo's own
-  // report lands in its KB through the existing single-repo pipeline. The
-  // legacy route instead stored the MULTI-repo markdown into every repo's KB
-  // (workspaces.py:142-159); failures here must never block or discard the
-  // cross-repo report, so nothing is awaited beyond scheduling.
   const triggeredRepoIds = repos.map((repo) => repo.id);
   void Promise.all(
     triggeredRepoIds.map(async (repoId) => {

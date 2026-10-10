@@ -1,11 +1,3 @@
-// Offline smoke test for the DevFlow multi-agent workflow orchestration
-// (no DB, no LLM, no Milvus). Asserts the deterministic ports of the legacy
-// Python subsystem: claim-boundary validation (planner_agent.py claim scope),
-// task-graph scheduling (workflow_orchestrator.py _run_task_graph topology +
-// parallel cap), deterministic planner fallback spec, observer findings and
-// confidence synthesis (observer_agent.py), replan gating (≤2 rounds), and the
-// deterministic decision memo (synthesis_agent.py).
-// Run: npx tsx tests/devflow-workflow.smoke.ts
 import assert from "node:assert/strict";
 import {
   MAX_REPLANS,
@@ -44,10 +36,6 @@ async function checkAsync(label: string, fn: () => Promise<void>) {
   checks += 1;
   console.log(`ok - ${label}`);
 }
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
 
 const snapshot: EntitySnapshot = {
   repoId: "repo-1",
@@ -104,10 +92,6 @@ function makeResult(
   };
 }
 
-// ---------------------------------------------------------------------------
-// WorkflowSpec schema
-// ---------------------------------------------------------------------------
-
 check("spec schema: accepts a bounded spec", () => {
   const spec: WorkflowSpec = {
     goal: "Assess release readiness",
@@ -135,10 +119,6 @@ check(
     );
   },
 );
-
-// ---------------------------------------------------------------------------
-// Claim validation (assignment: reject vague / out-of-bounds claims)
-// ---------------------------------------------------------------------------
 
 check(
   "resolveClaimEntity: number, #number, run id, run name, repo id and fullName",
@@ -275,11 +255,6 @@ check(
   },
 );
 
-// ---------------------------------------------------------------------------
-// Deterministic planner fallback (assignment: one claim each for open issues /
-// failed CI / open PRs)
-// ---------------------------------------------------------------------------
-
 check(
   "deterministicPlanSpec: one claim each for open issue, failed CI, open PR",
   () => {
@@ -296,7 +271,6 @@ check(
     for (const claim of spec.claims) {
       assert.ok(claim.acceptance_criteria.length > 0);
     }
-    // The deterministic spec must pass its own validator.
     assert.equal(validateClaims(spec, snapshot).violations.length, 0);
   },
 );
@@ -328,11 +302,6 @@ check("agentNameForTaskType maps to the legacy agent names", () => {
   assert.equal(agentNameForTaskType("repo_health"), "repo_health_agent");
 });
 
-// ---------------------------------------------------------------------------
-// Task graph scheduling (legacy _run_task_graph; assignment topology:
-// same entity sequential, different entities parallel, cap 3)
-// ---------------------------------------------------------------------------
-
 check("scheduleClaims: same entity stays sequential, waves capped at 3", () => {
   const claims: WorkflowClaim[] = [
     makeClaim({ id: "a1", entity_ref: "12" }),
@@ -363,8 +332,6 @@ check("scheduleClaims: same entity stays sequential, waves capped at 3", () => {
     }),
   ];
   const waves = scheduleClaims(claims);
-  // Entity groups: issue(12)=[a1,a2], pr=[b1], run-1=[c1], run-2=[d1], repo=[e1]
-  // wave1 = [a1,b1,c1] (cap 3), wave2 = [d1,e1,a2]... heads are chunked:
   assert.equal(waves.length, 3);
   assert.deepEqual(
     waves[0].map((c) => c.id),
@@ -378,8 +345,6 @@ check("scheduleClaims: same entity stays sequential, waves capped at 3", () => {
     waves[2].map((c) => c.id),
     ["a2"],
   );
-  // Hard invariants: no wave exceeds the cap; the same entity is never
-  // scheduled twice within one wave; per-entity order preserved across waves.
   for (const wave of waves) {
     assert.ok(wave.length <= 3);
     const keys = wave.map(
@@ -408,8 +373,6 @@ check(
         task_type: "issue_analysis",
       }),
     );
-    // Only issue 12 exists in the snapshot; scheduling is purely structural,
-    // refs need not resolve here (validation is a separate gate).
     const waves = scheduleClaims(claims);
     assert.deepEqual(
       waves.map((w) => w.length),
@@ -417,10 +380,6 @@ check(
     );
   },
 );
-
-// ---------------------------------------------------------------------------
-// Observer (legacy observer_agent.py + assignment rule P0/P1 → blocker)
-// ---------------------------------------------------------------------------
 
 check("observe: failed task → blocker, skipped task → warning", () => {
   const observation = observeWorkflow({ goal: "g", claims: [] }, [
@@ -519,7 +478,6 @@ check("observe: evidence gap and low confidence warnings", () => {
 check(
   "observe: confidence synthesis follows the legacy formula and clamps",
   () => {
-    // base mean(0.8, 0.4) = 0.6; one blocker (P0) −0.2, one warning (low conf) −0.05
     const observation = observeWorkflow({ goal: "g", claims: [] }, [
       makeResult({
         taskId: "t1",
@@ -538,7 +496,6 @@ check(
       }),
     ]);
     assert.equal(observation.overall_confidence, 0.35);
-    // No successful results → base 0.55; clamped floor at 0.1 with many blockers.
     const empty = observeWorkflow({ goal: "g", claims: [] }, []);
     assert.equal(empty.overall_confidence, 0.55);
     const failing = observeWorkflow(
@@ -556,10 +513,6 @@ check(
     assert.equal(failing.overall_confidence, 0.1);
   },
 );
-
-// ---------------------------------------------------------------------------
-// Replan gating (legacy orchestrator _max_replans clamp; assignment ≤2)
-// ---------------------------------------------------------------------------
 
 check("shouldReplan: blocker + budget → true; budget exhausted → false", () => {
   const blockerObservation: WorkflowObservation = {
@@ -588,7 +541,6 @@ check(
   "replanClaims: adds claims for uncovered strong signals with unique ids",
   () => {
     const spec = deterministicPlanSpec("g", snapshot);
-    // Everything strong is already covered → nothing to add.
     assert.deepEqual(replanClaims(spec, snapshot), []);
 
     const narrow: WorkflowSpec = {
@@ -604,7 +556,6 @@ check(
       ],
     );
 
-    // Id collision → unique suffix (legacy planner _unique_task_id).
     const colliding: WorkflowSpec = {
       goal: "g",
       claims: [
@@ -626,10 +577,6 @@ check(
     assert.ok(ids.includes("ci_debug_2"), `expected unique ci id, got ${ids}`);
   },
 );
-
-// ---------------------------------------------------------------------------
-// Synthesis (legacy synthesis_agent.py deterministic template)
-// ---------------------------------------------------------------------------
 
 check("deterministicMemo: sections, decision and next steps", () => {
   const ci = makeResult({

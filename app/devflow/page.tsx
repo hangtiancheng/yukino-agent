@@ -1,6 +1,5 @@
 "use client";
 
-// DevFlow dashboard: workspace health at a glance plus recent activity.
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -30,8 +29,6 @@ import { dfGet, dfPost, useDevflow } from "@/components/devflow/provider";
 import { notify } from "@/components/devflow/notify";
 import type { DevflowStats } from "@/lib/devflow/types";
 
-// API state values → typed keys under devflow.badges; unmapped states fall
-// back to the raw string.
 const ISSUE_STATE_KEYS: Record<string, "open" | "closed" | undefined> = {
   open: "open",
   closed: "closed",
@@ -87,8 +84,6 @@ export default function DevflowDashboard() {
   const [syncing, setSyncing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Fetch lives in an inline async IIFE — see the note in provider.tsx
-  // (react-hooks/set-state-in-effect).
   useEffect(() => {
     let cancelled = false;
     (async () => {

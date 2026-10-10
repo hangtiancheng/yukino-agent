@@ -1,29 +1,14 @@
-// User-managed chat prompts + SKILL.md skill assets — port of the legacy
-// agent_py `super_ai/chat/configuration.py` + `chat/streaming.py:551-574`.
-//
-// The legacy surface was per-user (auth-scoped assets). This deployment is a
-// public single tenant (AGENTS.md), so assets are administrator-managed and
-// global: the Prisma `ChatPrompt` / `SkillAsset` models back the REST routes,
-// and only ENABLED skills participate in the prompt catalog / load_skill.
-//
-// Progressive disclosure is kept verbatim from legacy: the system prompt
-// carries only `name: description` lines (configuration.py:62-76); the full
-// instruction body is returned on demand by the `load_skill` tool
-// (streaming.py:551-574), and unknown names fail honestly with the list of
-// loadable names instead of fabricating content.
 import { load } from "js-yaml";
 import { tool } from "ai";
 import { prisma } from "@/lib/db";
 import { loadSkillSchema } from "@/lib/ai/tools/schemas";
 
-// Legacy limits (configuration.py:17-20).
 export const MAX_CHAT_PROMPT_NAME_LENGTH = 160;
 export const MAX_CHAT_PROMPT_CONTENT_LENGTH = 12000;
 export const MAX_SKILL_BYTES = 65536;
 export const MAX_SKILL_NAME_LENGTH = 64;
 export const MAX_SKILL_DESCRIPTION_LENGTH = 1024;
 
-// Legacy _SKILL_FRONTMATTER_PATTERN (configuration.py:21).
 const SKILL_FRONTMATTER_PATTERN =
   /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
 
@@ -35,8 +20,6 @@ export interface SkillValidationOk {
 export type SkillValidationResult =
   { ok: true; skill: SkillValidationOk } | { ok: false; error: string };
 
-// Legacy _is_valid_skill_name (configuration.py:137-145): 1-64 chars of
-// lowercase letters / digits / single hyphens, no leading/trailing/double '-'.
 export function isValidSkillName(name: string): boolean {
   if (name === "" || name.length > MAX_SKILL_NAME_LENGTH) return false;
   if (name.startsWith("-") || name.endsWith("-") || name.includes("--")) {
@@ -47,9 +30,6 @@ export function isValidSkillName(name: string): boolean {
   );
 }
 
-// Port of validate_skill_upload (configuration.py:91-134), minus the
-// multipart filename gate (the REST route checks `fileName === "SKILL.md"`
-// when one is supplied) — the content rules are unchanged.
 export function validateSkillMarkdown(
   content: string,
   fileName?: string,
@@ -120,7 +100,6 @@ export function validateSkillMarkdown(
   return { ok: true, skill: { name, description, content: trimmed } };
 }
 
-// Port of validate_chat_prompt_content (configuration.py:80-88).
 export type PromptValidationResult =
   { ok: true; name: string; content: string } | { ok: false; error: string };
 
@@ -148,9 +127,6 @@ export function validateChatPrompt(
   return { ok: true, name: normalizedName, content: normalizedContent };
 }
 
-// Catalog injection — port of the "## Available Skills" section built by
-// configuration.py:62-76. Returns "" (no section) when no skill is enabled
-// or the database is unreachable, so prompt assembly degrades honestly.
 export async function getSkillCatalogPrompt(): Promise<string> {
   try {
     const skills = await prisma.skillAsset.findMany({
@@ -172,12 +148,6 @@ export async function getSkillCatalogPrompt(): Promise<string> {
   }
 }
 
-// Custom-instruction injection — port of the legacy chat configuration's
-// selected system prompt (agent_py chat/configuration.py build_chat_system_prompt:
-// "用户选择的系统提示词" section). Single-tenant public form: every ENABLED
-// ChatPrompt preset is applied (newest first), so administrator-defined
-// instructions actually reach the model instead of sitting unused in the DB.
-// Degrades to "" (no section) when none are enabled or the store is unreadable.
 export async function getChatPromptSection(): Promise<string> {
   try {
     const prompts = await prisma.chatPrompt.findMany({
@@ -204,9 +174,6 @@ export interface LoadedSkill {
   content: string;
 }
 
-// Legacy load_skill body (streaming.py:555-567): registry lookup by exact
-// name, honest failure listing the available names, `Loaded skill: ...`
-// prefix on success.
 export async function loadSkill(name: string): Promise<string> {
   const requested = name.trim();
   let available: string[] = [];

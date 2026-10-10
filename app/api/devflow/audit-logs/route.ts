@@ -1,8 +1,3 @@
-// GET /api/devflow/audit-logs?repoId=&action=&limit= — read surface for the
-// audit trail (draft approvals, repo ops), so approvals stop being write-only.
-// legacy action_drafts.py:115-124 exposed the same list (repo filter only,
-// newest-first, gated on settings:manage); this port adds an `action` filter
-// and a bounded limit (default 50, max 200).
 import { prisma } from "@/lib/db";
 import { AuditLogsQuerySchema } from "@/lib/devflow/schemas";
 import { PermissionError, requirePermission } from "@/lib/devflow/permissions";
@@ -12,7 +7,6 @@ export { OPTIONS } from "@/lib/devflow/http";
 
 export async function GET(request: Request) {
   try {
-    // legacy: listing the audit trail requires settings:manage.
     await requirePermission("settings:manage");
   } catch (e) {
     if (e instanceof PermissionError) return failRaw(403, e.message);

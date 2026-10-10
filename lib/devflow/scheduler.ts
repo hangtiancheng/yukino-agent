@@ -1,12 +1,3 @@
-// Periodic background re-sync of connected GitHub repositories. Port of the
-// Python services/scheduler.py loop. Started from instrumentation.ts so it runs
-// in the Node server process. A recursive setTimeout (not setInterval) is used
-// so a slow sync never overlaps the next tick; per-repo failures are logged and
-// never stop the loop.
-//
-// CAVEAT: this is an in-process loop, faithful to the Python design. It is only
-// meaningful on a long-lived Node server. On serverless deployments (and during
-// `next build`) it should stay disabled via DEVFLOW_AUTO_SYNC_ENABLED.
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
 import { syncRepository } from "./sync";
@@ -43,8 +34,6 @@ export function startAutoSyncLoop(): void {
   const { enabled, intervalSeconds, limit } = config.devflow.autoSync;
   if (!enabled) return;
 
-  // Survive Next.js dev hot-reload: reuse the existing loop instead of
-  // stacking a new one on every module re-evaluation.
   if (globalForAutoSync.devflowAutoSync) return;
 
   const handle: AutoSyncHandle = { timer: null, stopped: false };
@@ -66,11 +55,9 @@ export function startAutoSyncLoop(): void {
       }
       schedule(Math.max(intervalSeconds, MIN_INTERVAL_SECONDS) * 1000);
     }, delayMs);
-    // Do not keep the Node process alive just for the sync loop.
     handle.timer.unref?.();
   };
 
-  // Mirror the Python loop's small startup delay.
   schedule(5000);
 }
 

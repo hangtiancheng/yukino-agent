@@ -23,7 +23,6 @@ const button = (id: string, child: string, variant?: string) => ({
   ...(variant ? { variant } : {}),
 });
 
-// One surface referencing every shadcn extension component at least once.
 export function createGalleryMessages(): A2uiMessage[] {
   const components = [
     {

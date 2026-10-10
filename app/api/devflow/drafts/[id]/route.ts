@@ -1,7 +1,3 @@
-// PATCH  /api/devflow/drafts/:id — { action: "execute" | "reject" }.
-// DELETE /api/devflow/drafts/:id — remove a draft.
-// Approving/rejecting a draft is the human gate before a real GitHub write, so
-// it requires the draft:approve permission and is recorded in the audit log.
 import { prisma } from "@/lib/db";
 import { DraftActionSchema } from "@/lib/devflow/schemas";
 import { executeDraft, rejectDraft } from "@/lib/devflow/drafts";

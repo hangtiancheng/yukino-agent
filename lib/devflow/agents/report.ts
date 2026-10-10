@@ -1,10 +1,3 @@
-// Weekly engineering report agent. Port of the Python report_agent +
-// /api/reports/weekly route. The legacy route passed FULL entity lists to a
-// deterministic markdown template; this port keeps the numbers exact
-// (prisma count/groupBy over the whole range) while only bounded SAMPLES
-// enter the LLM context, and falls back to the deterministic template — like
-// the legacy agent — when no LLM key is configured or generation fails.
-// The mode is recorded as generationMode on the result.
 import { generateText } from "ai";
 import { prisma } from "@/lib/db";
 import { thinkModel, providerOptions } from "@/lib/ai/models";
@@ -15,8 +8,8 @@ import { WEEKLY_REPORT_PROMPT } from "./prompts";
 
 export interface WeeklyReportInput {
   repoId: string;
-  startDate: string; // YYYY-MM-DD
-  endDate: string; // YYYY-MM-DD
+  startDate: string;
+  endDate: string;
 }
 
 export interface WeeklyReportMetrics {
@@ -25,7 +18,6 @@ export interface WeeklyReportMetrics {
   mergedPrs: number;
   openPrs: number;
   failedCi: number;
-  // Exact extras the deterministic template (and reviewers) need.
   closedIssues: number;
   totalRuns: number;
 }
@@ -47,12 +39,6 @@ function rangeBounds(
   const end = new Date(`${endDate}T23:59:59.999Z`);
   return { start, end };
 }
-
-// ---------------------------------------------------------------------------
-// Deterministic template (port of report_agent.py ReportAgent.run; Chinese
-// section copy translated to English to match this repo's agent outputs —
-// documented residual difference)
-// ---------------------------------------------------------------------------
 
 export interface WeeklyReportTemplateInput {
   repoName: string;
@@ -126,10 +112,6 @@ export function deterministicWeeklyReport(
   return lines.join("\n") + sampleNote;
 }
 
-// ---------------------------------------------------------------------------
-// Gather + generate
-// ---------------------------------------------------------------------------
-
 export async function generateWeeklyReport(
   input: WeeklyReportInput,
 ): Promise<WeeklyReportResult> {
@@ -140,9 +122,6 @@ export async function generateWeeklyReport(
 
   const { start, end } = rangeBounds(input.startDate, input.endDate);
 
-  // Range filters identical to the previous behavior (created/updated/closed
-  // or merged touching the window), legacy reports.py _issue_in_range /
-  // _pr_in_range.
   const issueRangeWhere = {
     repoId: input.repoId,
     OR: [
@@ -167,8 +146,6 @@ export async function generateWeeklyReport(
     ],
   };
 
-  // Exact aggregate counts — fixes the previous silent truncation of the
-  // take:100 samples being reported as totals.
   const [
     issuesTotal,
     closedIssuesTotal,
@@ -201,9 +178,6 @@ export async function generateWeeklyReport(
     totalRuns: runsTotal,
   };
 
-  // Bounded samples: entity rows for the LLM payload, plus the small targeted
-  // lists the deterministic template embeds (legacy passed full lists; we
-  // limit the lists but never the numbers).
   const [
     issues,
     prs,
@@ -271,8 +245,6 @@ export async function generateWeeklyReport(
       take: 5,
       select: { number: true, title: true },
     }),
-    // Most recent failed runs for the list sections (exact count comes
-    // from the aggregate above, so this is bounded without lying).
     prisma.workflowRun.findMany({
       where: { ...runRangeWhere, conclusion: "failure" },
       orderBy: { githubCreatedAt: "desc" },
@@ -281,8 +253,6 @@ export async function generateWeeklyReport(
     }),
   ]);
 
-  // Exact recurrence per workflow name over the FULL range (groupBy is not
-  // capped), replacing the legacy in-memory tally over the whole run list.
   const failedGroupRows = await prisma.workflowRun.groupBy({
     by: ["name"],
     where: { ...runRangeWhere, conclusion: "failure" },
@@ -374,8 +344,6 @@ export async function generateWeeklyReport(
         reportMarkdown = deterministicWeeklyReport(templateInput);
       }
     } catch (e) {
-      // Legacy parity: the report agent never failed — no LLM answer meant
-      // the deterministic template output.
       console.warn(
         "[devflow-report] LLM report failed; persisting deterministic template:",
         e,
@@ -386,8 +354,6 @@ export async function generateWeeklyReport(
     reportMarkdown = deterministicWeeklyReport(templateInput);
   }
 
-  // Persist into the repo knowledge base (best-effort — a Milvus outage must
-  // not discard the generated report).
   let knowledgeDocId: string | null = null;
   try {
     const added = await addKnowledgeDocument({

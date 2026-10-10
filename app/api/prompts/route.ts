@@ -1,10 +1,3 @@
-// GET  /api/prompts — list chat prompt presets.
-// POST /api/prompts — upsert one preset by unique name.
-// Port of the legacy user prompt CRUD (agent_py chat/configuration.py
-// validate_chat_prompt_content:80-88 + the /chat/prompts routes; Yukino.md
-// #19 "Custom prompts/Skills"). Single-tenant public form: assets are
-// administrator-managed and shared, so there is no owner filter — validation
-// rules and the name/content length caps are kept from legacy.
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
@@ -81,8 +74,6 @@ export async function POST(request: Request) {
   const existing = await prisma.chatPrompt
     .findUnique({ where: { name: name.trim() } })
     .catch(() => null);
-  // Legacy validate_chat_prompt_content applies to whatever fields are given;
-  // create with missing content fails its empty-content rule.
   const checked = validateChatPrompt(name, content ?? existing?.content ?? "");
   if (!checked.ok) {
     return Response.json(

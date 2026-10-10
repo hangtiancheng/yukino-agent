@@ -1,29 +1,3 @@
-/**
- * Offline smoke for the DevFlow memory system (#25) —
- * lib/devflow/memory.ts (ports of DevFlow-AI chat_memory.py
- * SessionSealer, context_compression.py fallback/merge/render helpers and
- * memory_hub.py candidate pipeline) plus the chat citation collectors in
- * lib/devflow/agents/chat.ts.
- *
- *  1. token budget clipping (legacy clip_to_token_budget);
- *  2. order-preserving list dedupe/caps (legacy _unique_preserve_order);
- *  3. deterministic fallback snapshot (legacy fallback_memory_update shape:
- *     recent-message role:content concatenation + keyword buckets);
- *  4. incremental snapshot merge (legacy merge_memory);
- *  5. thread merge counter semantics (只合并 thread 未计数的 sessions);
- *  6. seal threshold predicate;
- *  7. memory-context rendering truncation (legacy render_structured_memory);
- *  8. candidate title generation;
- *  9. citations pure collectors + dedupe;
- * 10. zod safeParse degradation of snapshot payloads.
- *
- * Optional live section (DEVFLOW_MEMORY_SMOKE_PG=1, needs the local
- * PostgreSQL at DATABASE_URL): row-level verification of the no-LLM seal
- * fallback, thread merge counting, the candidate state machine and the read
- * views. Temporary rows are cascade-deleted afterwards.
- *
- * Run: npx tsx tests/devflow-memory.smoke.ts
- */
 import assert from "node:assert/strict";
 import {
   MEMORY_CONTEXT_LIMITS,
@@ -50,7 +24,6 @@ import {
   projectDocCitations,
 } from "@/lib/devflow/agents/chat";
 
-// --- 1. token budget --------------------------------------------------------
 {
   assert.equal(clipToTokenBudget("", 100), "");
   assert.equal(clipToTokenBudget("short text", 100), "short text");
@@ -61,13 +34,11 @@ import {
     estimateTokens(clipped) <= 50 + 2,
     "clipped text must respect the token budget",
   );
-  // CJK counts one token per character (legacy estimate_tokens).
   assert.equal(estimateTokens("中文测试"), 4);
   assert.equal(estimateTokens(""), 0);
   console.log("memory: clipToTokenBudget OK");
 }
 
-// --- 2. uniquePreserveOrder --------------------------------------------------
 {
   const items = ["  Alpha ", "beta", "alpha", "", "BETA", "gamma"];
   assert.deepEqual(uniquePreserveOrder(items, 16), ["Alpha", "beta", "gamma"]);
@@ -79,7 +50,6 @@ import {
   console.log("memory: uniquePreserveOrder OK");
 }
 
-// --- 3. deterministic fallback snapshot -------------------------------------
 {
   const snapshot = fallbackSnapshot([
     {
@@ -115,7 +85,6 @@ import {
     "preference keywords land in userPreferences",
   );
 
-  // Only the last FALLBACK_RECENT_MESSAGES ride in the summary.
   const many = Array.from({ length: 30 }, (_, i) => ({
     role: i % 2 === 0 ? "user" : "assistant",
     content: `message number ${i}`,
@@ -126,7 +95,6 @@ import {
   console.log("memory: fallbackSnapshot OK");
 }
 
-// --- 4. mergeSnapshots (legacy merge_memory) --------------------------------
 {
   const existing: MemorySnapshot = {
     ...emptySnapshot(),
@@ -144,7 +112,6 @@ import {
   assert.ok(merged.summary.includes("new turn state"));
   assert.deepEqual(merged.facts, ["fact-a", "fact-b", "fact-c"]);
   assert.deepEqual(merged.decisions, ["use Redis"]);
-  // Caps hold on repeated merges.
   let acc = emptySnapshot();
   for (let i = 0; i < 5; i += 1) {
     acc = mergeSnapshots(acc, {
@@ -159,7 +126,6 @@ import {
   console.log("memory: mergeSnapshots OK");
 }
 
-// --- 5. thread merge counter semantics --------------------------------------
 {
   assert.deepEqual(planThreadMerge(0, [2, 3]), {
     shouldMerge: true,
@@ -184,7 +150,6 @@ import {
   console.log("memory: planThreadMerge OK");
 }
 
-// --- 6. seal threshold -------------------------------------------------------
 {
   assert.equal(shouldSeal(SEAL_MESSAGE_THRESHOLD - 1), false);
   assert.equal(shouldSeal(SEAL_MESSAGE_THRESHOLD), true);
@@ -192,7 +157,6 @@ import {
   console.log("memory: shouldSeal OK");
 }
 
-// --- 7. renderMemoryContext truncation ---------------------------------------
 {
   assert.equal(renderMemoryContext({ thread: null, conversation: null }), "");
   const conversation: MemorySnapshot = {
@@ -236,7 +200,6 @@ import {
   console.log("memory: renderMemoryContext OK");
 }
 
-// --- 8. candidate title -------------------------------------------------------
 {
   const title = candidateTitle(
     "decision",
@@ -244,13 +207,10 @@ import {
   );
   assert.ok(title.startsWith("decision: "));
   assert.ok(title.endsWith("..."));
-  // Legacy _candidate_title: label prefix + content clipped to ~80 chars
-  // (legacy _clip keeps limit-1 chars then appends "...", so ≤ limit+2).
   assert.ok(title.slice("decision: ".length).length <= 82);
   console.log("memory: candidateTitle OK");
 }
 
-// --- 9. citations collectors ---------------------------------------------------
 {
   const knowledge = knowledgeCitations([
     { docName: "runbook.md", score: 0.9 },
@@ -294,7 +254,6 @@ import {
   console.log("memory: citations collectors OK");
 }
 
-// --- 10. snapshot zod degradation ----------------------------------------------
 {
   assert.ok(
     MemorySnapshotSchema.safeParse({
@@ -324,7 +283,6 @@ import {
 
 console.log("devflow-memory smoke: all offline checks passed");
 
-// --- Optional live section (row-level verification against local PG) ----------
 if (process.env.DEVFLOW_MEMORY_SMOKE_PG === "1") {
   const { prisma } = await import("@/lib/db");
   const { ensureConversation, appendMessage } =
@@ -352,7 +310,6 @@ if (process.env.DEVFLOW_MEMORY_SMOKE_PG === "1") {
   try {
     const conversation = await ensureConversation(repo.id);
 
-    // Eight messages cross the seal threshold.
     for (let i = 0; i < 8; i += 1) {
       await appendMessage({
         conversationId: conversation.id,
@@ -365,7 +322,6 @@ if (process.env.DEVFLOW_MEMORY_SMOKE_PG === "1") {
       });
     }
 
-    // No LLM key in this environment → deterministic fallback seal.
     const sealed = await maybeSealAndMerge(repo.id, conversation.id);
     assert.equal(sealed, true, "8 messages must trigger the first seal");
     const convMemory = await prisma.conversationMemory.findUniqueOrThrow({
@@ -386,7 +342,6 @@ if (process.env.DEVFLOW_MEMORY_SMOKE_PG === "1") {
     });
     assert.equal(threadMemory.sessionsIncorporated, 1);
 
-    // Immediately again: no new messages → no seal.
     assert.equal(
       await maybeSealAndMerge(repo.id, conversation.id),
       false,
@@ -399,7 +354,6 @@ if (process.env.DEVFLOW_MEMORY_SMOKE_PG === "1") {
       "thread merge must skip the delta 0",
     );
 
-    // Eight more messages → second seal, counter advances to 2.
     await sleep(5);
     for (let i = 0; i < 8; i += 1) {
       await appendMessage({
@@ -419,7 +373,6 @@ if (process.env.DEVFLOW_MEMORY_SMOKE_PG === "1") {
     });
     assert.equal(threadMemory2.sessionsIncorporated, 2);
 
-    // Candidate state machine.
     const proposed = await proposeMemoryCandidate({
       repoId: repo.id,
       conversationId: conversation.id,
@@ -463,7 +416,6 @@ if (process.env.DEVFLOW_MEMORY_SMOKE_PG === "1") {
         "failed KB indexing records the error in the response",
       );
     }
-    // Idempotent re-approval.
     const again = await approveMemoryCandidate(repo.id, proposed.candidate.id);
     assert.equal(again?.candidate.status, "approved");
 
@@ -479,19 +431,16 @@ if (process.env.DEVFLOW_MEMORY_SMOKE_PG === "1") {
     assert.ok(all.length >= 2);
     assert.ok(pending.every((c) => c.status === "pending"));
 
-    // Read views.
     const overview = await getRepoMemoryOverview(repo.id);
     assert.ok(overview.thread);
     assert.equal(overview.thread.sessionsIncorporated, 2);
     assert.equal(overview.conversations.length, 1);
     assert.equal(overview.conversations[0].conversationId, conversation.id);
 
-    // sealConversation on an empty/missing conversation degrades to null.
     assert.equal(await sealConversation("missing-conversation"), null);
 
     console.log("DEVFLOW_MEMORY_SMOKE_PG: seal/merge/candidates/views OK");
   } finally {
-    // Everything above is repo-scoped and cascade-deletes.
     await prisma.repository.delete({ where: { id: repo.id } });
     await prisma.$disconnect();
   }

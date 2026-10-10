@@ -1,18 +1,3 @@
-/**
- * Offline smoke for the DevFlow chat agent resilience layer
- * (lib/devflow/agents/chat.ts — ported elastic behaviors from
- * DevFlow-AI chat_agent.py / routes/chat.py):
- *  1. tool-call fingerprint stability (key-order independence);
- *  2. duplicate-call circuit breaker (legacy max_repeated_tool_calls = 2);
- *  3. tool error classification (legacy 8-kind ToolErrorKind) + retriable set;
- *  4. single automatic retry accounting (legacy tool_retry_attempts = 1);
- *  5. blocked / tool-error observation payloads;
- *  6. empty-answer fallback templates (B-5);
- *  7. context-overflow detection (minimal history projection trigger).
- * Optional live section (DEVFLOW_CHAT_SMOKE_PG=1, needs the local PostgreSQL):
- * persists a B-3 failure turn through appendMessage and reads the meta back.
- * Run: npx tsx tests/devflow-chat-resilience.smoke.ts
- */
 import assert from "node:assert/strict";
 import {
   MAX_REPEATED_TOOL_CALLS,
@@ -29,7 +14,6 @@ import {
   toolErrorObservation,
 } from "@/lib/devflow/agents/chat";
 
-// --- 1. fingerprint stability ------------------------------------------------
 {
   const a = toolCallFingerprint("list_issues", { state: "open", limit: 20 });
   const b = toolCallFingerprint("list_issues", { limit: 20, state: "open" });
@@ -63,7 +47,6 @@ import {
   );
 }
 
-// --- 2. duplicate-call circuit breaker ---------------------------------------
 {
   assert.equal(MAX_REPEATED_TOOL_CALLS, 2, "legacy threshold");
   const guard = new ToolLoopGuard();
@@ -87,14 +70,12 @@ import {
   );
   assert.equal(v3.fingerprint, toolCallFingerprint("search_knowledge", input));
 
-  // A different fingerprint keeps running on the same guard instance.
   const other = guard.check("search_knowledge", { query: "other", topK: 5 });
   assert.equal(other.blocked, false);
   const otherSame = guard.check("list_issues", input);
   assert.equal(otherSame.blocked, false, "name is part of the fingerprint");
 }
 
-// --- 3. error classification --------------------------------------------------
 {
   const abortError = new Error("This operation was aborted");
   abortError.name = "AbortError";
@@ -104,7 +85,6 @@ import {
   timeoutError.name = "TimeoutError";
   assert.equal(classifyToolError(timeoutError), "timeout");
 
-  // Non-Error throwables still expose .name (DOMException-like shapes).
   assert.equal(
     classifyToolError({ name: "AbortError", message: "aborted" }),
     "timeout",
@@ -122,7 +102,6 @@ import {
     "rate_limited",
   );
 
-  // Node/undici wraps socket failures as TypeError("fetch failed") + cause.
   const fetchFailed = new TypeError("fetch failed", {
     cause: new Error("read ECONNRESET"),
   });
@@ -161,7 +140,6 @@ import {
   }
 }
 
-// --- 4. retry accounting -------------------------------------------------------
 {
   assert.equal(TOOL_RETRY_ATTEMPTS, 1, "legacy retry budget");
 
@@ -212,7 +190,6 @@ import {
   assert.equal(calls, 1);
 }
 
-// --- 5. observation payloads ---------------------------------------------------
 {
   const guard = new ToolLoopGuard();
   guard.check("get_issue", { number: 3 });
@@ -243,7 +220,6 @@ import {
   );
 }
 
-// --- 6. empty-answer fallback --------------------------------------------------
 {
   const withTools = buildEmptyAnswerFallback({
     toolNames: ["list_issues", "get_ci_run", "list_issues", "search_knowledge"],
@@ -265,7 +241,6 @@ import {
   assert.equal(noTools, "The model returned no answer this turn.");
 }
 
-// --- 7. context-overflow detection ----------------------------------------------
 {
   assert.equal(HISTORY_RETRY_LIMIT, 8, "degraded history budget");
   assert.equal(
@@ -284,7 +259,6 @@ import {
   assert.equal(isContextOverflowError(new Error("429 rate limit")), false);
 }
 
-// --- optional live PostgreSQL check (B-3 failure turn persistence) --------------
 if (process.env.DEVFLOW_CHAT_SMOKE_PG === "1") {
   const { prisma } = await import("@/lib/db");
   const { appendMessage, ensureConversation, listMessages } =
@@ -306,7 +280,6 @@ if (process.env.DEVFLOW_CHAT_SMOKE_PG === "1") {
       role: "user",
       content: "trigger a failure",
     });
-    // Exactly what devflowChatStream writes on the B-3 path.
     await appendMessage({
       conversationId: conversation.id,
       repoId: repo.id,

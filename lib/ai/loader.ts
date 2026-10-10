@@ -1,4 +1,3 @@
-// Reads a txt/md file and returns its content plus the source filename.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 

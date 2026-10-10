@@ -1,5 +1,3 @@
-// PATCH/DELETE /api/mcp_connections/[id] — admin-gated updates (port of the
-// agent_py mcp_connections CRUD).
 import { getTranslations } from "next-intl/server";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
@@ -54,7 +52,6 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   } catch {
     return fail(400, "invalidJsonBody");
   }
-  // Partial update: same shape but every field optional except identity.
   const parsed = mcpConnectionInputSchema.partial().safeParse(body);
   if (!parsed.success) return fail(400, "invalidMcpConnection");
 

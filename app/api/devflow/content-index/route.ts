@@ -1,7 +1,3 @@
-// POST /api/devflow/content-index {repoId} — rebuild the repository's GitHub
-// history content (issues / PRs / failed CI logs) as searchable vectors
-// (port of services/rag/indexing.py index_repository_documents).
-// GET /api/devflow/content-index?repoId= — per-type stored chunk counts.
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
 import {
@@ -29,8 +25,6 @@ export async function GET(request: Request) {
       durationMs: Date.now() - started,
     });
   } catch {
-    // Milvus is the counter backend; down = honest unavailability, never
-    // fabricated counts.
     return fail(503, "vectorSearchUnavailable");
   }
 }

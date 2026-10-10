@@ -1,11 +1,3 @@
-/**
- * Offline validation of the GitHub REST entity schemas (lib/devflow/schemas.ts)
- * against realistic payload shapes from api.github.com — including the edge
- * cases sync.ts depends on: PR entries inside /issues, bare-string labels,
- * binary files without `patch`, outdated review comments with `line: null`,
- * in-progress jobs with `conclusion: null`, and loose passthrough of unknown
- * keys. Run: npx tsx tests/devflow-github-schemas.smoke.ts
- */
 import assert from "node:assert/strict";
 import { z } from "zod/v4";
 import {
@@ -20,7 +12,6 @@ import {
   GitHubWorkflowRunsResponseSchema,
 } from "@/lib/devflow/schemas";
 
-// --- Repository -------------------------------------------------------------
 {
   const repo = GitHubRepoSchema.parse({
     id: 186853261,
@@ -36,14 +27,12 @@ import {
   });
   assert.equal(repo.id, 186853261);
   assert.equal(repo.default_branch, "main");
-  // Loose passthrough: fields DevFlow does not declare must survive.
   const passthrough = repo as Record<string, unknown>;
   assert.equal(passthrough.node_id, "MDEwOlJlcG9zaXRvcnkxODY4NTMyNjE=");
   assert.equal(passthrough.stargazers_count, 42);
   assert.throws(() => GitHubRepoSchema.parse({ ...repo, id: "186853261" }));
 }
 
-// --- Issues (the /issues endpoint mixes in pull requests) --------------------
 {
   const issue = GitHubIssueSchema.parse({
     id: 2379472020,
@@ -74,7 +63,6 @@ import {
   assert.equal(issue.pull_request, undefined);
   assert.equal(issue.closed_at, null);
 
-  // Compat gateways may send bare label strings — labelsOf() normalizes both.
   const stringLabels = GitHubIssueSchema.parse({
     id: 1,
     number: 1,
@@ -82,7 +70,6 @@ import {
   });
   assert.deepEqual(stringLabels.labels, ["bug", "urgent"]);
 
-  // A pull request inside the issues list carries the `pull_request` marker.
   const prEntry = GitHubIssueSchema.parse({
     id: 2379472999,
     number: 102,
@@ -96,14 +83,12 @@ import {
   });
   assert.ok(prEntry.pull_request);
 
-  // listIssues()'s filter semantics.
   const filtered = [issue, prEntry].filter((item) => !item.pull_request);
   assert.equal(filtered.length, 1);
 
-  assert.throws(() => GitHubIssueSchema.parse({ id: 1 })); // number required
+  assert.throws(() => GitHubIssueSchema.parse({ id: 1 }));
 }
 
-// --- Pull requests -----------------------------------------------------------
 {
   const pr = GitHubPullRequestSchema.parse({
     id: 2103108997,
@@ -111,7 +96,7 @@ import {
     title: "Fix empty-password handling",
     body: null,
     state: "closed",
-    merged_at: null, // closed without merging
+    merged_at: null,
     closed_at: "2026-10-02T10:00:00Z",
     user: { login: "bob", id: 1002 },
     base: { ref: "main", sha: "aaa", label: "o:main" },
@@ -127,12 +112,10 @@ import {
   assert.equal(pr.base?.ref, "main");
   assert.equal(pr.merged_at, null);
 
-  // A compat gateway omitting base/head entirely must still parse.
   const minimal = GitHubPullRequestSchema.parse({ id: 7, number: 7 });
   assert.equal(minimal.base, undefined);
 }
 
-// --- PR files (binary files have no patch) ------------------------------------
 {
   const files = z.array(GitHubPullRequestFileSchema).parse([
     {
@@ -152,14 +135,12 @@ import {
       additions: 0,
       deletions: 0,
       changes: 0,
-      // no patch — binary
     },
   ]);
   assert.equal(files.length, 2);
   assert.equal(files[1].patch, undefined);
 }
 
-// --- Review comments (outdated comments have line: null) -----------------------
 {
   const comments = z.array(GitHubReviewCommentSchema).parse([
     {
@@ -175,7 +156,7 @@ import {
       id: 1234567891,
       body: "Outdated suggestion",
       path: "app/login.tsx",
-      line: null, // comment on an outdated diff position
+      line: null,
       original_line: 30,
       user: { login: "carol", id: 1003 },
       created_at: "2026-10-01T13:00:00Z",
@@ -185,7 +166,6 @@ import {
   assert.equal(comments[1].id, 1234567891);
 }
 
-// --- Workflow runs + jobs wrappers ---------------------------------------------
 {
   const runsResponse = GitHubWorkflowRunsResponseSchema.parse({
     total_count: 2,
@@ -207,7 +187,7 @@ import {
         id: 8860437515,
         name: "CI",
         status: "in_progress",
-        conclusion: null, // still running
+        conclusion: null,
         head_branch: "dev",
         created_at: "2026-10-02T03:00:00Z",
         updated_at: "2026-10-02T03:01:00Z",
@@ -217,11 +197,10 @@ import {
   assert.equal(runsResponse.workflow_runs?.length, 2);
   assert.equal(runsResponse.workflow_runs?.[1].conclusion, null);
 
-  // Gateways that omit the wrapper array entirely → listWorkflowRuns() yields [].
   const empty = GitHubWorkflowRunsResponseSchema.parse({ total_count: 0 });
   assert.deepEqual(empty.workflow_runs ?? [], []);
 
-  assert.throws(() => GitHubWorkflowRunSchema.parse({ name: "CI" })); // id required
+  assert.throws(() => GitHubWorkflowRunSchema.parse({ name: "CI" }));
 
   const jobsResponse = GitHubWorkflowJobsResponseSchema.parse({
     total_count: 2,

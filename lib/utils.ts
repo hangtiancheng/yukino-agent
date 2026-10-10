@@ -63,8 +63,6 @@ export function alignClass(align?: string) {
   return (align && ALIGN_CLASSES[align]) || ALIGN_CLASSES.stretch;
 }
 
-// min-width/min-height 0 let weighted children shrink below their intrinsic
-// content size, otherwise large content forces the container to overflow.
 export function weightStyle(weight?: number): CSSProperties {
   if (typeof weight !== "number") return {};
   return { flex: `${weight}`, minWidth: 0, minHeight: 0 };

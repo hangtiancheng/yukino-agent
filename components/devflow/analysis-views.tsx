@@ -1,8 +1,5 @@
 "use client";
 
-// Structured renderers for the three DevFlow analysis agents. Each view turns
-// the agent's JSON output into a readable report with badges, checklists and
-// evidence cards — replacing the raw JSON <pre> dumps of the original UI.
 import { useTranslations } from "next-intl";
 import {
   AlertTriangle,
@@ -27,8 +24,6 @@ import {
 } from "./badges";
 import type { CIDebug, IssueAnalysis, PRReview } from "@/lib/devflow/types";
 
-// Provenance attached by lib/devflow/agents/analysis.ts to every persisted
-// result. Optional so historical analyses (without the fields) still render.
 type GenerationMode = "llm" | "deterministic";
 
 interface AnalysisProvenance {
@@ -102,10 +97,6 @@ function StringList({ items }: { items: string[] }) {
     </ul>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Issue triage
-// ---------------------------------------------------------------------------
 
 export function IssueAnalysisView({
   analysis,
@@ -279,10 +270,6 @@ export function IssueAnalysisView({
   );
 }
 
-// ---------------------------------------------------------------------------
-// PR review
-// ---------------------------------------------------------------------------
-
 const FINDING_ORDER = { P1: 0, P2: 1, P3: 2 } as const;
 
 export function PRReviewView({ review }: { review: PRReviewReport }) {
@@ -413,10 +400,6 @@ export function PRReviewView({ review }: { review: PRReviewReport }) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// CI debug
-// ---------------------------------------------------------------------------
 
 export function CIDebugView({ debug }: { debug: CIDebugReport }) {
   const t = useTranslations("devflow.analysis");

@@ -1,17 +1,3 @@
-// Offline smoke test for the OnCall chat-protocol restoration (G1/G2/G6 +
-// memory compaction + tool-call audits) — no Milvus, no LLM, no PG needed:
-//   1. processChatStreamParts() over a FAKE AI SDK fullStream: reasoning
-//      deltas, tool-call lifecycle events, a2ui stream-filter composition and
-//      event ordering (legacy reasoning.delta / tool.call parity);
-//   2. unterminated a2ui block at stream end degrades to a notice;
-//   3. memory compaction pure functions (trigger threshold, 1200-char cap,
-//      system-prompt section, eviction into the pending buffer) plus the
-//      no-key failure path of maybeSummarize (keeps old summary, never throws);
-//   4. knowledgeType classification (frontmatter / filename / body /
-//      diagnostic-case) and ChatReference propagation;
-//   5. tool-call audit text summarization (500-char cap, whitespace
-//      normalization, circular-value fallback).
-//   npx tsx tests/oncall-chat-protocol.smoke.ts
 import assert from "node:assert/strict";
 import type { TextStreamPart, ToolSet } from "ai";
 import {
@@ -47,9 +33,6 @@ import {
 type Part = TextStreamPart<ToolSet>;
 
 function firstPromptExampleBlock(): string {
-  // A real, protocol-valid A2UI block straight from the chat prompt few-shots.
-  // (The prose also mentions the tags inside backticks — only blocks whose
-  // body starts with JSON count, same rule as tests/a2ui.smoke.ts.)
   let cursor = 0;
   for (;;) {
     const begin = A2UI_PROMPT_SECTION.indexOf(A2UI_OPEN_TAG, cursor);
@@ -65,8 +48,6 @@ function firstPromptExampleBlock(): string {
       A2UI_OPEN_TAG.length,
       block.length - A2UI_CLOSE_TAG.length,
     );
-    // (The prose also mentions the tags inside backticks and shows an
-    // `[...]` placeholder — only blocks that actually parse count.)
     const trimmed = body.trim();
     if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
       if (parseA2uiBlock(body).messages) return block;
@@ -95,7 +76,6 @@ async function collect(
 
 async function checkStreamProtocol() {
   const block = firstPromptExampleBlock();
-  // Split the block across chunks at an awkward boundary (mid-open-tag).
   const cut = A2UI_OPEN_TAG.length - 4;
   const parts: Part[] = [
     { type: "reasoning-delta", id: "r1", text: "checking alerts " },
@@ -125,8 +105,6 @@ async function checkStreamProtocol() {
     progress,
   });
 
-  // 1. Reasoning deltas arrive as {type:"reasoning"} events, interleaved with
-  //    the tool lifecycle exactly as the model emitted them.
   assert.deepEqual(
     events.map((e) => e.type),
     ["reasoning", "tool", "tool", "reasoning", "text", "a2ui"],
@@ -138,8 +116,6 @@ async function checkStreamProtocol() {
     "tool.call → tool.result lifecycle",
   );
 
-  // 2. Visible text never contains the raw a2ui block; the block arrives as
-  //    one validated a2ui event with messages.
   const visible = events
     .filter((e) => e.type === "text")
     .map((e) => e.content)
@@ -148,8 +124,6 @@ async function checkStreamProtocol() {
   const a2ui = events.find((e) => e.type === "a2ui");
   assert.ok(a2ui && a2ui.type === "a2ui" && a2ui.messages.length > 0);
 
-  // 3. Return channel: raw memory text keeps the tags; reasoning is the
-  //    concatenation; the audit hook saw one completed call with payload.
   assert.equal(final.text, `All clear. ${block}`);
   assert.equal(final.reasoning, "checking alerts then answer");
   assert.equal(progress.text, final.text);
@@ -159,7 +133,6 @@ async function checkStreamProtocol() {
   assert.equal(toolEvents[0].resultText, "no active alerts");
   assert.ok(toolEvents[0].durationMs >= 0);
 
-  // 4. tool-error degrades to the error state and still reports an excerpt.
   const errEvents: ChatToolEvent[] = [];
   const err = new Error("boom");
   const { events: ev2, final: f2 } = await collect(
@@ -189,8 +162,6 @@ async function checkStreamProtocol() {
   assert.equal(errEvents[0].resultText, "boom");
   assert.equal(f2.text, "");
 
-  // 5. Unterminated block at stream end: notice fallback (no corrective hook),
-  //    never raw JSON leakage into the text.
   const { events: ev3 } = await collect([
     { type: "text-delta", id: "a1", text: "Tail: " },
     { type: "text-delta", id: "a1", text: `${A2UI_OPEN_TAG}[{"bad"` },
@@ -210,25 +181,21 @@ async function checkStreamProtocol() {
 }
 
 function checkMemoryCompaction() {
-  // Pure threshold: pairs slide out of the 6-window; compaction fires at 6.
   assert.equal(shouldTriggerSummary(SUMMARY_TRIGGER_PAIRS - 1), false);
   assert.equal(shouldTriggerSummary(SUMMARY_TRIGGER_PAIRS), true);
   assert.equal(shouldTriggerSummary(SUMMARY_TRIGGER_PAIRS + 4), true);
 
-  // Legacy summary cap (≤1200 chars) with whitespace normalization.
   const long = `  ${"x".repeat(SUMMARY_MAX_CHARS + 500)}  `;
   const capped = capSummary(long);
   assert.ok(capped.length <= SUMMARY_MAX_CHARS, "summary must fit the cap");
   assert.ok(capped.endsWith("…"), "capped summary keeps an ellipsis");
   assert.equal(capSummary("  hi   there  "), "hi there");
 
-  // System-prompt injection format.
   assert.equal(summarySection(""), "");
   const section = summarySection("user asked about disk alerts");
   assert.ok(section.startsWith("\n\n## Conversation summary\n"));
   assert.ok(section.includes("disk alerts"));
 
-  // Fold prompt carries the previous summary and the transcript.
   const prompt = buildSummaryPrompt("old facts", [
     { role: "user", content: "why is node-3 paging?" },
     { role: "assistant", content: "disk pressure on /var" },
@@ -237,7 +204,6 @@ function checkMemoryCompaction() {
   assert.ok(prompt.includes("user: why is node-3 paging?"));
   assert.ok(prompt.includes(`At most ${SUMMARY_MAX_CHARS} characters`));
 
-  // Window eviction feeds the pending buffer, pairs stay aligned.
   const mem = new SimpleMemory("smoke_session");
   for (let i = 0; i < 16; i++) {
     mem.setMessages({
@@ -252,8 +218,6 @@ function checkMemoryCompaction() {
 }
 
 async function checkCompactionFailurePath() {
-  // Without an LLM key the fire-and-forget fold must swallow the failure,
-  // keep the (empty) summary and retain the pending pairs for a later retry.
   const mem = new SimpleMemory("smoke_fail_session");
   for (let i = 0; i < 20; i++) {
     mem.setMessages({
@@ -262,7 +226,7 @@ async function checkCompactionFailurePath() {
     });
   }
   assert.ok(shouldTriggerSummary(mem.pendingPairCount()));
-  await mem.maybeSummarize(); // resolves, warns — never throws
+  await mem.maybeSummarize();
   assert.equal(mem.getSummary(), "", "failed fold keeps old summary");
   assert.equal(mem.pendingPairCount(), 7, "failed fold keeps pending");
   console.log("✓ compaction failure path: silent degrade, pending retained");
@@ -299,7 +263,6 @@ function checkKnowledgeType() {
     ),
     "sop",
   );
-  // Invalid explicit values fall through to the heuristics.
   assert.equal(
     classifyKnowledgeType(
       "notes.md",
@@ -313,7 +276,6 @@ function checkKnowledgeType() {
   );
   assert.equal(parseFrontmatterKnowledgeType("no frontmatter"), undefined);
 
-  // Reference propagation: only allowlisted values survive onto the wire.
   const mkDoc = (knowledgeType: unknown): RetrievedDoc => ({
     id: "1",
     content: "body text",
@@ -332,7 +294,6 @@ function checkKnowledgeType() {
 function checkAuditTruncation() {
   assert.equal(summarizeAuditText({ query: "x" }), '{"query":"x"}');
   assert.equal(summarizeAuditText("a  b\n c"), "a b c");
-  // Serialized objects never leak raw newlines into the audit column.
   assert.equal(
     summarizeAuditText({ query: "a b\n c" }),
     '{"query":"a b\\n c"}',
@@ -343,7 +304,6 @@ function checkAuditTruncation() {
   assert.ok(clipped.length <= AUDIT_TEXT_CHARS, "audit excerpt capped");
   assert.ok(clipped.endsWith("..."));
 
-  // Circular structures fall back to String() without throwing.
   const circular: Record<string, unknown> = {};
   circular.self = circular;
   assert.equal(summarizeAuditText(circular), "[object Object]");

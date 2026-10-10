@@ -1,6 +1,3 @@
-// Server-side A2UI block handling: tag extraction from full LLM output,
-// zod validation via the web_core protocol schemas, and a stateful streaming
-// filter that strips <a2ui-json> blocks out of a text-chunk stream.
 import { A2uiMessageListSchema } from "@a2ui/web_core/v0_9";
 
 import { A2UI_CLOSE_TAG, A2UI_OPEN_TAG } from "./prompt";
@@ -14,9 +11,6 @@ export interface A2uiExtractResult extends A2uiParseResult {
   cleanText: string;
 }
 
-// Validates a parsed message array with the protocol list schema (web_core
-// ships its own zod v3 instance — never compose this schema into app-level
-// zod/v4 combinators).
 export function validateA2uiMessages(messages: unknown[]): A2uiParseResult {
   const result = A2uiMessageListSchema.safeParse(messages);
   if (!result.success) {
@@ -29,7 +23,6 @@ export function validateA2uiMessages(messages: unknown[]): A2uiParseResult {
   return { messages };
 }
 
-// Parses the raw inner content of an <a2ui-json> block.
 export function parseA2uiBlock(raw: string): A2uiParseResult {
   let parsed: unknown;
   try {
@@ -42,8 +35,6 @@ export function parseA2uiBlock(raw: string): A2uiParseResult {
   return validateA2uiMessages(Array.isArray(parsed) ? parsed : [parsed]);
 }
 
-// Extracts and validates the A2UI block from a complete LLM response.
-// No tags present is not an error — the reply is plain markdown.
 export function extractA2ui(text: string): A2uiExtractResult {
   const start = text.indexOf(A2UI_OPEN_TAG);
   if (start === -1) {
@@ -64,13 +55,10 @@ export function extractA2ui(text: string): A2uiExtractResult {
 }
 
 export interface A2uiFilterOutput {
-  /** Pass-through text safe to forward to the client immediately. */
   text?: string;
-  /** Raw inner contents of completed <a2ui-json> blocks (tags stripped). */
   blocks: string[];
 }
 
-// Longest k (< tag.length) such that `s` ends with the first k chars of `tag`.
 function partialTagSuffixLength(s: string, tag: string): number {
   const max = Math.min(s.length, tag.length - 1);
   for (let k = max; k > 0; k--) {
@@ -81,9 +69,6 @@ function partialTagSuffixLength(s: string, tag: string): number {
   return 0;
 }
 
-// Stateful stream filter: forwards text immediately (holding back only tails
-// that could be the start of an opening tag split across chunks) and buffers
-// tagged block contents silently until the closing tag arrives.
 export function createA2uiStreamFilter(): {
   push(chunk: string): A2uiFilterOutput;
   flush(): string;
@@ -120,8 +105,6 @@ export function createA2uiStreamFilter(): {
       }
       return { text: text || undefined, blocks };
     },
-    // Stream ended: an unterminated block is surfaced back as plain text
-    // (with its opening tag restored) rather than silently dropped.
     flush(): string {
       const rest = inBlock ? A2UI_OPEN_TAG + buffer : buffer;
       buffer = "";

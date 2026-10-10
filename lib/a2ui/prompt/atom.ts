@@ -1,12 +1,3 @@
-/**
- * A2UI Atom inference format system prompt generator.
- *
- * Ported from the A2UI Python agent SDK `AtomPromptGenerator`
- * (`a2ui/inference_formats/experimental/atom/prompt_generator.py`).
- * Note: like the Python implementation, the Atom format does not render
- * uiDescription or examples sections, and does not prune the catalog.
- */
-
 import { CatalogSchemaHelper, findSchemaEnum } from "./schema-helper";
 import type {
   A2uiCatalogSchemas,
@@ -75,10 +66,6 @@ You MUST surround the entire A2UI Atom block with sentinel tags \`<a2ui>\` and \
    - Output minimal properties required to satisfy the user request.
 `;
 
-/**
- * Generates system prompts, grammar instructions, and component catalog
- * signatures for the Atom format.
- */
 export class AtomPromptGenerator implements PromptGenerator {
   private readonly helper: CatalogSchemaHelper;
 
@@ -112,7 +99,6 @@ export class AtomPromptGenerator implements PromptGenerator {
     return parts.join("\n\n");
   }
 
-  /** Compiles component definitions into S-expression signatures. */
   generateComponentSignatures(): string {
     const signatures: string[] = [];
     for (const name of Object.keys(this.helper.componentProperties).sort()) {
@@ -160,7 +146,6 @@ export class AtomPromptGenerator implements PromptGenerator {
     return signatures.join("\n");
   }
 
-  /** Compiles function definitions into S-expression signatures. */
   generateFunctionSignatures(): string {
     const signatures: string[] = [];
     for (const name of Object.keys(this.helper.functionProperties).sort()) {
@@ -172,8 +157,6 @@ export class AtomPromptGenerator implements PromptGenerator {
       const propDetails: string[] = [];
       for (const p of props) {
         const optSuffix = reqs.includes(p) ? "" : "?";
-        // Mirrors the Python implementation, which resolves function argument
-        // schemas through the component property crawler (usually null here).
         const propSchema = this.helper.getPropertySchema(name, p);
 
         orderedArgs.push(`:${p}${optSuffix}`);

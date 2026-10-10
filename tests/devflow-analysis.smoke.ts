@@ -1,8 +1,3 @@
-// Offline smoke test for the DevFlow analysis rule engines (no DB, no LLM,
-// no Milvus). Asserts the deterministic ports of the legacy Python agents:
-// classification tables, confidence clamps, merge validation, the owner
-// allow-list, and the deterministic weekly report template.
-// Run: npx tsx tests/devflow-analysis.smoke.ts
 import assert from "node:assert/strict";
 import {
   CIDebugSchema,
@@ -59,10 +54,6 @@ const baseIssueFacts: IssueFacts = {
   assignees: [],
 };
 
-// ---------------------------------------------------------------------------
-// Issue triage rule engine (issue_agent.py port)
-// ---------------------------------------------------------------------------
-
 check("issue: bug classification + P1 priority", () => {
   const text = "api returns 500 login fails";
   assert.equal(classifyIssueCategory(text, ["bug"]), "bug");
@@ -79,7 +70,6 @@ check(
     });
     assert.deepEqual(IssueAnalysisSchema.parse(analysis), analysis);
     assert.equal(analysis.category, "bug");
-    // Short body without repro/impact → needs_clarification (legacy test parity).
     assert.equal(analysis.conclusion, "needs_clarification");
     assert.ok(analysis.checklist.length > 0);
     assert.ok(analysis.confidence >= 0.35 && analysis.confidence <= 0.86);
@@ -188,10 +178,6 @@ check(
   },
 );
 
-// ---------------------------------------------------------------------------
-// Issue merge + owner allow-list
-// ---------------------------------------------------------------------------
-
 const ruleAnalysis = deterministicIssueAnalysis(baseIssueFacts, {
   duplicateCandidates: [],
   knowledgeEvidence: [],
@@ -247,9 +233,7 @@ check(
     const merged = mergeIssueAnalysis(llm, ruleAnalysis, allowList);
     assert.equal(merged.result.priority, "P0");
     assert.equal(merged.result.summary, "Better summary");
-    // category "question" is overridden by the more specific rule category
     assert.equal(merged.result.category, ruleAnalysis.category);
-    // empty evidence falls back to the rule evidence
     assert.deepEqual(merged.result.evidence, ruleAnalysis.evidence);
     assert.equal(merged.ownerValidation.status, "accepted");
   },
@@ -262,8 +246,6 @@ check("issue: generic LLM owner is replaced by the concrete rule owner", () => {
     owner_reason:
       "Team profile matches issue/code/document signals: electron (score 8).",
   };
-  // "backend" is a generic placeholder that is nevertheless in the
-  // allow-list (a team login); the concrete rule owner must still win.
   const genericList = buildOwnerAllowList({
     assignees: [],
     author: null,
@@ -275,10 +257,6 @@ check("issue: generic LLM owner is replaced by the concrete rule owner", () => {
   assert.equal(merged.result.suggested_owner, "liyonghong");
   assert.equal(merged.ownerValidation.status, "replaced");
 });
-
-// ---------------------------------------------------------------------------
-// PR review rule engine (pr_review_agent.py port)
-// ---------------------------------------------------------------------------
 
 const cleanFacts: PrFacts = {
   number: 7,
@@ -448,10 +426,6 @@ check("pr: WIP signal holds even without blockers", () => {
   assert.equal(recommendation, "hold");
 });
 
-// ---------------------------------------------------------------------------
-// CI debug rule engine (ci_debug_agent.py port)
-// ---------------------------------------------------------------------------
-
 const ciLog = [
   "Run pnpm install",
   "Scope: all 3 projects",
@@ -546,10 +520,6 @@ check("ci: non-failing completed run does not block merging", () => {
   assert.equal(debug.is_merge_blocking, false);
 });
 
-// ---------------------------------------------------------------------------
-// Weekly report deterministic template (report_agent.py port)
-// ---------------------------------------------------------------------------
-
 check("report: deterministic template embeds exact aggregate numbers", () => {
   const markdown = deterministicWeeklyReport({
     repoName: "acme/widget",
@@ -579,10 +549,6 @@ check("report: deterministic template embeds exact aggregate numbers", () => {
   assert.ok(markdown.includes('"e2e" failed 12 time(s)'));
   assert.ok(markdown.includes("most recent items only"));
 });
-
-// ---------------------------------------------------------------------------
-// Team member boundaries
-// ---------------------------------------------------------------------------
 
 check("team: create schema validates logins and skills", () => {
   assert.equal(

@@ -1,13 +1,3 @@
-// Offline smoke for the DevFlow defect batch (AG2): asserts the pure-function
-// ports of legacy logic (git remote URL parsing, history-cursor keyset,
-// audit/query validation, draft type enum, repo-deletion vector prefixes)
-// without Milvus/LLM/network. With DEVFLOW_DEFECTS_SMOKE_LIVE=1 it additionally
-// runs a throwaway PostgreSQL row-level pass (local git-tree checkout paths,
-// beforeMessageId paging, audit round-trip, snooze upsert, cascade + symlink-
-// escape-safe checkout cleanup) against the configured DATABASE_URL, deleting
-// everything it creates.
-// Run: npx tsx tests/devflow-defects.smoke.ts
-//      DEVFLOW_DEFECTS_SMOKE_LIVE=1 npx tsx tests/devflow-defects.smoke.ts
 import assert from "node:assert/strict";
 import {
   mkdir,
@@ -47,9 +37,6 @@ function ok(name: string): void {
   console.log(`  ok  ${name}`);
 }
 
-// ---------------------------------------------------------------------------
-// 1. parseGitRemoteUrl (legacy repos.py:76-98 _parse_git_remote_url)
-// ---------------------------------------------------------------------------
 {
   const https = parseGitRemoteUrl("https://github.com/foo/bar.git");
   assert.deepEqual(https, { owner: "foo", name: "bar", host: "github.com" });
@@ -79,9 +66,6 @@ function ok(name: string): void {
   ok("parseGitRemoteUrl returns null on unparseable input");
 }
 
-// ---------------------------------------------------------------------------
-// 2. beforeMessageId keyset (legacy chat_memory.MessageStore.timeline:188-206)
-// ---------------------------------------------------------------------------
 {
   assert.deepEqual(messagesWherePage("conv-1", null), {
     conversationId: "conv-1",
@@ -94,9 +78,6 @@ function ok(name: string): void {
   ok("messagesWherePage anchors on createdAt only (no id lexicographic tie)");
 }
 
-// ---------------------------------------------------------------------------
-// 3. repo-deletion Milvus prefixes (legacy repos.py:429 delete_milvus_documents)
-// ---------------------------------------------------------------------------
 {
   assert.deepEqual(repoMilvusCleanupPrefixes("repo-9"), [
     "devflow:kb:repo-9:",
@@ -106,9 +87,6 @@ function ok(name: string): void {
   ok("repoMilvusCleanupPrefixes sweeps kb + project + item on delete (B-1)");
 }
 
-// ---------------------------------------------------------------------------
-// 4. RepoConnectSchema (legacy repos.py:157-175)
-// ---------------------------------------------------------------------------
 {
   const managed = RepoConnectSchema.safeParse({ owner: "o", repo: "r" });
   assert.ok(managed.success && managed.data.provider === "github");
@@ -126,9 +104,6 @@ function ok(name: string): void {
   ok("RepoConnectSchema: owner+repo or localPath required");
 }
 
-// ---------------------------------------------------------------------------
-// 5. Draft types incl. send_report (legacy action_drafts.py:60-61, B-8)
-// ---------------------------------------------------------------------------
 {
   const base = { repoId: "r", content: "body" };
   for (const draftType of [
@@ -150,9 +125,6 @@ function ok(name: string): void {
   ok("DraftCreateSchema accepts the 5 legacy types, rejects others");
 }
 
-// ---------------------------------------------------------------------------
-// 6. GitHub review comment schema keeps original_line (B-2)
-// ---------------------------------------------------------------------------
 {
   const outdated = GitHubReviewCommentSchema.safeParse({
     id: 1,
@@ -170,9 +142,6 @@ function ok(name: string): void {
   ok("GitHubReviewCommentSchema carries original_line for outdated comments");
 }
 
-// ---------------------------------------------------------------------------
-// 7. audit-logs query validation (B-7)
-// ---------------------------------------------------------------------------
 {
   const defaults = AuditLogsQuerySchema.safeParse({});
   assert.ok(defaults.success && defaults.data.limit === 50);
@@ -193,9 +162,6 @@ function ok(name: string): void {
   ok("AuditLogsQuerySchema: default 50, max 200, repoId/action filters");
 }
 
-// ---------------------------------------------------------------------------
-// 8. messages query validation (B-6a)
-// ---------------------------------------------------------------------------
 {
   const defaults = ConversationMessagesQuerySchema.safeParse({});
   assert.ok(defaults.success && defaults.data.limit === 200);
@@ -220,17 +186,12 @@ function ok(name: string): void {
   ok("ConversationMessagesQuerySchema bounds limit and takes the cursor");
 }
 
-// ---------------------------------------------------------------------------
-// 9. project-index snooze validation (B-7-adjacent, legacy project_index.py:49)
-// ---------------------------------------------------------------------------
 {
   const snooze = ProjectIndexSnoozeSchema.safeParse({ action: "snooze" });
   assert.ok(snooze.success && snooze.data.days === 7);
   assert.ok(
     ProjectIndexSnoozeSchema.safeParse({ action: "snooze", days: 3 }).success,
   );
-  // Anything else (including the plain no-body build POST) must NOT parse as
-  // a snooze so the route falls through to indexProject.
   assert.equal(
     ProjectIndexSnoozeSchema.safeParse({ action: "build" }).success,
     false,
@@ -243,9 +204,6 @@ function ok(name: string): void {
   ok("ProjectIndexSnoozeSchema: action snooze, days default 7");
 }
 
-// ---------------------------------------------------------------------------
-// Optional live pass against local PostgreSQL (row-level, self-cleaning)
-// ---------------------------------------------------------------------------
 async function live(): Promise<void> {
   const { prisma } = await import("@/lib/db");
   const stamp = Date.now();
@@ -258,7 +216,6 @@ async function live(): Promise<void> {
     },
   });
   try {
-    // checkout path resolution across modes
     assert.equal(
       repoCheckoutPath({ ...repo, checkoutMode: "local", localPath: tmp }),
       tmp,
@@ -280,8 +237,6 @@ async function live(): Promise<void> {
     );
     ok("repoCheckoutPath: managed mode honours cloneParentDir");
 
-    // removeRepoCheckout: deletes <id>-* dirs, refuses symlink escapes,
-    // no-ops for local mode (legacy: the user tree is not ours to delete).
     await mkdir(path.join(parent, `${repo.id}-keep-me`), { recursive: true });
     await writeFile(
       path.join(parent, `${repo.id}-keep-me`, "f.txt"),
@@ -294,10 +249,7 @@ async function live(): Promise<void> {
     await symlink(outside, path.join(parent, `${repo.id}-escape`));
     const removed = await removeRepoCheckout(managed);
     assert.equal(removed.length, 1);
-    // keep-me is gone (rm without force must ENOENT on the removed dir).
     await assert.rejects(() => rm(path.join(parent, `${repo.id}-keep-me`)));
-    // The non-matching sibling and the symlink target outside the root both
-    // survive: nothing is deleted that is not `<repo.id>-*` inside the root.
     assert.ok(
       (await fsStat(path.join(parent, "otherid-keep-me"))).isDirectory(),
     );
@@ -316,7 +268,6 @@ async function live(): Promise<void> {
     assert.deepEqual(localCheckout, []);
     ok("removeRepoCheckout: local mode never deletes the user tree (B-1)");
 
-    // beforeMessageId paging through the real store
     const conv = await createConversation(repo.id, "defects smoke");
     const baseTime = Date.now();
     const created: string[] = [];
@@ -351,7 +302,6 @@ async function live(): Promise<void> {
     );
     ok("listMessages: unknown cursor is rejected");
 
-    // audit round-trip shaped like GET /api/devflow/audit-logs
     const audit = await writeAuditLog({
       repoId: repo.id,
       action: "draft:create",
@@ -368,7 +318,6 @@ async function live(): Promise<void> {
     assert.equal(rows[0].id, audit.id);
     ok("writeAuditLog + audit-logs query round-trip");
 
-    // project-index snooze upsert (same statement as the route)
     const snoozedUntil = new Date(Date.now() + 7 * 86_400_000);
     await prisma.projectIndex.upsert({
       where: { repoId: repo.id },
@@ -381,7 +330,6 @@ async function live(): Promise<void> {
     assert.ok(pi && pi.snoozedUntil && pi.snoozedUntil.getTime() > Date.now());
     ok("project-index snooze upsert persists snoozedUntil");
 
-    // repo delete cascades messages but keeps the audit trail (loose ref)
     await prisma.repository.delete({ where: { id: repo.id } });
     assert.equal(
       await prisma.chatMessage.count({ where: { repoId: repo.id } }),

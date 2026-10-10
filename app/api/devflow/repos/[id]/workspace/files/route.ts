@@ -1,4 +1,3 @@
-// GET /api/devflow/repos/:id/workspace/files?path=&limit= — bounded file listing
 import {
   getRepoOrThrow,
   listFiles,

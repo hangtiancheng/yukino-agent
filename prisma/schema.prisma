@@ -1,7 +1,3 @@
-// yukino-agent data model (PostgreSQL via Prisma driver adapter).
-// Covers the DevFlow workspace: GitHub repositories and their synced
-// issues / pull requests / CI runs, AI analysis results, the RAG knowledge
-// document registry (vectors live in Milvus), and human-confirmed action drafts.
 
 generator client {
   provider = "prisma-client"
@@ -22,12 +18,10 @@ model Repository {
   description   String?
   defaultBranch String?
   githubId      BigInt?
-  // AES-256-GCM encrypted personal access token (lib/devflow/crypto.ts).
   tokenEncrypted String?
   lastSyncAt     DateTime?
   lastSyncError  String?
-  // Managed-checkout overrides (local_path connect + clone_parent_dir).
-  checkoutMode   String    @default("managed") // "managed" | "local"
+  checkoutMode   String    @default("managed")
   localPath      String?
   cloneParentDir String?
   createdAt      DateTime  @default(now())
@@ -123,7 +117,6 @@ model PrReviewComment {
   body            String?
   path            String?
   line            Int?
-  // GitHub returns line=null with original_line set for outdated comments.
   originalLine    Int?
   author          String?
   githubCreatedAt DateTime?
@@ -142,7 +135,6 @@ model WorkflowRun {
   status          String    @default("unknown")
   conclusion      String?
   htmlUrl         String?
-  // Normalized job/step list: [{ id, name, status, conclusion, html_url, steps: [...] }]
   jobs            Json?
   logsText        String?
   githubCreatedAt DateTime?
@@ -156,10 +148,8 @@ model WorkflowRun {
 
 model AnalysisResult {
   id           String   @id @default(uuid())
-  // "issue" | "pull_request" | "workflow_run"
   targetType   String
   targetId     String
-  // "issue_analysis" | "pr_review" | "ci_debug"
   analysisType String
   inputSnapshot Json?
   resultJson   Json
@@ -174,9 +164,7 @@ model KnowledgeDocument {
   id         String   @id @default(uuid())
   repoId     String
   name       String
-  // "upload" | "weekly_report" | "issue" | "pull_request" | "memory_note"
   sourceType String   @default("upload")
-  // "queued" | "indexing" | "ready" | "failed" | "skipped"
   status     String   @default("queued")
   contentHash String
   charCount  Int      @default(0)
@@ -192,10 +180,6 @@ model KnowledgeDocument {
   @@index([repoId])
 }
 
-// Raw text of a knowledge document, kept in a 1:1 side table so document
-// listings never pull potentially-large bodies. Stored at upload so a failed
-// index can be retried without re-uploading (legacy routes/rag.py
-// documents/{document_id}/retry re-processed the stored file).
 model KnowledgeDocumentBody {
   docId   String @id
   content String
@@ -205,17 +189,13 @@ model KnowledgeDocumentBody {
 model ActionDraft {
   id           String   @id @default(uuid())
   repoId       String
-  // "issue_comment" | "create_issue" | "close_issue" | "add_labels"
   draftType    String
-  // "issue" | "pull_request" | null
   targetType   String?
   targetNumber Int?
   title        String   @default("")
   content      String?
   labels       String[]
-  // "low" | "medium" | "high"
   riskLevel    String   @default("medium")
-  // "pending_confirmation" | "executed" | "rejected" | "failed"
   status       String   @default("pending_confirmation")
   executionResult Json?
   errorMessage String?
@@ -228,17 +208,10 @@ model ActionDraft {
   @@index([createdAt])
 }
 
-// --- Category C: conversations, chat feedback, permissions/audit ---
-// Ported from the DevFlow-AI Python models (Conversation, ChatMessage,
-// ChatFeedback, User, AuditLog). The B-only models those tables referenced
-// (AgentRun / ChatSession / ConversationMemory / EvidenceItem / MemoryCandidate
-// / RecallEvent / AgentWorkflowRun / AgentTaskRun) are intentionally absent, so
-// feedback is anchored on the assistant ChatMessage id rather than a run id.
 
 model User {
   id        String   @id @default(uuid())
   name      String
-  // "owner" | "maintainer" | "developer" | "viewer"
   role      String   @default("viewer")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -250,12 +223,10 @@ model User {
 model AuditLog {
   id          String   @id @default(uuid())
   userId      String?
-  // Loose reference (no FK): an audit trail should survive repo deletion.
   repoId      String?
   action      String
   targetType  String?
   targetId    String?
-  // "success" | "failed" | "denied"
   status      String   @default("success")
   requestJson Json?
   resultJson  Json?
@@ -272,7 +243,6 @@ model Conversation {
   id           String   @id @default(uuid())
   repoId       String
   title        String   @default("New conversation")
-  // "active" | "deleted" (soft delete; messages/feedback are hard-deleted)
   status       String   @default("active")
   messageCount Int      @default(0)
   createdAt    DateTime @default(now())
@@ -290,12 +260,9 @@ model Conversation {
 model ChatMessage {
   id             String   @id @default(uuid())
   conversationId String
-  // Denormalized for per-repo queries; cascade happens via the conversation.
   repoId         String
-  // "user" | "assistant"
   role           String
   content        String
-  // Normalized tool trace: [{ name, state, input? }]
   toolCalls      Json?
   meta           Json?
   createdAt      DateTime @default(now())
@@ -313,15 +280,11 @@ model ChatFeedback {
   conversationId     String
   assistantMessageId String    @unique
   userId             String?
-  // "helpful" | "unhelpful"
   rating             String
-  // "inaccurate" | "not_relevant" | "missing_context" | "unreliable_citation" | "tool_error" | "other"
   reason             String?
   comment            String?
-  // "open" | "in_review" | "resolved" | "dismissed"
   reviewStatus       String    @default("open")
   reviewNote         String?
-  // "sent" | "failed" | "pending" | "not_configured" | "not_applicable"
   notificationStatus String    @default("not_applicable")
   notificationError  String?
   notifiedAt         DateTime?
@@ -338,24 +301,15 @@ model ChatFeedback {
   @@index([reviewStatus])
 }
 
-// --- Category B: project-doc index state (vectors live in Milvus) ---
-// One row per repository. The workspace manager clones/refreshes the repo to a
-// managed checkout; project-indexing discovers the repo's docs/manifests,
-// chunks + embeds them into the shared Milvus collection with
-// source = "devflow:project:<repoId>". This row tracks status + fingerprint so
-// re-indexing only happens when the checkout changed.
 model ProjectIndex {
   id            String    @id @default(uuid())
   repoId        String    @unique
-  // "idle" | "building" | "ready" | "failed"
   status        String    @default("idle")
-  // Fingerprint of the indexed checkout (branch@commit) to detect staleness.
   fingerprint   String?
   branch        String?
   commitSha     String?
   fileCount     Int       @default(0)
   chunkCount    Int       @default(0)
-  // Project summary: { techStack, topDirs, sourceTypeCoverage, docs }.
   summary       Json?
   errorMessage  String?
   snoozedUntil  DateTime?
@@ -368,19 +322,10 @@ model ProjectIndex {
   @@index([status])
 }
 
-// --- Migration-completeness restoration (2026-10-06 second pass) ---
-// Models restoring capabilities that the Python legacy products had and the TS
-// migration had recorded as scope cuts/degradations. Field semantics mirror
-// the legacy SQLAlchemy models (.legacy/DevFlow-AI/backend/app/db/models.py,
-// agent_py memory/extended_sqlite.py) adapted to this stack.
 
-// Per-repo knowledge-base settings (legacy KnowledgeBaseConfig). Only the
-// fields this architecture can honor are kept: absolute score thresholds
-// depend on calibrated scores, which Milvus RRF ranks do not provide.
 model KnowledgeBaseConfig {
   id              String   @id @default(uuid())
   repoId          String   @unique
-  // "hybrid" (dense+BM25 RRF) | "dense" | "bm25"
   retrievalMethod String   @default("hybrid")
   rerankEnabled   Boolean  @default(true)
   topK            Int      @default(3)
@@ -392,12 +337,10 @@ model KnowledgeBaseConfig {
   repo Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
 }
 
-// Persisted retrieval tests (legacy RAG studio retrieval-tests).
 model RetrievalTestRun {
   id              String   @id @default(uuid())
   repoId          String
   query           String
-  // Snapshot of the retrieval config used for this run.
   retrievalConfig Json     @default("{}")
   results         Json     @default("[]")
   durationMs      Int      @default(0)
@@ -408,19 +351,13 @@ model RetrievalTestRun {
   @@index([repoId, createdAt])
 }
 
-// Administrator-configured MCP connections for OnCall (legacy
-// mcp_connections multi-connection CRUD + :check). Single-tenant: the app is
-// public with no login, so connections are global, not per-user.
 model McpConnection {
   id              String    @id @default(uuid())
   name            String    @unique
-  // "sse" | "http" (streamable HTTP)
   transport       String    @default("sse")
   url             String
-  // Extra request headers (Authorization etc.) as a JSON object.
   headers         Json      @default("{}")
   enabled         Boolean   @default(true)
-  // Last connectivity probe: "ok" | "error" | "never"
   lastCheckStatus String    @default("never")
   lastCheckMessage String?
   lastToolNames   Json      @default("[]")
@@ -431,8 +368,6 @@ model McpConnection {
   @@index([enabled])
 }
 
-// Multi-agent workflow runs (legacy AgentWorkflowRun/AgentTaskRun):
-// planner -> observers -> synthesis with claim boundaries + acceptance.
 model AgentWorkflowRun {
   id             String    @id @default(uuid())
   repoId         String?
@@ -442,7 +377,6 @@ model AgentWorkflowRun {
   observationJson Json     @default("{}")
   finalAnswer    String    @default("")
   metrics        Json      @default("{}")
-  // "running" | "success" | "failed" | "cancelled"
   status         String    @default("running")
   createdAt      DateTime  @default(now())
   completedAt    DateTime?
@@ -463,7 +397,6 @@ model AgentTaskRun {
   claimJson   Json      @default("{}")
   inputJson   Json      @default("{}")
   resultJson  Json      @default("{}")
-  // "pending" | "running" | "success" | "failed" | "skipped"
   status      String    @default("pending")
   error       String?
   startedAt   DateTime?
@@ -475,8 +408,6 @@ model AgentTaskRun {
   @@index([agentName])
 }
 
-// Code graph symbols/relations extracted from managed checkouts
-// (legacy CodeSymbol/CodeRelation — regex extraction, snapshot-scoped rows).
 model CodeSymbol {
   id        String   @id @default(uuid())
   repoId    String
@@ -488,7 +419,6 @@ model CodeSymbol {
   endLine   Int?
   branch    String?
   commitSha String?
-  // PR-snapshot scoping (null = default checkout scan)
   prNumber  Int?
   meta      Json     @default("{}")
   createdAt DateTime @default(now())
@@ -505,7 +435,6 @@ model CodeRelation {
   repoId     String
   sourceName String?
   targetName String
-  // "imports" | "calls" | "defines" | "references"
   type       String   @default("calls")
   path       String?
   branch     String?
@@ -520,8 +449,6 @@ model CodeRelation {
   @@index([repoId, prNumber])
 }
 
-// Knowledge graph edges across synced entities (legacy KnowledgeGraphEdge:
-// 7 relation types + subgraph traversal).
 model KnowledgeGraphEdge {
   id         String   @id @default(uuid())
   repoId     String
@@ -529,8 +456,6 @@ model KnowledgeGraphEdge {
   fromId     String
   toType     String
   toId       String
-  // "references" | "resolves" | "documents" | "assigned_to" | "authored_by" |
-  // "decides" (built by lib/devflow/knowledge-graph.ts)
   relation   String
   confidence Float    @default(1.0)
   source     String   @default("explicit")
@@ -544,7 +469,6 @@ model KnowledgeGraphEdge {
   @@index([fromType, fromId])
 }
 
-// Multi-repo groupings (legacy Workspace). repoIds is a loose reference list.
 model Workspace {
   id          String   @id @default(uuid())
   name        String   @unique
@@ -556,8 +480,6 @@ model Workspace {
   @@index([name])
 }
 
-// Team-member profiles for suggested-owner validation
-// (legacy team_member documents, structured here).
 model TeamMember {
   id          String   @id @default(uuid())
   repoId      String
@@ -575,7 +497,6 @@ model TeamMember {
   @@index([repoId])
 }
 
-// Conversation-scoped structured memory (legacy ConversationMemory).
 model ConversationMemory {
   id                  String   @id @default(uuid())
   repoId              String
@@ -597,8 +518,6 @@ model ConversationMemory {
   @@index([repoId])
 }
 
-// Repository-thread memory merged from sealed conversations
-// (legacy ThreadMemory).
 model ThreadMemory {
   id                  String   @id @default(uuid())
   repoId              String   @unique
@@ -616,8 +535,6 @@ model ThreadMemory {
   repo Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
 }
 
-// Memory candidates proposed by agents, approved by humans into memory_note
-// knowledge documents (legacy MemoryCandidate).
 model MemoryCandidate {
   id             String    @id @default(uuid())
   repoId         String
@@ -625,9 +542,7 @@ model MemoryCandidate {
   kind           String
   title          String
   content        String
-  // "pending" | "approved" | "rejected"
   status         String    @default("pending")
-  // "session_sealer" | "chat_agent" | "workflow"
   origin         String    @default("chat_agent")
   meta           Json      @default("{}")
   createdAt      DateTime  @default(now())
@@ -638,13 +553,9 @@ model MemoryCandidate {
   @@index([repoId, status])
 }
 
-// OnCall AI Ops run history (legacy evidence-chain persistence, reduced to the
-// synchronous single-row shape this deployment model supports: the full run
-// with per-step detail is persisted once the graph finishes).
 model AiOpsRun {
   id        String    @id @default(uuid())
   query     String
-  // "running" | "success" | "exhausted" | "failed"
   status    String    @default("running")
   report    String    @default("")
   detail    Json      @default("[]")
@@ -658,9 +569,6 @@ model AiOpsRun {
   @@index([alertName])
 }
 
-// Structured diagnostic-case registry backing the case-library API
-// (legacy aiops_diagnostic_cases; the markdown itself lives in FILE_DIR and
-// is indexed into Milvus by diagnostic-cases.ts).
 model DiagnosticCaseRecord {
   id        String   @id @default(uuid())
   hash      String   @unique
@@ -675,17 +583,15 @@ model DiagnosticCaseRecord {
   @@index([createdAt])
 }
 
-// OnCall agent tool-call audit trail (legacy agent_tool_call_audits).
 model ToolCallAudit {
   id         String   @id @default(uuid())
   sessionId  String
   turnIndex  Int      @default(0)
   toolName   String
-  source     String   @default("builtin") // "builtin" | "mcp"
+  source     String   @default("builtin")
   inputJson  Json     @default("{}")
-  // Truncated result excerpt for review.
   resultText String   @default("")
-  status     String   @default("success") // "success" | "error"
+  status     String   @default("success")
   durationMs Int      @default(0)
   createdAt  DateTime @default(now())
 
@@ -693,8 +599,6 @@ model ToolCallAudit {
   @@index([toolName])
 }
 
-// Chat prompt presets + SKILL.md assets for OnCall (legacy user_chat_assets /
-// chat_skill_metadata, single-tenant here: administrator-managed, shared).
 model ChatPrompt {
   id        String   @id @default(uuid())
   name      String   @unique
@@ -708,8 +612,6 @@ model SkillAsset {
   id          String   @id @default(uuid())
   name        String   @unique
   description String   @default("")
-  // Progressive disclosure (legacy load_skill): only name+description ride in
-  // the system prompt; the body is returned by the load_skill tool on demand.
   content     String
   meta        Json     @default("{}")
   enabled     Boolean  @default(true)

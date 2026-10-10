@@ -1,9 +1,5 @@
 "use client";
 
-// OnCall knowledge-base management page (port of the legacy agent_py
-// knowledge documents workspace: list / chunk preview / re-index / delete /
-// upload). Reads are public; mutations send the admin token entered here
-// (ONCALL_ADMIN_TOKEN) as an x-admin-token header and fail closed without it.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import { z } from "zod/v4";

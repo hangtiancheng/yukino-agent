@@ -1,10 +1,3 @@
-// GET  /api/devflow/repos/:id/code-graph — search indexed symbols
-//        (?query=&kind=&language=&path=&limit=)
-// POST /api/devflow/repos/:id/code-graph — {action:"rebuild"} re-extracts
-//        symbols + relations from the repo's checkout.
-// Legacy ports: code_graph.py:18-28 rebuild_code_graph and :51-72
-// search_code_graph (relations/documents excerpting dropped; symbol search
-// keeps the name/path contains semantics plus kind filters).
 import { z } from "zod/v4";
 import { rebuildCodeGraph, searchSymbols } from "@/lib/devflow/code-graph";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";

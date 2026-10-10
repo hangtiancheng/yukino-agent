@@ -1,5 +1,3 @@
-// DELETE /api/devflow/conversations/:id — soft-delete a conversation and its
-// messages/feedback; returns the replacement active conversation + full list.
 import { prisma } from "@/lib/db";
 import {
   deleteConversation,

@@ -1,9 +1,3 @@
-// POST /api/devflow/chat — SSE stream of the DevFlow tool-calling agent.
-// Events: connected / message (text delta) / tool ({name,state,input?}) /
-// done ({conversationId,userMessageId,assistantMessageId}) / error. The error
-// frame is either the single-line JSON {message, assistantMessageId?} emitted
-// after the agent persisted a failure turn (B-3), or the raw message of an
-// unexpected throw. Same framing conventions as /api/chat_stream.
 import { DevflowChatSchema } from "@/lib/devflow/schemas";
 import { devflowChatStream } from "@/lib/devflow/agents/chat";
 import { CORS_HEADERS, fail } from "@/lib/devflow/http";
@@ -23,8 +17,6 @@ export async function POST(request: Request) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (event: string, data: string) => {
-        // SSE payloads must not contain raw newlines: emit one `data:` line
-        // per text line (the client rejoins them with "\n").
         const dataLines = data
           .split("\n")
           .map((line) => `data: ${line}`)
@@ -44,7 +36,6 @@ export async function POST(request: Request) {
           if (ev.type === "text") {
             send("message", ev.content);
           } else if (ev.type === "tool") {
-            // Single-line JSON survives the line-splitting framing.
             send(
               "tool",
               JSON.stringify({
@@ -56,7 +47,6 @@ export async function POST(request: Request) {
               }),
             );
           } else if (ev.type === "error") {
-            // JSON.stringify escapes newlines, so this stays single-line-safe.
             send(
               "error",
               JSON.stringify({
@@ -73,8 +63,6 @@ export async function POST(request: Request) {
                 conversationId: ev.conversationId,
                 userMessageId: ev.userMessageId,
                 assistantMessageId: ev.assistantMessageId,
-                // Knowledge citations collected during the turn (also
-                // persisted on the assistant message's meta for reloads).
                 ...(ev.citations && ev.citations.length > 0
                   ? { citations: ev.citations }
                   : {}),

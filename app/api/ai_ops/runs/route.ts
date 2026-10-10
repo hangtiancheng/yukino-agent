@@ -1,8 +1,3 @@
-// GET /api/ai_ops/runs — the 20 most recent AI Ops run summaries.
-// Restores the legacy server-side diagnostic-task history list
-// (agent_py app.py:1437-1450 GET /aiops/diagnostics; audit gap G3's history
-// side) in the public single-tenant form: no owner filter, summary fields
-// only (the full report is served by /api/ai_ops/runs/[id]).
 import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/db";
 

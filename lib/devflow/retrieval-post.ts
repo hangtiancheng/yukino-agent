@@ -1,26 +1,11 @@
-// Retrieval post-processing for the shared Milvus collection — port of the
-// Python retrieval pipeline stages (Yukino.md #32): fingerprint + Jaccard
-// near-duplicate removal, per-parent
-// chunk cap, sibling (parent-context) expansion, and the DevFlow heuristic
-// reranker (services/rag/rerank.py) used when no rerank API is configured or
-// the API fails.
-//
-// All stages are pure in-process operations on RetrievedDoc values; the
-// structure-aware chunker (lib/devflow/chunking.ts) is what stamps the
-// parent_id / child_index / sibling_ids metadata they read.
 import { createHash } from "node:crypto";
 import type { RetrievedDoc } from "@/lib/milvus/retriever";
 import { getByIds } from "@/lib/milvus/client";
 
-// Legacy constants (DevFlow-AI services/rag/retrieval.py:22-24,
-// rag/rerank.py:114).
 export const NEAR_DUPLICATE_JACCARD = 0.9;
 export const MAX_CHUNKS_PER_PARENT = 2;
 const RERANK_TOP_N = 24;
 
-// --- Tokenization (shared by dedup + heuristic rerank) ----------------------
-
-// Python _tokens: ASCII word tokens + CJK unigrams and adjacent bigrams.
 export function tokenize(text: string): string[] {
   const lowered = text.toLowerCase();
   const tokens: string[] = lowered.match(/[a-z0-9_-]+/g) ?? [];
@@ -32,8 +17,6 @@ export function tokenize(text: string): string[] {
   return tokens;
 }
 
-// Python _normalised_fingerprint: strip everything outside
-// [a-z0-9_-\u4e00-\u9fff], then sha256.
 export function fingerprint(text: string): string {
   const normalized = text
     .toLowerCase()
@@ -52,8 +35,6 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   return intersection / Math.max(union, 1);
 }
 
-// --- Scope / parent keys ----------------------------------------------------
-
 function scopeKey(doc: RetrievedDoc): string {
   const docId = String(doc.metadata.doc_id ?? "");
   const parentId = String(doc.metadata.parent_id ?? "");
@@ -66,11 +47,6 @@ function sameScope(left: RetrievedDoc, right: RetrievedDoc): boolean {
   return scopeKey(left) === scopeKey(right);
 }
 
-// --- Dedup + parent cap ------------------------------------------------------
-
-// Fingerprint-exact and Jaccard>=0.9 near-duplicates inside the same scope
-// (parent, document, or source tag) are dropped, keeping the higher-ranked
-// candidate. Mirrors _deduplicate_candidates.
 export function dedupeNearDuplicates(docs: RetrievedDoc[]): RetrievedDoc[] {
   const kept: RetrievedDoc[] = [];
   const fingerprints = new Map<string, RetrievedDoc>();
@@ -100,8 +76,6 @@ export function dedupeNearDuplicates(docs: RetrievedDoc[]): RetrievedDoc[] {
   return kept;
 }
 
-// At most MAX_CHUNKS_PER_PARENT chunks per parent section survive a pass —
-// mirrors _limit_parent_occupancy (chunks without a parent_id are untouched).
 export function limitPerParent(docs: RetrievedDoc[]): RetrievedDoc[] {
   const counts = new Map<string, number>();
   const kept: RetrievedDoc[] = [];
@@ -115,15 +89,12 @@ export function limitPerParent(docs: RetrievedDoc[]): RetrievedDoc[] {
   return kept;
 }
 
-// --- Heuristic rerank (DevFlow-AI services/rag/rerank.py) -------------------
-
 function clip01(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.min(1, Math.max(0, value));
 }
 
 function normalizeScores(docs: RetrievedDoc[]): number[] {
-  // Python _normalise_scores: min-max across the candidate list.
   if (docs.length === 0) return [];
   let min = Infinity;
   let max = -Infinity;
@@ -137,8 +108,6 @@ function normalizeScores(docs: RetrievedDoc[]): number[] {
   return docs.map((doc) => (doc.score - min) / (max - min));
 }
 
-// Candidate text = title + path + content (Python _candidate_text uses
-// title/path/snippet; here doc_name or path stand in for title/path).
 function candidateFields(doc: RetrievedDoc): {
   title: string;
   path: string;
@@ -161,14 +130,6 @@ export interface HeuristicRanked {
   rankReason: string;
 }
 
-// Port of _heuristic_score. The Python weights assume separate vector/keyword
-// scores from the weighted fusion pipeline; Milvus returns a single fused
-// (RRF rank) score, which carries far less information than a calibrated
-// relevance score — so the vector/keyword weights are folded into the
-// content-coverage component (0.20+0.16 → coverage 0.33) and only the 0.31
-// `base` term keeps the normalized fusion order as a tie-breaker. Everything
-// else (coverage math, title/path hits, phrase 0.12, source 0.08, dual-recall
-// 0.05, freshness, source-type 0.03, rank_reason) is ported 1:1.
 export function heuristicScore(
   query: string,
   doc: RetrievedDoc,
@@ -200,7 +161,7 @@ export function heuristicScore(
     compactQuery !== "" && text.includes(compactQuery) ? 0.12 : 0;
   const sourceBonus = new Set(matched).size >= 2 ? 0.08 : 0;
   const base = clip01(normalizedScore);
-  const dualRecallBonus = 0.05; // fused candidates are dual-recall by construction
+  const dualRecallBonus = 0.05;
   const freshnessBonus = freshness(doc);
   const sourceType = String(doc.metadata.source_type ?? "").toLowerCase();
   const sourceTypeBonus =
@@ -245,10 +206,6 @@ function freshness(doc: RetrievedDoc): number {
   return 0;
 }
 
-// Port of rerank_documents: rerank the head (top RERANK_TOP_N or limit), keep
-// the tail in fusion order, cut to limit. Returns docs with score replaced by
-// the heuristic score; rank_reason is stamped into a side map the callers can
-// surface.
 export function heuristicRerank(
   query: string,
   docs: RetrievedDoc[],
@@ -273,13 +230,6 @@ export function heuristicRerank(
   return { ranked: [...rankedHead, ...tail].slice(0, limit), reasons };
 }
 
-// --- Sibling expansion -------------------------------------------------------
-
-// Port of expand_parent_context (neighbor_window=1). The chunker stamps each
-// indexed chunk with its parent's neighboring chunk ids in child order
-// (metadata.sibling_ids = [prevId | "", currentId, nextId | ""]); a hit is
-// replaced by the concatenation of itself + its immediate siblings, ordered
-// and deduped by fingerprint. Best-effort: fetch failures leave hits untouched.
 export async function expandSiblings(
   docs: RetrievedDoc[],
 ): Promise<RetrievedDoc[]> {

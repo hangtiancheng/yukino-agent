@@ -1,14 +1,4 @@
 "use client";
-// Active-alerts drawer for the OnCall page — restores the legacy alert panel
-// surface (agent_py api/app.py:1417-1434 GET /aiops/alerts/active + the
-// per-alert AI Ops diagnostic entry app.py:1384-1415; audit gaps G3/G4: the
-// migrated product had neither an alert list nor a per-alert entry point).
-//
-// Three tabs: live firing alerts (severity/service chips, one-click "diagnose
-// this alert" posting the normalized alert to /api/ai_ops), the persisted
-// run history (GET /api/ai_ops/runs; the detail reuses MdRender, the same
-// markdown renderer the chat reports use), and the structured diagnostic-case
-// library (GET /api/diagnostic_cases, legacy AiopsCaseLibrary).
 import { useCallback, useEffect, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { motion } from "motion/react";
@@ -25,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import MdRender from "@/components/md-render";
 
-// Server items are the snake_case Alert fields (lib/ai/alerts.ts).
 const alertSchema = z.object({
   alert_name: z.string(),
   description: z.string(),
@@ -116,9 +105,7 @@ export interface AiOpsReportPayload {
 }
 
 interface ActiveAlertsPanelProps {
-  /** A chat/AI-Ops stream is active — diagnose buttons pause. */
   disabled: boolean;
-  /** Hand a finished report to the chat transcript (same shape as AI Ops). */
   onReport: (report: AiOpsReportPayload) => void;
   onNotify: (
     message: string,
@@ -126,8 +113,6 @@ interface ActiveAlertsPanelProps {
   ) => void;
 }
 
-// Severity → chip classes (critical / warning / info groups; anything else
-// falls back to the muted chip). Raw label values are data, not copy.
 const SEVERITY_CLASSES: Record<string, string> = {
   critical: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
   warning: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
@@ -175,10 +160,6 @@ export default function ActiveAlertsPanel({
   const [casesLoading, setCasesLoading] = useState(false);
   const [expandedCaseId, setExpandedCaseId] = useState<string | null>(null);
 
-  // Fetches live in inline async IIFEs (react-hooks/set-state-in-effect);
-  // manual reloads bump reloadKey. Callback props are intentionally NOT in
-  // these deps — panel state is self-contained, toasts only come from the
-  // diagnose handler.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -323,8 +304,6 @@ export default function ActiveAlertsPanel({
   );
 
   return (
-    // Bottom-right drawer over the chat surface; the toggle stays reachable
-    // while the panel is open.
     <div className="pointer-events-none fixed right-4 bottom-4 z-20 flex flex-col items-end gap-2">
       {open && (
         <motion.div

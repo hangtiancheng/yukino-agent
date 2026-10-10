@@ -1,7 +1,5 @@
 "use client";
 
-// Backend-free A2UI verification page: renders every shadcn extension
-// component from a canned message set through the real catalog pipeline.
 import { useCallback, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { FlaskConical } from "lucide-react";

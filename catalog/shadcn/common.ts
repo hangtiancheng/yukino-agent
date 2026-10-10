@@ -8,10 +8,6 @@ import {
 
 import { ICON_MAP } from "@/catalog/components/icon";
 
-// Shared props mirroring the basic catalog's CommonProps: every extension
-// schema spreads this so agents can use the same common fields everywhere.
-// `accessibility` is accepted for catalog parity but intentionally not
-// rendered (see AGENTS.md).
 export const COMMON = {
   weight: z
     .number()

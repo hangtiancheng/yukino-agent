@@ -1,19 +1,8 @@
-// Supports both OpenAI-compatible providers (OpenAI, etc.) and Anthropic.
-// Select provider via LLM_PROVIDER env var: "openai" (default) | "anthropic".
-// 'think' is used for planner/replanner, 'quick' is used for executor/chat.
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { config } from "@/lib/config";
 import type { LanguageModel } from "ai";
 
-// Some Anthropic-compatible gateways emit `thinking` content blocks WITHOUT the
-// `signature` field that the official Anthropic API always includes.
-// @ai-sdk/anthropic v4 marks `signature` as REQUIRED on non-streaming message
-// responses (anthropicResponseSchema), so the SDK rejects the body with
-// "Invalid JSON response" — which surfaces to the HTTP client as an EMPTY error
-// message. This fetch wrapper backfills the missing `signature` before the SDK
-// parses the body. Streaming (SSE) responses are passed through unchanged
-// because the streaming chunk schema does not require `signature`.
 function createAnthropicFetch(): typeof globalThis.fetch {
   const baseFetch = globalThis.fetch;
   return async (input, init) => {
@@ -40,14 +29,10 @@ function createAnthropicFetch(): typeof globalThis.fetch {
         }
         if (changed) patched = JSON.stringify(json);
       }
-    } catch {
-      // Not valid JSON or unexpected shape — return original body unchanged.
-    }
+    } catch {}
 
     const headers = new Headers(res.headers);
     if (patched !== body) {
-      // Body bytes changed; drop length/encoding headers so the new Response
-      // is internally consistent.
       headers.delete("content-length");
       headers.delete("content-encoding");
     }
@@ -60,7 +45,6 @@ function createAnthropicFetch(): typeof globalThis.fetch {
 }
 
 function resolveThinkModel(): LanguageModel {
-  // Anthropic
   if (config.provider === "anthropic") {
     const provider = createAnthropic({
       baseURL: config.anthropic.think.baseURL,
@@ -69,7 +53,6 @@ function resolveThinkModel(): LanguageModel {
     });
     return provider(config.anthropic.think.model);
   }
-  // OpenAI
   const provider = createOpenAI({
     baseURL: config.openai.think.baseURL,
     apiKey: config.openai.think.apiKey,
@@ -78,7 +61,6 @@ function resolveThinkModel(): LanguageModel {
 }
 
 function resolveQuickModel(): LanguageModel {
-  // Anthropic
   if (config.provider === "anthropic") {
     const provider = createAnthropic({
       baseURL: config.anthropic.quick.baseURL,
@@ -87,7 +69,6 @@ function resolveQuickModel(): LanguageModel {
     });
     return provider(config.anthropic.quick.model);
   }
-  // OpenAI
   const provider = createOpenAI({
     baseURL: config.openai.quick.baseURL,
     apiKey: config.openai.quick.apiKey,
@@ -95,11 +76,9 @@ function resolveQuickModel(): LanguageModel {
   return provider.chat(config.openai.quick.model);
 }
 
-// ToolCallingChatModel (LanguageModelV4), used for streamText/generateText
 export const thinkModel = resolveThinkModel();
 export const quickModel = resolveQuickModel();
 
-// Anthropic provider options for extended thinking (mirrors yukino/src/llm/anthropic.ts L310-322)
 export const providerOptions =
   config.provider === "anthropic"
     ? {

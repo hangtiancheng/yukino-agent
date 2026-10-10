@@ -1,20 +1,3 @@
-// DevFlow skill registry — port of the legacy DevFlow-AI skill system
-// (services/skills/registry.py + routes/skills.py). Skills are SKILL.md files
-// with a YAML frontmatter manifest; the chat agent activates them by intent
-// (trigger keywords) or explicit request and injects the matching workflow
-// instructions into the system prompt (progressive disclosure of curated
-// engineering playbooks).
-//
-// Divergences from legacy, recorded honestly:
-//   - The legacy `entrypoint` mapped a skill to a Python agent tool and drove
-//     entrypoint-activation + a per-skill tool allow-list inside the custom
-//     LangGraph agent. This stack's chat runs on AI SDK tools, so entrypoints
-//     are kept as manifest metadata (catalog/trace) but activation is
-//     trigger/explicit only and the tool allow-list is advisory (surfaced in
-//     the injected instructions), not a hard runtime gate.
-//   - The legacy `/api/skills/mcp-status` probed the stdio MCP memory
-//     subprocess, which is replaced by in-process tools here (Yukino.md #25),
-//     so that probe is not ported.
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
@@ -93,7 +76,6 @@ function asString(value: unknown, fallback: string): string {
     : fallback;
 }
 
-// Split a SKILL.md into its YAML frontmatter mapping and markdown body.
 function splitFrontmatter(
   text: string,
   file: string,
@@ -165,9 +147,6 @@ async function loadSkill(file: string): Promise<SkillDefinition> {
   };
 }
 
-// Score a message against a skill's triggers (legacy _activation_score):
-// ASCII triggers match on word boundaries, other triggers (e.g. CJK) match as
-// substrings; longer triggers weigh more, capped at 8.
 function activationScore(message: string, skill: SkillDefinition): number {
   const lowered = message.toLowerCase();
   let score = 0;
@@ -216,7 +195,6 @@ export class SkillRegistry {
     return this.byName.get(name.trim().toLowerCase());
   }
 
-  // Lightweight catalog for the system prompt (legacy prompt_context).
   promptContext(): string {
     if (this.skills.length === 0) return "No DevFlow skills are registered.";
     return this.skills
@@ -230,8 +208,6 @@ export class SkillRegistry {
       .join("\n");
   }
 
-  // Activate skills for a message: explicit request wins, otherwise the
-  // top-scoring trigger matches (legacy SkillRegistry.activate).
   async activate(
     message: string,
     requestedName?: string | null,
@@ -326,10 +302,6 @@ export class SkillRegistry {
     };
   }
 
-  // Load resources referenced from the instructions as `references/...`,
-  // `templates/...`, `scripts/...` or `assets/...` (legacy
-  // _load_referenced_resources): path-guarded to the skill directory, capped at
-  // 8 references / 64 KiB each, text-only content inlined.
   private async loadReferencedResources(
     skill: SkillDefinition,
   ): Promise<
@@ -397,7 +369,6 @@ export class SkillRegistry {
     return resources;
   }
 
-  // Render activated skills as a system-prompt block (legacy _active_skill_prompt).
   static renderPromptBlock(
     activations: SkillActivation[],
     maxChars = 24_000,
@@ -430,8 +401,6 @@ export class SkillRegistry {
 
 let cachedRegistry: SkillRegistry | null = null;
 
-// Load the registry from data/devflow-skills/*/SKILL.md. A missing directory
-// yields an empty registry (skills are an enhancement, never a hard failure).
 export async function getSkillRegistry(): Promise<SkillRegistry> {
   if (cachedRegistry) return cachedRegistry;
   let entries: string[] = [];
@@ -448,15 +417,12 @@ export async function getSkillRegistry(): Promise<SkillRegistry> {
       const s = await stat(file);
       if (!s.isFile()) continue;
       skills.push(await loadSkill(file));
-    } catch {
-      // Skip directories without a SKILL.md.
-    }
+    } catch {}
   }
   cachedRegistry = new SkillRegistry(skills);
   return cachedRegistry;
 }
 
-// Test/reset hook (mirrors the legacy lru_cache clear).
 export function resetSkillRegistry(): void {
   cachedRegistry = null;
 }

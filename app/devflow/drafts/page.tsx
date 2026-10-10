@@ -1,9 +1,5 @@
 "use client";
 
-// Action Drafts: the human confirmation gate for every GitHub write. Agents
-// only ever create drafts; executing one performs the real API call. The page
-// also surfaces the (previously write-only) audit trail — legacy
-// action_drafts.py:115-124 exposed it as GET /audit-logs.
 import { useEffect, useState } from "react";
 import { useFormatter, useTranslations, type Messages } from "next-intl";
 import {
@@ -48,8 +44,6 @@ import type { ActionDraft } from "@/lib/devflow/types";
 
 type DraftTypeKey = keyof Messages["devflow"]["drafts"]["type"];
 
-// GET /api/devflow/audit-logs row shape (mirrors the legacy AuditLogResponse,
-// schemas/action_drafts.py:42-55, plus the acting user's name).
 interface AuditRow {
   id: string;
   userId: string | null;
@@ -62,8 +56,6 @@ interface AuditRow {
   createdAt: string;
 }
 
-// Audit status values → typed message keys (unknown values fall back to the
-// raw status string, same table style as the badges module).
 type AuditStatusKey = "statusSuccess" | "statusFailed" | "statusDenied";
 const AUDIT_STATUS_KEYS: Record<string, AuditStatusKey | undefined> = {
   success: "statusSuccess",
@@ -71,14 +63,11 @@ const AUDIT_STATUS_KEYS: Record<string, AuditStatusKey | undefined> = {
   denied: "statusDenied",
 };
 
-// API draft types → typed message keys; unknown types fall back to the raw
-// draftType string.
 const DRAFT_TYPE_KEYS: Record<string, DraftTypeKey | undefined> = {
   issue_comment: "issueComment",
   create_issue: "createIssue",
   close_issue: "closeIssue",
   add_labels: "addLabels",
-  // legacy action_drafts.py:60-61 fifth type: confirm records the send.
   send_report: "sendReport",
 } as const;
 
@@ -94,7 +83,6 @@ export default function DevflowDraftsPage() {
   const [acting, setActing] = useState(false);
   const [executeTarget, setExecuteTarget] = useState<ActionDraft | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  // Audit trail panel (B-7): collapsed by default, loads on expand/reload.
   const [auditOpen, setAuditOpen] = useState(false);
   const [audits, setAudits] = useState<AuditRow[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
@@ -104,8 +92,6 @@ export default function DevflowDraftsPage() {
     return key ? t(`type.${key}`) : draftType;
   };
 
-  // Fetch lives in an inline async IIFE — see the note in provider.tsx
-  // (react-hooks/set-state-in-effect). Manual reloads bump reloadKey.
   useEffect(() => {
     let cancelled = false;
     (async () => {

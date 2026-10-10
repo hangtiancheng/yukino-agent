@@ -37,8 +37,6 @@ function toIsoDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-// Official shadcn date-picker time pattern: suppress the native picker
-// indicator so only the styled input remains.
 const TIME_INPUT_CLASSES =
   "appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none";
 
@@ -70,7 +68,6 @@ export const DateTimeInput = createComponentImplementation(
         : []),
     ];
 
-    // A time bound only applies on the bound's own day (or in time-only mode).
     const timeBound = (bound: { date: string; time: string }) =>
       bound.time && (!enableDate || (date && date === bound.date))
         ? bound.time

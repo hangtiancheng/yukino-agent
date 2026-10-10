@@ -1,8 +1,3 @@
-// PATCH /api/devflow/repos/:id/memory-candidates/:candidateId
-//   {action: "approve" | "reject"} — human review of a memory candidate
-// (legacy routes/knowledge.py approve/reject endpoints). Approving writes the
-// content into the repo knowledge base as a `memory_note` document; KB
-// indexing is best-effort (kbStatus/kbError report the outcome).
 import { prisma } from "@/lib/db";
 import {
   approveMemoryCandidate,

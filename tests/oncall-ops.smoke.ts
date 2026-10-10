@@ -1,19 +1,3 @@
-/**
- * Offline smoke for the OnCall ops surface restored from agent_py:
- *   1. Alertmanager v2 → normalized ActiveAlert mapping (alerts.py:225-263);
- *   2. multi-source aggregation: cross-source same-name dedup, per-source
- *      failure tolerance and basic-auth headers (alerts.py:114-124, 189-193)
- *      — all through an injected fetch stub, no network;
- *   3. AI Ops request-body normalization: {query?, alert?} → the targeted
- *      diagnosis query (app.py:1384-1415 input surface, gap G3);
- *   4. report structure guardrail: cleanMarkdownReport validation + the
- *      deterministic fallback template (diagnostics.py:1087-1247), plus the
- *      executor "discovered tools only" guard (diagnostics.py:829-863);
- *   5. SKILL.md frontmatter validation (configuration.py:91-145);
- *   6. readiness check aggregation with injected fake checkers
- *      (app.py:423-429 /ready semantics).
- * Run: npx tsx tests/oncall-ops.smoke.ts
- */
 import assert from "node:assert/strict";
 
 import {
@@ -57,7 +41,6 @@ const alertmanagerPayload = [
     annotations: {
       summary: "checkout error ratio above 5%",
       context_url: "https://dash.example/high-error-rate",
-      // non-string annotation values must be dropped (legacy _string_mapping)
       value: 42,
     },
     startsAt: "2026-10-06T08:00:00Z",
@@ -79,7 +62,6 @@ const alertmanagerPayload = [
   },
 ];
 
-// ---- 1. Alertmanager v2 → normalized Alert ----
 {
   const alerts = parseAlertmanagerAlerts(alertmanagerPayload, "am-main");
   assert.equal(alerts.length, 1, "only the active alert survives the filter");
@@ -96,7 +78,6 @@ const alertmanagerPayload = [
   assert.equal(a.annotations["value"], undefined);
 }
 
-// normalizeAlert drops non-firing/active states and unnamed alerts.
 {
   assert.equal(
     normalizeAlert(
@@ -123,7 +104,6 @@ const alertmanagerPayload = [
   assert.equal(normalizeAlert({ labels: {}, state: "firing" }, "p"), null);
 }
 
-// Prometheus v1 envelope: status must be success.
 {
   const prom = parsePrometheusAlerts(
     {
@@ -148,7 +128,6 @@ const alertmanagerPayload = [
   );
 }
 
-// ---- 2. multi-source aggregation via injected fetch stub ----
 {
   const amSource: AlertSourceConfig = {
     name: "am-main",
@@ -187,8 +166,6 @@ const alertmanagerPayload = [
         data: {
           alerts: [
             {
-              // Same alertname as the alertmanager source — dedup keeps the
-              // first (sorted by source name: "am-main" < "prom-legacy").
               labels: { alertname: "HighErrorRate", severity: "critical" },
               annotations: { description: "from prometheus" },
               state: "firing",
@@ -237,7 +214,6 @@ const alertmanagerPayload = [
     "http://127.0.0.1:9090/api/v1/alerts",
   );
 
-  // Half-configured credentials fail THAT source only (alerts.py:158-161).
   const halfCreds = await aggregateAlerts({
     sources: [{ ...amSource, password: undefined }],
     fetch: stub,
@@ -245,7 +221,6 @@ const alertmanagerPayload = [
   assert.equal(halfCreds.anySourceOk, false);
   assert.match(halfCreds.sourceErrors[0]?.error ?? "", /username and password/);
 
-  // All sources dead → anySourceOk false (the legacy "raise" condition).
   const allDead = await aggregateAlerts({
     sources: [deadSource],
     fetch: stub,
@@ -254,8 +229,6 @@ const alertmanagerPayload = [
   assert.equal(allDead.alerts.length, 0);
 }
 
-// ALERT_SOURCES parsing: valid JSON → sources; garbage/empty → single
-// prometheus fallback over PROMETHEUS_BASE_URL (existing behavior).
 {
   const parsed = parseAlertSources(
     '[{"name":"a","type":"alertmanager","baseUrl":"http://a:9093"}]',
@@ -269,7 +242,6 @@ const alertmanagerPayload = [
   assert.deepEqual(dedupeAlerts([]), []);
 }
 
-// ---- 3. AI Ops body normalization (G3) ----
 {
   const sweep = buildAiOpsQuery({});
   assert.equal(sweep.alert, null);
@@ -304,7 +276,6 @@ const alertmanagerPayload = [
   assert.match(combined.query, /payment shard/);
 }
 
-// ---- 4. report validation + deterministic fallback ----
 {
   const good = [
     "# 告警分析报告",
@@ -346,7 +317,6 @@ const alertmanagerPayload = [
   );
   assert.match(fallback, /1\. step one output/);
   assert.match(fallback, /## 活跃告警列表/);
-  // The fallback must itself pass validation — the guardrail floor.
   assert.ok(
     AIOPS_REPORT_REQUIRED_MARKERS.every((marker) => fallback.includes(marker)),
   );
@@ -358,7 +328,6 @@ const alertmanagerPayload = [
   assert.notEqual(cleanMarkdownReport(emptyRun), null);
 }
 
-// ---- executor discovered-tools guard ----
 {
   const known = ["query_prometheus_alerts", "query_internal_docs"];
   assert.deepEqual(
@@ -390,7 +359,6 @@ const alertmanagerPayload = [
   );
 }
 
-// ---- 5. SKILL.md frontmatter validation (configuration.py:91-145) ----
 {
   const skill = validateSkillMarkdown(
     [
@@ -467,7 +435,6 @@ const alertmanagerPayload = [
   assert.equal(validateChatPrompt("n".repeat(161), "y").ok, false);
 }
 
-// ---- 6. readiness aggregation with fake checkers ----
 {
   const ready = await runReadinessChecks({
     postgres: async () => ({ ok: true, detail: "up" }),

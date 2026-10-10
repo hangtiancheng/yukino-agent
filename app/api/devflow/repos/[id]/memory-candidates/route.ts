@@ -1,7 +1,3 @@
-// POST /api/devflow/repos/:id/memory-candidates — propose a pending memory
-//   candidate (legacy routes/knowledge.py memory candidate pipeline).
-// GET  /api/devflow/repos/:id/memory-candidates?status=&limit= — list
-//   candidates; status defaults to "pending" (legacy list_memory_candidates).
 import { prisma } from "@/lib/db";
 import {
   listMemoryCandidates,
@@ -68,7 +64,6 @@ export async function POST(request: Request, context: RouteContext) {
       kind,
       title,
       content,
-      // Manual/API proposals are agent-surfaced candidates awaiting review.
       origin: "chat_agent",
     });
     return ok(result, result.deduped ? 200 : 201);

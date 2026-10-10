@@ -1,20 +1,8 @@
-/**
- * Schema modifiers applied to schemas before prompt rendering.
- *
- * Ported from the A2UI Python agent SDK `a2ui/schema/common_modifiers.py` and
- * the modifier application in `DirectJsonFormat._load_schemas`.
- */
-
 import type { A2uiCatalogSchemas, JsonObject, JsonValue } from "./types";
 import { isJsonObject } from "./types";
 
 export type SchemaModifier = (schema: JsonValue) => JsonValue;
 
-/**
- * Removes closed-object constraints (`additionalProperties: false` and
- * `unevaluatedProperties: false`), which make LLM output fail validation on
- * harmless extra keys.
- */
 export function removeStrictValidation(schema: JsonValue): JsonValue {
   if (isJsonObject(schema)) {
     const newSchema: JsonObject = {};
@@ -35,7 +23,6 @@ export function removeStrictValidation(schema: JsonValue): JsonValue {
   return schema;
 }
 
-/** Applies modifiers to all three catalog schemas, like `_load_schemas`. */
 export function applySchemaModifiers(
   catalog: A2uiCatalogSchemas,
   modifiers: SchemaModifier[],

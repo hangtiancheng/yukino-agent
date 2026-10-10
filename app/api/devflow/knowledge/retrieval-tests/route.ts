@@ -1,7 +1,3 @@
-// Retrieval tests (port of legacy routes/rag.py:296-350 — run a query
-// through the scoped pipeline and persist the run for history).
-// POST {repoId, query, topK?} — executes, stores a RetrievalTestRun, returns it.
-// GET ?repoId=&limit= — most recent runs (default 20).
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
 import { kbFilter, getKnowledgeConfig } from "@/lib/devflow/rag";
@@ -88,7 +84,6 @@ export async function POST(request: Request) {
       excerpt: doc.content.slice(0, 500),
     }));
 
-    // Snapshot of what this run used (legacy retrieval_config trace).
     const retrievalConfig = {
       scope: "knowledge_base",
       retrievalMethod: config.retrievalMethod,

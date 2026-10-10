@@ -1,6 +1,3 @@
-// Plan-Execute-Replan event types.
-// Nodes emit these payloads through the LangGraph "custom" stream; the driver
-// in index.ts re-validates them at the stream boundary before yielding.
 import { z } from "zod/v4";
 
 export const PlanExecuteEventSchema = z.discriminatedUnion("type", [

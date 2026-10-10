@@ -1,12 +1,3 @@
-// POST /api/devflow/webhooks/github — inbound GitHub webhook. Verifies the
-// HMAC-SHA256 signature (when GITHUB_WEBHOOK_SECRET is set) and schedules a
-// background re-sync for connected repositories on relevant events. Port of the
-// Python webhooks route.
-//
-// The sync is fire-and-forget (mirrors FastAPI BackgroundTasks): it keeps the
-// webhook response fast so GitHub does not retry. This assumes a long-lived Node
-// server; on serverless deployments the detached promise may be frozen after
-// the response — use the periodic scheduler or the manual sync endpoint there.
 import { createHmac, timingSafeEqual } from "crypto";
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
@@ -26,7 +17,6 @@ const SYNC_EVENTS = new Set([
 
 function verifySignature(body: Buffer, signature: string | null): boolean {
   const secret = config.github.webhookSecret;
-  // Unconfigured secret = verification disabled (local development only).
   if (!secret) return true;
   if (!signature || !signature.startsWith("sha256=")) return false;
   const expected = createHmac("sha256", secret).update(body).digest("hex");

@@ -1,13 +1,3 @@
-/**
- * A2UI Express inference format system prompt generator.
- *
- * Ported from the A2UI Python agent SDK `ExpressPromptGenerator`
- * (`a2ui/inference_formats/experimental/express/prompt_generator.py`).
- * Compiles catalog schemas into compact positional plain-text signatures.
- * (Few-shot example decompilation to Express DSL is not ported; provide
- * examples already formatted as Express DSL.)
- */
-
 import { withPruning } from "./pruning";
 import { CatalogSchemaHelper, findSchemaEnum } from "./schema-helper";
 import type {
@@ -80,7 +70,6 @@ The host compiler will compile your A2UI Express output into the correct JSON en
     surface("dashboard-surface-1")
     root = Card(...)`;
 
-/** Checks if a JSON schema allows data binding (DynamicString/DataBinding, etc). */
 function schemaAllowsDatabinding(
   propSchema: JsonValue | null | undefined,
 ): boolean {
@@ -113,9 +102,6 @@ function subKeyLines(properties: JsonObject): string[] {
   });
 }
 
-/**
- * Generates system prompt contracts guiding models to produce A2UI Express.
- */
 export class ExpressPromptGenerator implements PromptGenerator {
   private readonly catalog: A2uiCatalogSchemas;
   private helper: CatalogSchemaHelper;
@@ -125,7 +111,6 @@ export class ExpressPromptGenerator implements PromptGenerator {
     this.helper = new CatalogSchemaHelper(catalog.catalogSchema);
   }
 
-  /** Compiles component definitions into clean function-like signatures. */
   generateComponentSignatures(): string {
     const signatures: string[] = [];
     for (const name of Object.keys(this.helper.componentProperties).sort()) {
@@ -171,7 +156,6 @@ export class ExpressPromptGenerator implements PromptGenerator {
           propDetails.push(`  - ${p}: ${lineParts.join(" ")}`);
         }
 
-        // Describe nested object structures (maps and lists of maps).
         if (propSchema) {
           if (
             propSchema["type"] === "object" &&
@@ -225,7 +209,6 @@ export class ExpressPromptGenerator implements PromptGenerator {
     return signatures.join("\n");
   }
 
-  /** Compiles function definitions into clean signatures. */
   generateFunctionSignatures(): string {
     const signatures: string[] = [];
     for (const name of Object.keys(this.helper.functionProperties).sort()) {
@@ -275,7 +258,6 @@ export class ExpressPromptGenerator implements PromptGenerator {
     return signatures.join("\n");
   }
 
-  /** Assembles the system prompt component catalog signatures block. */
   catalogDescription(includeSchema = true): string {
     if (!includeSchema) return "";
 
@@ -300,8 +282,6 @@ export class ExpressPromptGenerator implements PromptGenerator {
   }
 
   generate(options: SystemPromptOptions): string {
-    // Mirror the Python implementation: pruning starts from the original
-    // catalog on every call and is never written back.
     let catalog = this.catalog;
     if (options.allowedComponents?.length || options.allowedMessages?.length) {
       catalog = withPruning(

@@ -1,6 +1,3 @@
-// Smoke test for DevFlow Category B project-indexing (non-embedding parts):
-// discovery, classification, summary building, and structure-aware chunking
-// against a real checkout. Run: npx tsx tests/devflow-b.smoke.ts <checkoutDir>
 import { discoverProjectDocs, buildSummary } from "@/lib/devflow/project-index";
 import { chunkDocument } from "@/lib/devflow/chunking";
 
@@ -25,7 +22,6 @@ async function main() {
   console.log("topDirs:", JSON.stringify(summary.topDirs));
   console.log("coverage:", JSON.stringify(summary.sourceTypeCoverage));
 
-  // Prove structure-aware chunking works on a discovered doc (readme).
   const readme = docs.find((d) => d.sourceType === "readme");
   if (readme) {
     const { readFile } = await import("node:fs/promises");

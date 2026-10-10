@@ -1,12 +1,3 @@
-/**
- * A2UI system prompt generators for the shadcn catalog.
- *
- * Ports the four inference-format prompt generators of the A2UI Python agent
- * SDK (Direct JSON, Elemental, Atom, Express) to TypeScript, wired to the
- * shadcn catalog (`packages/shadcn/catalog.json`) and the A2UI v0.9 protocol
- * schemas by default.
- */
-
 import { AtomPromptGenerator } from "./atom";
 import { DirectJsonPromptGenerator } from "./direct-json";
 import { ElementalPromptGenerator } from "./elemental";
@@ -58,14 +49,12 @@ export type {
   SystemPromptOptions,
 } from "./types";
 
-/** The shadcn catalog paired with the A2UI v0.9 protocol schemas. */
 export const SHADCN_PROMPT_CATALOG: A2uiCatalogSchemas = {
   s2cSchema: SERVER_TO_CLIENT_SCHEMA,
   commonTypesSchema: COMMON_TYPES_SCHEMA,
   catalogSchema: SHADCN_CATALOG_SCHEMA,
 };
 
-/** The catalog id of the embedded shadcn catalog. */
 export const SHADCN_CATALOG_ID = SHADCN_CATALOG_SCHEMA["catalogId"] as string;
 
 export type A2uiInferenceFormat =
@@ -87,10 +76,6 @@ export function createPromptGenerator(
   }
 }
 
-/**
- * Generates a complete system prompt in the requested inference format for
- * the given catalog (the shadcn catalog by default).
- */
 export function generateSystemPrompt(
   format: A2uiInferenceFormat,
   options: SystemPromptOptions,

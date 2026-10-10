@@ -1,6 +1,3 @@
-// English prompts for the DevFlow agents, ported from the original Python
-// prompt module (backend/app/services/llm/prompts.py).
-
 export const AI_META_RULES = `Shared meta-rules:
 - State the conclusion first, then the WHY; every key conclusion must trace back to input evidence, context, or an explicit rule.
 - When uncertain, expose the uncertainty instead of guessing; when a key premise is missing, lower confidence and list what must be clarified.

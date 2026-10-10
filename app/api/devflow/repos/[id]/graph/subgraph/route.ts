@@ -1,7 +1,3 @@
-// GET /api/devflow/repos/:id/graph/subgraph?fromType=&fromId=&depth= —
-// BFS neighborhood around a node, ≤2 hops / 72 nodes (legacy
-// knowledge_graph_payload center branch, services/knowledge_graph.py:92-138;
-// depth bounds ge=1 le=2 like routes/knowledge.py:349).
 import { prisma } from "@/lib/db";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 import {

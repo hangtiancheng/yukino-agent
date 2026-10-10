@@ -1,6 +1,3 @@
-// GET  /api/devflow/drafts?repoId=&status= — list action drafts.
-// POST /api/devflow/drafts — create a draft manually (agents create their own).
-// legacy action_drafts.py:66-97 also records an audit row on manual creation.
 import { prisma } from "@/lib/db";
 import { DraftCreateSchema } from "@/lib/devflow/schemas";
 import { ensureDemoUser, writeAuditLog } from "@/lib/devflow/permissions";
@@ -72,9 +69,6 @@ export async function POST(request: Request) {
         riskLevel: input.riskLevel,
       },
     });
-    // legacy action_drafts.py:86-94 (action_draft.create + request_json).
-    // Named `draft:create` to match this port's draft:<action> convention
-    // (see drafts/[id]); auditing must not break the create itself.
     const user = await ensureDemoUser().catch(() => null);
     await writeAuditLog({
       user,

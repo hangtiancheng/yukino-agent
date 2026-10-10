@@ -1,7 +1,5 @@
 "use client";
 
-// Pull Requests: master-detail workspace with AI review of diffs, files and
-// existing review comments.
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -43,9 +41,6 @@ import type {
   PullSummary,
 } from "@/lib/devflow/types";
 
-// Client-side mirror of lib/devflow/content-index.ts ReviewChecklistResult
-// (POST /api/devflow/pulls/:id/review-checklist); the lib module owns runtime
-// prisma/milvus imports, so only the shape is mirrored here.
 type ChecklistSeverity = "P1" | "P2" | "P3";
 
 interface ChecklistFinding {
@@ -99,13 +94,10 @@ export default function DevflowPullsPage() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  // Deterministic pre-merge checklist (POST /pulls/:id/review-checklist)
   const [checklist, setChecklist] = useState<ReviewChecklist | null>(null);
   const [checklistLoading, setChecklistLoading] = useState(false);
   const [checklistOpen, setChecklistOpen] = useState(false);
 
-  // Fetches live in inline async IIFEs — see the note in provider.tsx
-  // (react-hooks/set-state-in-effect). Manual reloads bump reloadKey.
   useEffect(() => {
     if (!repoId) {
       return;
@@ -144,7 +136,6 @@ export default function DevflowPullsPage() {
     let cancelled = false;
     (async () => {
       setReviewLoading(true);
-      // The checklist dialog belongs to the previous selection, so it resets.
       setChecklist(null);
       setChecklistOpen(false);
       try {

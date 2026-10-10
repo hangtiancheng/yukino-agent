@@ -1,9 +1,3 @@
-// GET  /api/devflow/repos/:id/graph — whole-graph summary: node/edge counts,
-//      relation distribution and the most recent edges (legacy GET
-//      /{repo_id}/knowledge/graph stats slice, routes/knowledge.py:344-355).
-// POST /api/devflow/repos/:id/graph {action:"rebuild"} — full rebuild
-//      (legacy POST /{repo_id}/knowledge/graph/rebuild,
-//      routes/knowledge.py:358-362).
 import { prisma } from "@/lib/db";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 import {

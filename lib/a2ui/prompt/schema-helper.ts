@@ -1,16 +1,6 @@
-/**
- * Dynamic schema crawler for A2UI catalogs.
- *
- * Ported from the A2UI Python agent SDK `CatalogSchemaHelper`
- * (`a2ui/inference_formats/experimental/express/schema_helper.py`) combined
- * with the component/function selection rules of `Catalog.from_json`
- * (`a2ui/core/catalog/catalog.py`).
- */
-
 import type { JsonObject, JsonValue } from "./types";
 import { isJsonObject } from "./types";
 
-/** Recursively finds enum definitions inside a JSON schema (oneOf/anyOf aware). */
 export function findSchemaEnum(
   propSchema: JsonValue | undefined,
 ): JsonValue[] | null {
@@ -47,7 +37,6 @@ function permittedNames(
   return names;
 }
 
-/** Yields the schema itself followed by its `allOf` sub-schemas. */
 function subSchemas(schema: JsonObject): JsonObject[] {
   const subs: JsonObject[] = [schema];
   if (Array.isArray(schema["allOf"])) {
@@ -59,11 +48,8 @@ function subSchemas(schema: JsonObject): JsonObject[] {
 }
 
 export class CatalogSchemaHelper {
-  /** The raw catalog JSON schema. */
   readonly catalog: JsonObject;
-  /** Component name -> raw component schema entry. */
   readonly components: Record<string, JsonObject>;
-  /** Function name -> raw function schema entry. */
   readonly functions: Record<string, JsonObject>;
 
   readonly componentProperties: Record<string, string[]> = {};
@@ -133,9 +119,7 @@ export class CatalogSchemaHelper {
         }
       }
 
-      // Filter out structural properties `component` and `id`.
       const orderedKeys = props.filter((k) => k !== "component" && k !== "id");
-      // If it's checkable, add `checks` at the end.
       if (isCheckable) orderedKeys.push("checks");
 
       this.componentProperties[name] = orderedKeys;
@@ -226,7 +210,6 @@ export class CatalogSchemaHelper {
       : null;
   }
 
-  /** Crawls all sub-schemas of a component to retrieve a property's schema. */
   getPropertySchema(
     componentName: string,
     propertyName: string,

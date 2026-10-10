@@ -55,15 +55,7 @@ import {
   Table,
 } from "./structure";
 
-// Extension components beyond the official basic-catalog contract: every
-// shadcn/ui family from src/components/ui that is surface-embeddable.
-// Not exposed separately because they are already covered by basic entries:
-// button, card, tabs, slider, checkbox, radio-group, toggle-group, separator,
-// input, textarea, dialog. Not exposed because they are not declarative
-// surface components: sidebar (app chrome), toast (imperative), direction
-// (context provider re-export).
 export const shadcnExtensionComponents: ReactComponentImplementation[] = [
-  // display
   Alert,
   AspectRatio,
   Avatar,
@@ -76,14 +68,12 @@ export const shadcnExtensionComponents: ReactComponentImplementation[] = [
   ScrollArea,
   Skeleton,
   Spinner,
-  // structure
   Accordion,
   ButtonGroup,
   Carousel,
   Collapsible,
   Resizable,
   Table,
-  // overlays
   AlertDialog,
   ContextMenu,
   Drawer,
@@ -92,12 +82,10 @@ export const shadcnExtensionComponents: ReactComponentImplementation[] = [
   Popover,
   Sheet,
   Tooltip,
-  // navigation
   Breadcrumb,
   Menubar,
   NavigationMenu,
   Pagination,
-  // forms
   Calendar,
   Combobox,
   Command,
@@ -108,13 +96,11 @@ export const shadcnExtensionComponents: ReactComponentImplementation[] = [
   Select,
   Switch,
   Toggle,
-  // chat
   Attachment,
   Bubble,
   Marker,
   Message,
   MessageScroller,
   Questionnaire,
-  // data
   Chart,
 ];

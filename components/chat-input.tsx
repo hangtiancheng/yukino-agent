@@ -38,8 +38,6 @@ export default function ChatInput({
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // P3-9 fix: auto-resize textarea to fit content (up to ~10 lines). Kept on
-  // purpose — field-sizing-content is not shipped in every browser yet.
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;

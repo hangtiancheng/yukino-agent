@@ -1,7 +1,5 @@
 "use client";
 
-// Thin convenience wrapper over the base-ui toast manager used by the
-// DevFlow pages: notify.success / notify.error / notify.info.
 import { toast } from "@/components/ui/toast";
 
 export const notify = {

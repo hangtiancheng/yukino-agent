@@ -1,12 +1,3 @@
-// Shared HTTP helpers for the DevFlow API routes: the project-wide
-// { message, data } envelope plus CORS handling, matching the conventions of
-// the existing /api/* routes.
-//
-// Error messages are localized like every other surface: `fail()` takes an
-// api.devflow catalog key and renders it in the request's locale (yukino_locale
-// cookie → Accept-Language, resolved by i18n/request.ts). `failRaw()` is the
-// explicit escape hatch for dynamic technical diagnostics (exception text,
-// GitHub API details) that have no catalog entry.
 import { getTranslations } from "next-intl/server";
 import type { Messages } from "next-intl";
 
@@ -48,7 +39,6 @@ export function failRaw(status: number, message: string): Response {
   );
 }
 
-// Normalize unknown throwables into a client-safe message.
 export function errorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
   return String(e);

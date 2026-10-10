@@ -1,10 +1,5 @@
 "use client";
 
-// Agent Chat: streaming tool-calling chat scoped to the selected repository.
-// Conversations are persisted server-side (Category C): a per-repo sidebar lets
-// you list/create/delete/switch conversations, the transcript loads from the DB,
-// and every assistant answer can be rated helpful/unhelpful. The SSE protocol
-// matches /api/devflow/chat (connected/message/tool/done/error).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -69,9 +64,6 @@ interface ToolTrace {
   state: "running" | "done";
 }
 
-// --- Memory panel / citations client views (#25) ---------------------------
-// Shapes mirror the /api/devflow memory endpoints (lib/devflow/memory.ts).
-
 interface CitationView {
   docName: string;
   score: number;
@@ -107,7 +99,6 @@ interface MemoryCandidatePanel {
   createdAt: string;
 }
 
-// Defensive parsing: the persisted meta / SSE frames are untyped JSON.
 function parseCitations(value: unknown): CitationView[] {
   if (!Array.isArray(value)) return [];
   const citations: CitationView[] = [];
@@ -134,9 +125,6 @@ function parseCitations(value: unknown): CitationView[] {
   return citations;
 }
 
-// Typed value→key map for the candidate kind badges (locale-neutral slug in
-// the DB → catalog key), raw-kind fallback like the other enum renders
-// (same Record<string, ...> convention as components/devflow/badges.tsx).
 const CANDIDATE_KIND_KEYS: Record<
   string,
   "decision" | "fact" | "task" | "preference" | "repoContext"
@@ -168,8 +156,6 @@ const REASON_VALUES: readonly FeedbackReason[] = [
   "other",
 ];
 
-// Typed value→key map so the `reason.` template literal stays compile-time
-// checked against the agentChat catalog.
 const REASON_KEYS = {
   inaccurate: "inaccurate",
   not_relevant: "notRelevant",
@@ -189,18 +175,12 @@ function toTurn(message: ChatMessageView): ChatTurn {
       state: "done",
     })),
     feedback: message.feedback,
-    // Citation chips survive reloads via the persisted meta (#25).
     citations: parseCitations(message.meta.citations),
-    // B-3: persisted failure turns re-render with the error styling.
     error: message.meta.error === true,
     streaming: false,
   };
 }
 
-// An SSE error frame is either the agent's single-line JSON
-// {message, assistantMessageId?} (the failure turn is already persisted
-// server-side — render it inline and keep the feedback anchor) or the raw
-// message of an unexpected throw (legacy payload).
 function parseErrorFrame(dataText: string): {
   message: string;
   assistantMessageId?: string;
@@ -222,9 +202,7 @@ function parseErrorFrame(dataText: string): {
         persisted: true,
       };
     }
-  } catch {
-    // Not a JSON frame — fall through to the raw-text handling below.
-  }
+  } catch {}
   return { message: dataText, persisted: false };
 }
 
@@ -242,10 +220,6 @@ export default function DevflowChatPage() {
 
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
-  // Context-aware suggested questions for the empty chat state (port of the
-  // legacy RecommendationAgent — pure rules over synced issues/PRs/CI, served
-  // by GET /api/devflow/repos/[id]/recommendations). Falls back to the static
-  // samples when no repo is selected or the endpoint has no data.
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [suggestionsReloadKey, setSuggestionsReloadKey] = useState(0);
   const [activeConversationId, setActiveConversationId] = useState<
@@ -260,13 +234,11 @@ export default function DevflowChatPage() {
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Feedback dialog state.
   const [ratingTarget, setRatingTarget] = useState<ChatTurn | null>(null);
   const [reason, setReason] = useState<FeedbackReason>("inaccurate");
   const [comment, setComment] = useState("");
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
-  // Memory panel state (#25): thread memory + pending candidates.
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [memory, setMemory] = useState<RepoMemoryPanel | null>(null);
   const [candidates, setCandidates] = useState<MemoryCandidatePanel[]>([]);
@@ -277,8 +249,6 @@ export default function DevflowChatPage() {
     [conversations, activeConversationId],
   );
 
-  // Load the repo's conversations. Fetch lives in an inline async IIFE (see the
-  // note in provider.tsx re: react-hooks/set-state-in-effect).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -310,8 +280,6 @@ export default function DevflowChatPage() {
     };
   }, [repoId, convReloadKey]);
 
-  // Context-aware suggested questions (legacy RecommendationAgent, pure rules):
-  // refreshed when the repo changes; falls back to the static samples on error.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -337,9 +305,6 @@ export default function DevflowChatPage() {
     };
   }, [repoId, suggestionsReloadKey]);
 
-  // Memory panel data (#25): thread memory + pending candidates for the
-  // selected repo. Fetch lives in an inline async IIFE (react-hooks
-  // set-state-in-effect rule).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -370,7 +335,6 @@ export default function DevflowChatPage() {
     };
   }, [repoId, memoryReloadKey]);
 
-  // Load the transcript of the selected conversation.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -510,8 +474,6 @@ export default function DevflowChatPage() {
                 conversationId: string;
                 userMessageId: string;
                 assistantMessageId: string;
-                // #25 citations ride the done frame when the route forwards
-                // them; the persisted meta covers reloads either way.
                 citations?: unknown;
               };
               setActiveConversationId(ids.conversationId);
@@ -538,14 +500,10 @@ export default function DevflowChatPage() {
                 }
                 return next;
               });
-              // The server may have renamed the conversation from the first
-              // user message; refresh the sidebar list.
               setConvReloadKey((k) => k + 1);
             } else if (event === "error") {
               const frame = parseErrorFrame(dataText);
               if (!frame.persisted) throw new Error(frame.message);
-              // The server already persisted the failure turn: render it with
-              // the error styling and anchor feedback on its message id.
               patchLast((turn) => ({
                 ...turn,
                 streaming: false,
@@ -553,7 +511,6 @@ export default function DevflowChatPage() {
                 content: frame.message,
                 id: frame.assistantMessageId ?? turn.id,
               }));
-              // Message counts changed server-side; refresh the sidebar.
               setConvReloadKey((k) => k + 1);
             }
           }
@@ -658,8 +615,6 @@ export default function DevflowChatPage() {
     setComment("");
   };
 
-  // #25 memory candidate review: approve writes the note into the KB
-  // (memory_note), reject just closes it. Both refresh the pending list.
   const handleCandidateAction = async (
     candidateId: string,
     action: "approve" | "reject",
@@ -732,7 +687,6 @@ export default function DevflowChatPage() {
 
   return (
     <div className="flex h-full min-h-0 w-full">
-      {/* Conversation sidebar */}
       <aside className="border-border bg-card/40 hidden w-64 shrink-0 flex-col border-r md:flex">
         <div className="flex items-center justify-between gap-2 border-b p-3">
           <span className="text-sm font-medium">{t("conversations")}</span>
@@ -796,7 +750,6 @@ export default function DevflowChatPage() {
         </div>
       </aside>
 
-      {/* Chat column */}
       <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-4 p-6">
         <PageHeader
           title={t("title")}
@@ -833,7 +786,6 @@ export default function DevflowChatPage() {
           }
         />
 
-        {/* Memory panel (#25): thread memory + pending candidates */}
         {memoryOpen ? (
           <Card className="shrink-0">
             <div className="space-y-3 p-4">
@@ -986,7 +938,6 @@ export default function DevflowChatPage() {
                       key={sample}
                       onClick={() => {
                         void send(sample);
-                        // Rotate the contextual pool like the legacy client did.
                         setSuggestionsReloadKey((k) => k + 1);
                       }}
                       disabled={!repoId}
@@ -1119,7 +1070,6 @@ export default function DevflowChatPage() {
         </div>
       </div>
 
-      {/* Unhelpful-feedback dialog */}
       <Dialog
         open={ratingTarget !== null}
         onOpenChange={(open) => {

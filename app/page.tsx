@@ -20,9 +20,6 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 
 export default function Home() {
   const t = useTranslations("chat");
-  // P1-6 fix: destructure individual fields so useCallback dependencies can
-  // be granular — handleAIOps only rebuilds when isStreaming changes, not
-  // when messages or other unrelated state changes.
   const {
     isStreaming,
     messages,
@@ -68,8 +65,6 @@ export default function Home() {
     [uploadFile, addMessage],
   );
 
-  // Reports diagnosed from the active-alerts panel join the transcript in
-  // the same shape as the AI Ops button flow.
   const handlePanelReport = useCallback(
     (r: AiOpsReportPayload) => {
       addMessage({

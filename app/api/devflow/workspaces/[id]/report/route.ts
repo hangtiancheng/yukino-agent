@@ -1,10 +1,3 @@
-// POST /api/devflow/workspaces/:id/report — generate the cross-repository
-// weekly report for one workspace. Port of legacy workspaces.py:81-162
-// (multi_repo_report): agent:run permission, deterministic per-repo metrics +
-// risk grading, optional LLM narrative, and the "workspace.multi_repo_report"
-// audit action carrying the totals as result (workspaces.py:160). Returns the
-// markdown plus repoReportsTriggered — the marker for the fire-and-forget
-// per-repo weekly reports landing in each repository's KB.
 import {
   PermissionError,
   requirePermission,
@@ -68,7 +61,6 @@ export async function POST(request: Request, context: RouteContext) {
   } catch (e) {
     if (e instanceof WorkspaceError) {
       if (e.code === "notFound") return fail(404, "workspaceNotFound");
-      // legacy workspaces.py:88-89 — 400 when the repo set resolves empty.
       if (e.code === "noRepos") return fail(400, "workspaceNoRepos");
     }
     return failRaw(500, errorMessage(e));

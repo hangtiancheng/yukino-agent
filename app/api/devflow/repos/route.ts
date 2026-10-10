@@ -1,9 +1,3 @@
-// GET  /api/devflow/repos — list connected repositories with synced counts.
-// POST /api/devflow/repos — connect a repository: either a GitHub one
-//       (validated via the GitHub API, optional token encrypted) or a
-//       local-path mode user-owned git working tree (legacy repos.py:157-263
-//       _inspect_local_repository). Managed connects may pin a
-//       cloneParentDir for where their checkout lives.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { homedir } from "node:os";
@@ -21,11 +15,8 @@ export { OPTIONS } from "@/lib/devflow/http";
 
 const execFileAsync = promisify(execFile);
 
-// legacy repos.py:27 GITHUB_HOSTS.
 const GITHUB_HOSTS = new Set(["github.com", "www.github.com"]);
 
-// legacy repos.py:57-73 _git_output — execFile argv array (no shell), fail
-// with the git diagnostic instead of raising through a shell.
 async function gitTextAt(args: string[], cwd: string): Promise<string> {
   try {
     const { stdout } = await execFileAsync("git", args, {
@@ -43,9 +34,6 @@ async function gitTextAt(args: string[], cwd: string): Promise<string> {
   }
 }
 
-// legacy repos.py:46-54 _resolve_user_path — trim/quote strip, `~` home
-// expansion, resolve against cwd when relative. ($VAR expansion is not
-// ported; browser-submitted paths never need it.)
 function resolveUserPath(raw: string): string {
   const cleaned = raw.trim().replace(/^['"]|['"]$/g, "");
   if (!cleaned) throw new Error("Path cannot be empty");
@@ -126,10 +114,6 @@ export async function POST(request: Request) {
     let checkoutMode: "managed" | "local" = "managed";
     let localPath: string | null = null;
     let cloneParentDir: string | null = null;
-    // Non-null when GitHub API metadata could not be verified and the row was
-    // filled from the local git inspection instead (legacy repos.py:204-207
-    // fallback message; the demo-mode branch of that fallback is not
-    // migrated, so we record the degraded provenance in the response).
     let note: string | null = null;
     let meta: {
       githubId: bigint | null;
@@ -139,10 +123,6 @@ export async function POST(request: Request) {
     };
 
     if (rawLocalPath) {
-      // legacy repos.py:101-120 _inspect_local_repository: verify it is a git
-      // work tree, take the toplevel as the identity, derive owner/name from
-      // `origin` (directory-name fallback when there is no parseable remote),
-      // then infer the provider from the remote host (repos.py:123-138).
       let abs: string;
       try {
         abs = resolveUserPath(rawLocalPath);
@@ -179,16 +159,12 @@ export async function POST(request: Request) {
       let remoteUrl = "";
       try {
         remoteUrl = await gitTextAt(["remote", "get-url", "origin"], localPath);
-      } catch {
-        // No origin remote (fresh local repo): keep the directory name below.
-      }
+      } catch {}
       const remoteInfo = remoteUrl ? parseGitRemoteUrl(remoteUrl) : null;
       if (remoteInfo) {
         owner = remoteInfo.owner;
         repo = remoteInfo.name;
       } else {
-        // Directory-name fallback (see the header note); `local` mirrors the
-        // legacy test seed owner="local" for non-GitHub working trees.
         owner = "local";
         repo = path.basename(localPath);
       }
@@ -206,9 +182,6 @@ export async function POST(request: Request) {
       } catch {
         currentBranch = null;
       }
-      // legacy repos.py:197-207 still verifies against the API; on failure
-      // (self-hosted without REST, offline, private without token) a
-      // local-mode connect stays useful with git-derived metadata.
       try {
         meta = await fetchRepoMeta(owner, repo, {
           token: token ?? null,
@@ -243,9 +216,6 @@ export async function POST(request: Request) {
       apiBaseUrl =
         provider === "github_compatible" ? (rawApiBaseUrl ?? null) : null;
       if (rawCloneParentDir) {
-        // legacy repos.py:141-154 _clone_target_from_parent: the parent must
-        // be a directory when it exists; missing parents are created on the
-        // first managed clone (workspace.syncCheckout mkdir -p).
         const absParent = resolveUserPath(rawCloneParentDir);
         const ps = await stat(absParent).catch(() => null);
         if (ps && !ps.isDirectory()) {
@@ -280,10 +250,6 @@ export async function POST(request: Request) {
       ? await prisma.repository.update({ where: { id: existing.id }, data })
       : await prisma.repository.create({ data });
 
-    // Initial best-effort sync so the workspace has data right away; failures
-    // are recorded on the repo row instead of failing the connect call.
-    // Local-mode repos still sync GitHub data via the REST API (assignment
-    // rule: only the checkout is local).
     let syncError: string | null = null;
     try {
       await syncRepository(saved.id, { limit: 30 });

@@ -1,19 +1,3 @@
-// POST /api/ai_ops — runs the plan-execute-replan pipeline and returns
-// { result, detail }.
-//
-// Input surface ported from the legacy agent_py AI Ops diagnostic endpoint
-// (api/app.py:1384-1415 CreateAiopsDiagnosticRequest {query, alert}; audit
-// gap G3): the request body may carry an optional {query} (passed through to
-// runPlanExecuteReplan) and/or an optional structured `alert` (the normalized
-// ActiveAlert fields), which is injected as a targeted "diagnose THIS alert"
-// query. The migrated surface previously accepted no body at all.
-//
-// Run persistence restores the legacy server-side diagnostic-task record
-// (Yukino.md #18, AI Ops evidence chain, reduced shape): an AiOpsRun row is
-// created as `running` when the pipeline
-// starts, then finalized as success/exhausted (report + detail + a2ui) or
-// failed. Persistence failures never discard or fail the response — same
-// fire-and-forget contract as the diagnostic-case write-back.
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
@@ -34,9 +18,6 @@ export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
-// `alert` is the normalized Alert from lib/ai/alerts (flat strings plus
-// label/annotation maps); only the flat string fields drive the query and
-// the fallback template, so nested maps are dropped at this boundary.
 const aiOpsRequestSchema = z.object({
   query: z.string().max(8000).optional(),
   alert: z.unknown().optional(),
@@ -71,9 +52,7 @@ export async function POST(request: Request) {
       );
     }
     body = parsed.data;
-  } catch {
-    // No/empty body keeps the pre-existing behavior: the default alert sweep.
-  }
+  } catch {}
 
   const { query, alert } = buildAiOpsQuery({
     query: body.query,
@@ -106,9 +85,6 @@ export async function POST(request: Request) {
           status: update.status,
           ...(update.report !== undefined ? { report: update.report } : {}),
           ...(update.detail !== undefined ? { detail: update.detail } : {}),
-          // unknown[] at the app boundary (AGENTS zod red line); the JSON
-          // round-trip both proves serializability and lands the value in
-          // Prisma's InputJsonValue shape.
           ...(update.a2uiJson !== undefined
             ? { a2ui: JSON.parse(JSON.stringify(update.a2uiJson)) }
             : {}),
@@ -122,16 +98,10 @@ export async function POST(request: Request) {
   try {
     for await (const event of runPlanExecuteReplan(query, alert)) {
       if (event.type === "done") {
-        // Port of the Python auto case write-back (agent_py aiops/cases.py):
-        // persist the finished report into the ops knowledge base so future
-        // chats/diagnoses can retrieve past incidents. Fire-and-forget — a
-        // persistence failure must never discard the report itself.
         void persistDiagnosticCase(event.result, event.detail, alertName).catch(
           (e) =>
             console.error("[ai_ops] diagnostic case persistence failed:", e),
         );
-        // The exhausted branch reports the constant result (graph.ts); the
-        // report was not consumed by a compliant replanner summary.
         const status =
           event.result === EXHAUSTED_RESULT ? "exhausted" : "success";
         finishRun({
@@ -161,7 +131,6 @@ export async function POST(request: Request) {
         );
       }
     }
-    // No done/error event emitted.
     finishRun({ status: "failed", error: "stream ended without done/error" });
     return Response.json(
       { message: t("internalError"), data: null },

@@ -1,4 +1,3 @@
-// POST /api/devflow/runs/:id/debug — run the CI Debug agent.
 import { debugRun } from "@/lib/devflow/agents/analysis";
 import { errorMessage, failRaw, ok } from "@/lib/devflow/http";
 

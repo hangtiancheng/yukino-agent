@@ -1,9 +1,3 @@
-// GET /api/knowledge_docs — OnCall knowledge-base document management list
-// (port of the legacy agent_py knowledge documents API, reduced to the
-// single public library: FILE_DIR is the document store, Milvus the index).
-// Reads are public; mutations live on the [name] routes behind the admin
-// token. Per-file chunk counts come from a Milvus count filter so a stale
-// index (file present, vectors missing) is visible.
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { getTranslations } from "next-intl/server";
@@ -50,7 +44,6 @@ export async function GET() {
       files.slice(0, 500).map(async (name) => {
         const full = path.join(dir, name);
         const info = await stat(full).catch(() => null);
-        // classification uses a bounded head sample; full text is unnecessary
         const head = await readFile(full, "utf8")
           .then((s) => s.slice(0, 4000))
           .catch(() => "");

@@ -1,8 +1,3 @@
-// GET /api/tool_audits?session=<id> — read-only view of the OnCall agent
-// tool-call audit trail (public surface of the legacy agent_tool_call_audits,
-// simplified: rows are written fire-and-forget by chat/chatStream with the
-// input/result excerpts already truncated to AUDIT_TEXT_CHARS). Returns the
-// most recent 50 calls for one session, newest first.
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";

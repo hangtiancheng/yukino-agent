@@ -86,9 +86,6 @@ export function ThemeProvider({
   ...props
 }: ThemeProviderProps) {
   const [theme, setThemeState] = React.useState<Theme>(() => {
-    // SSR-safe: localStorage is unavailable during server render. The resolved
-    // theme is applied to <html> in an effect after mount, so returning the
-    // default here does not affect the server-rendered markup.
     if (typeof window !== "undefined") {
       const storedTheme = localStorage.getItem(storageKey);
       if (isTheme(storedTheme)) {

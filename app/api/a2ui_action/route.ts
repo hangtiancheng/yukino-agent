@@ -1,5 +1,3 @@
-// POST /api/a2ui_action — answers a surface action with in-place A2UI update
-// messages for the same surface. Unified response shape { message, data }.
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
 import { runA2uiAction } from "@/lib/ai/a2ui/action";
@@ -11,7 +9,6 @@ const a2uiActionRequestSchema = z.object({
     sourceComponentId: z.string().optional(),
     context: z.record(z.string(), z.unknown()).optional(),
   }),
-  // Full current message list of the surface (its authoritative state).
   a2ui: z.array(z.unknown()).min(1),
 });
 

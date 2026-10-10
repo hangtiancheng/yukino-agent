@@ -20,8 +20,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Resolved in i18n/request.ts (cookie → Accept-Language); the client
-  // provider inherits the same locale, keeping hydration mismatch-free.
   const locale = await getLocale();
   const messages = await getMessages();
   return (

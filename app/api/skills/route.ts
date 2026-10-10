@@ -1,9 +1,3 @@
-// GET  /api/skills — list SKILL.md skill assets.
-// POST /api/skills — upload one skill: { fileName?: "SKILL.md", content } with
-// the SKILL.md YAML frontmatter contract validated exactly like legacy
-// (agent_py chat/configuration.py validate_skill_upload:91-134; Yukino.md
-// #19 "Custom prompts/Skills"). Same-name POST replaces the existing
-// asset (mirrors the KB same-name overwrite UX).
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";

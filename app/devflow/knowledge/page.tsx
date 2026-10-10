@@ -1,8 +1,5 @@
 "use client";
 
-// Knowledge Base: per-repository RAG workspace — upload documents, tune the
-// per-repo retrieval settings, run persisted retrieval tests, rebuild the
-// GitHub content index and ask evidence-grounded questions with citations.
 import { useEffect, useRef, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import {
@@ -78,9 +75,6 @@ import {
 } from "@/components/devflow/provider";
 import type { KnowledgeCitation, KnowledgeDoc } from "@/lib/devflow/types";
 
-// Client-side mirrors of the server shapes (the lib modules own runtime
-// imports of prisma/milvus, so only types are mirrored here, kept in sync
-// with lib/devflow/rag.ts + lib/devflow/content-index.ts).
 type KbRetrievalMethod = "hybrid" | "dense" | "bm25";
 
 interface KnowledgeConfig {
@@ -114,7 +108,6 @@ interface RetrievalTestRunDetail extends RetrievalTestRun {
   results: RetrievalTestResult[];
 }
 
-// Client mirror of lib/devflow/rag.ts KnowledgeChunkView (chunk preview).
 interface KnowledgeChunkPreview {
   id: string;
   position: number;
@@ -133,9 +126,6 @@ interface ContentIndexResult {
   durationMs: number;
 }
 
-// Typed value→key map for the API's free-form sourceType string, so the
-// badges template literal stays compile-time checked; the guard rejects
-// unknown values, which fall back to the raw string.
 const SOURCE_TYPE_KEYS = {
   upload: "upload",
   weekly_report: "weeklyReport",
@@ -170,8 +160,6 @@ const CONTENT_TYPE_KEYS: Record<
   workflow_run: "workflowRun",
 };
 
-// provider.tsx has no PUT helper and stays import-only for this page, so the
-// {message,data} unwrap is replicated locally with the shared error class.
 async function dfPut<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`/api/devflow${path}`, {
     method: "PUT",
@@ -203,8 +191,6 @@ export default function DevflowKnowledgePage() {
   const [deleteTarget, setDeleteTarget] = useState<KnowledgeDoc | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Chunk preview (GET /knowledge/:docId/chunks) + retry (POST .../retry) +
-  // memory note (POST /knowledge/notes) — the RAG-studio document surfaces.
   const [previewDoc, setPreviewDoc] = useState<KnowledgeDoc | null>(null);
   const [previewChunks, setPreviewChunks] = useState<KnowledgeChunkPreview[]>(
     [],
@@ -216,7 +202,6 @@ export default function DevflowKnowledgePage() {
   const [noteContent, setNoteContent] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
 
-  // Retrieval test state (persisted runs via /knowledge/retrieval-tests)
   const [testQuery, setTestQuery] = useState("");
   const [testTopK, setTestTopK] = useState(5);
   const [testResults, setTestResults] = useState<RetrievalTestResult[] | null>(
@@ -226,12 +211,10 @@ export default function DevflowKnowledgePage() {
   const [testHistory, setTestHistory] = useState<RetrievalTestRun[]>([]);
   const [testing, setTesting] = useState(false);
 
-  // Retrieval settings state (GET/PUT /knowledge/config)
   const [config, setConfig] = useState<KnowledgeConfig | null>(null);
   const [configStored, setConfigStored] = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
 
-  // GitHub content index state (GET/POST /content-index)
   const [indexCounts, setIndexCounts] = useState<Record<
     ContentSourceType,
     number
@@ -242,16 +225,12 @@ export default function DevflowKnowledgePage() {
   );
   const [indexing, setIndexing] = useState(false);
 
-  // QA state
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
   const [citations, setCitations] = useState<KnowledgeCitation[]>([]);
   const [asking, setAsking] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Fetch lives in an inline async IIFE — see the note in provider.tsx
-  // (react-hooks/set-state-in-effect). Switching repos also resets the
-  // retrieval-test and QA panels.
   useEffect(() => {
     if (!repoId) {
       return;
@@ -280,10 +259,6 @@ export default function DevflowKnowledgePage() {
     };
   }, [repoId, reloadKey]);
 
-  // Settings + retrieval-test history + content-index counts in one inline
-  // async IIFE; the three fetches are independent so a down vector backend
-  // (503 on /content-index) never blanks the other panels — the server's
-  // already-localized error message is surfaced instead of fabricated counts.
   useEffect(() => {
     if (!repoId) {
       return;
@@ -327,7 +302,6 @@ export default function DevflowKnowledgePage() {
     };
   }, [repoId]);
 
-  // Event-handler reloads just bump the key; the effect above refetches.
   const loadDocsAfterChange = async () => {
     setReloadKey((k) => k + 1);
   };
@@ -376,7 +350,6 @@ export default function DevflowKnowledgePage() {
     }
   };
 
-  // Retry a failed document (POST /knowledge/:docId/retry).
   const retryDoc = async (doc: KnowledgeDoc) => {
     setRetryingId(doc.id);
     try {
@@ -395,7 +368,6 @@ export default function DevflowKnowledgePage() {
     }
   };
 
-  // Open the chunk-preview dialog for a document.
   const openChunkPreview = async (doc: KnowledgeDoc) => {
     setPreviewDoc(doc);
     setPreviewChunks([]);
@@ -413,7 +385,6 @@ export default function DevflowKnowledgePage() {
     }
   };
 
-  // Create a memory note directly in the KB (POST /knowledge/notes).
   const createNote = async () => {
     if (!repoId) return;
     if (!noteTitle.trim() && !noteContent.trim()) {
@@ -473,7 +444,6 @@ export default function DevflowKnowledgePage() {
 
   const saveConfig = async () => {
     if (!repoId || !config) return;
-    // Legacy _validate_chunking: overlap must be strictly smaller.
     if (config.chunkOverlap >= config.chunkSize) return;
     setConfigSaving(true);
     try {

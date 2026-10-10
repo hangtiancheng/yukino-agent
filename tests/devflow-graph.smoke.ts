@@ -1,24 +1,3 @@
-/**
- * Smoke for the DevFlow knowledge graph port
- * (lib/devflow/knowledge-graph.ts — legacy
- * DevFlow-AI/backend/app/services/knowledge_graph.py):
- *  1. #N reference extraction (legacy ISSUE_REF_RE) — word-glued/branched
- *     refs stay out, dangling numbers create no edge;
- *  2. closing-keyword extraction (legacy CLOSING_ISSUE_RE);
- *  3. decision-line heuristic ("决定" / "decision:" prefixes);
- *  4. deriveEdges fixture pass: references / resolves / assigned_to
- *     (team_member vs github_user, case-insensitive) / authored_by /
- *     documents (name + resolved weekly-report body) / decides, with the
- *     per-relation confidence + "sync" source and dedup/self-loop guards;
- *  5. bfsSubgraphKeys: depth bands, GRAPH_NODE_LIMIT truncation,
- *     unknown-center fallback;
- *  6. node-type aliases + the route zod contracts.
- * Optional live section (DEVFLOW_GRAPH_SMOKE_PG=1, needs the local
- * PostgreSQL): row-level rebuild verification — relation counts, team vs
- * github-user targets, rebuild idempotency (deleteMany + createMany
- * skipDuplicates), summary/subgraph reads, then cascade cleanup.
- * Run: npx tsx tests/devflow-graph.smoke.ts
- */
 import assert from "node:assert/strict";
 import {
   EDGE_SOURCE,
@@ -50,9 +29,6 @@ function ok(name: string): void {
   console.log(`  ok  ${name}`);
 }
 
-// ---------------------------------------------------------------------------
-// 1-3. text extraction (legacy knowledge_graph.py:24-29, 517-526)
-// ---------------------------------------------------------------------------
 {
   assert.deepEqual(extractIssueRefs("fix #12 and #13, also #12"), [12, 13]);
   assert.deepEqual(extractIssueRefs(""), []);
@@ -82,18 +58,13 @@ function ok(name: string): void {
   ok("extractDecisionLines: 决定 / decision: prefixes only");
 }
 
-// ---------------------------------------------------------------------------
-// 4. deriveEdges fixture pass
-// ---------------------------------------------------------------------------
 const issues: GraphIssueInput[] = [
   {
     id: "i1",
     number: 1,
     title: "Login crashes on submit",
-    // self-reference must not produce a self-loop (legacy add_edge guard).
     body: "tracking #1 forever",
     author: "alice",
-    // "Bob" matches the team member case-insensitively; blank is skipped.
     assignees: ["Bob", "carol", " "],
   },
   {
@@ -131,7 +102,6 @@ const pullRequests: GraphPrInput[] = [
 ];
 const documents: GraphDocumentInput[] = [
   { id: "d1", name: "Weekly Report W39", content: "Shipped #10, queued #2." },
-  // name-only extraction still works when the body is unavailable.
   { id: "d2", name: "Weekly Report W40 mentions #3", content: null },
   { id: "d3", name: "Weekly Report W41", content: "no refs here" },
 ];
@@ -141,9 +111,7 @@ const messages: GraphMessageInput[] = [
     conversationId: "c1",
     content: "分析如下\n决定: 先修 #1, 下周处理 #2\nDecision: close #3 later",
   },
-  // #N outside a decision line creates no decides edge.
   { id: "m2", conversationId: "c1", content: "#1 is progressing, no decision" },
-  // dangling ref inside a decision line → no edge (best-effort).
   { id: "m3", conversationId: "c2", content: "决定: 与 #999 无关" },
 ];
 const teamMembers: GraphTeamMemberInput[] = [
@@ -175,8 +143,6 @@ const find = (
   );
 
 {
-  // references: issue→issue, PR→issue, PR→PR; closing refs excluded; self
-  // and dangling refs skipped.
   assert.equal(derived.filter((e) => e.relation === "references").length, 4);
   assert.ok(find("issue", "i2", "issue", "i1", "references"));
   assert.ok(find("pull_request", "p10", "issue", "i2", "references"));
@@ -192,7 +158,6 @@ const find = (
     "references edges: #N resolution, closing exclusion, self/dangling guards",
   );
 
-  // resolves: closing keyword → issue only.
   const resolves = derived.filter((e) => e.relation === "resolves");
   assert.equal(resolves.length, 1);
   assert.deepEqual(
@@ -203,13 +168,11 @@ const find = (
   assert.equal(resolves[0].meta.number, 1);
   ok("resolves edge: closing keyword targets the issue at 0.9");
 
-  // assigned_to: team member wins (case-insensitive), otherwise github_user.
   assert.ok(find("issue", "i1", "team_member", "tm-bob", "assigned_to"));
   assert.ok(find("issue", "i1", "github_user", "carol", "assigned_to"));
   assert.equal(derived.filter((e) => e.relation === "assigned_to").length, 2);
   ok("assigned_to edges: TeamMember match vs github_user fallback");
 
-  // authored_by for issues and PRs; null author skipped.
   const authored = derived.filter((e) => e.relation === "authored_by");
   assert.deepEqual(
     authored.map((e) => `${e.fromType}:${e.fromId}->${e.toId}`).sort(),
@@ -223,7 +186,6 @@ const find = (
   assert.ok(authored.every((e) => e.toType === "github_user"));
   ok("authored_by edges: issue + PR authors as github_user");
 
-  // documents: weekly reports only, body + name, resolving #N both ways.
   const docs = derived.filter((e) => e.relation === "documents");
   assert.deepEqual(
     docs.map((e) => `${e.fromId}->${e.toType}:${e.toId}`).sort(),
@@ -232,7 +194,6 @@ const find = (
   assert.ok(docs.every((e) => e.confidence === 0.8));
   ok("documents edges: weekly-report name/body refs at 0.8");
 
-  // decides: decision lines only, one edge per referenced item.
   const decides = derived.filter((e) => e.relation === "decides");
   assert.deepEqual(decides.map((e) => e.toId).sort(), ["i1", "i2", "i3"]);
   assert.ok(
@@ -242,7 +203,6 @@ const find = (
   assert.ok(decides.every((e) => e.meta.messageId === "m1"));
   ok("decides edges: conversation decisions at 0.6, best-effort");
 
-  // every edge carries the "sync" source and the table's confidence.
   assert.ok(derived.every((e) => e.source === EDGE_SOURCE));
   assert.ok(
     derived.every((e) => e.confidence === RELATION_CONFIDENCE[e.relation]),
@@ -258,7 +218,6 @@ const find = (
 }
 
 {
-  // duplicate mentions merge into ONE edge (legacy add_edge dedup).
   const dup = deriveEdges({
     issues: [
       {
@@ -282,11 +241,7 @@ const find = (
   ok("deriveEdges dedups repeated mentions");
 }
 
-// ---------------------------------------------------------------------------
-// 5. BFS subgraph core (legacy _select_subgraph, knowledge_graph.py:373-393)
-// ---------------------------------------------------------------------------
 {
-  // a - b - c - d - e
   const adjacency = new Map<string, string[]>([
     ["a", ["b"]],
     ["b", ["a", "c"]],
@@ -306,14 +261,12 @@ const find = (
     keys: ["c"],
     truncated: false,
   });
-  // Unknown center: legacy still returns the center as a fallback node.
   assert.deepEqual(bfsSubgraphKeys(adjacency, "zz", 2), {
     keys: ["zz"],
     truncated: false,
   });
   ok("bfsSubgraphKeys: depth bands, unknown-center fallback");
 
-  // star with 100 leaves hits the 72-node cap mid-frontier.
   const star = new Map<string, string[]>([["hub", []]]);
   const hub: string[] = [];
   for (let i = 0; i < 100; i++) {
@@ -329,9 +282,6 @@ const find = (
   ok(`bfsSubgraphKeys: ${GRAPH_NODE_LIMIT}-node cap reports truncation`);
 }
 
-// ---------------------------------------------------------------------------
-// 6. aliases + zod route contracts
-// ---------------------------------------------------------------------------
 {
   assert.equal(normalizeNodeType("pr"), "pull_request");
   assert.equal(normalizeNodeType(" issue "), "issue");
@@ -376,9 +326,6 @@ const find = (
   ok("GraphActionSchema + SubgraphQuerySchema (depth 1..2, default 1)");
 }
 
-// ---------------------------------------------------------------------------
-// Optional live pass against local PostgreSQL (row-level, self-cleaning)
-// ---------------------------------------------------------------------------
 async function live(): Promise<void> {
   const { prisma } = await import("@/lib/db");
   const stamp = Date.now();
@@ -478,8 +425,6 @@ async function live(): Promise<void> {
       "live rebuild: 12 edges across all six relations, row-level spot checks",
     );
 
-    // Idempotency: deleteMany + createMany skipDuplicates — a second rebuild
-    // must not double the rows.
     const second = await rebuildGraph(repo.id, {
       resolveWeeklyReportContent: injectContent,
     });
@@ -490,8 +435,6 @@ async function live(): Promise<void> {
     );
     ok("live rebuild idempotency: repeated rebuild keeps 12 rows");
 
-    // Default (Milvus-backed) resolver with Milvus down: the documents edge
-    // degrades to name-only extraction and the rebuild still succeeds.
     const degraded = await rebuildGraph(repo.id);
     assert.equal(degraded.edges, 10, "documents edges drop without content");
     assert.equal(
@@ -500,7 +443,6 @@ async function live(): Promise<void> {
       }),
       0,
     );
-    // Restore the full graph for the read-path checks.
     await rebuildGraph(repo.id, { resolveWeeklyReportContent: injectContent });
 
     const summary = await graphSummary(repo.id);
@@ -520,7 +462,6 @@ async function live(): Promise<void> {
     assert.equal(sub1.nodes.length, 7);
     assert.equal(sub1.nodes[0].label, "#1 Login crashes");
     assert.equal(sub1.truncated, false);
-    // Alias "pr" + depth clamp (legacy ge=1 le=2 → clamps to 2).
     const sub2 = await fetchSubgraph(repo.id, {
       fromType: "pr",
       fromId: pr10.id,
@@ -529,7 +470,6 @@ async function live(): Promise<void> {
     assert.equal(sub2.fromType, "pull_request");
     assert.equal(sub2.depth, 2);
     assert.ok(sub2.nodes.some((n) => n.label === "#2 Duplicate of #1"));
-    // Unknown center: fallback single node (legacy _fallback_node).
     const sub3 = await fetchSubgraph(repo.id, {
       fromType: "issue",
       fromId: "nope",
@@ -543,8 +483,6 @@ async function live(): Promise<void> {
       "fetchSubgraph: depth-1 ring, alias + depth clamp, unknown-center fallback",
     );
 
-    // The returned edge list is closed over the returned node set (legacy
-    // selected_edges filter, knowledge_graph.py:117-119).
     const keys = new Set(sub1.nodes.map((n) => `${n.type}:${n.id}`));
     assert.ok(
       sub1.edges.every(

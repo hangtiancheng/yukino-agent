@@ -1,6 +1,3 @@
-// Role-based permissions + audit trail. Port of the Python permissions.py.
-// FastAPI's `Depends(require_permission(...))` becomes an async helper that a
-// route awaits; it throws PermissionError (mapped to HTTP 403) when denied.
 import { prisma } from "@/lib/db";
 import { Prisma, type AuditLog, type User } from "@/generated/prisma/client";
 
@@ -47,8 +44,6 @@ export class PermissionError extends Error {
   }
 }
 
-// Single-tenant dev model: the first user is the acting principal. Created on
-// demand as an owner so a fresh install is usable without a signup flow.
 export async function ensureDemoUser(): Promise<User> {
   const existing = await prisma.user.findFirst({
     orderBy: { createdAt: "asc" },
@@ -70,7 +65,6 @@ export function hasPermission(user: User, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role]?.has(permission) ?? false;
 }
 
-// Resolve the acting user and assert a permission. Returns the user on success.
 export async function requirePermission(permission: Permission): Promise<User> {
   const user = await ensureDemoUser();
   if (!hasPermission(user, permission)) {
@@ -90,14 +84,9 @@ export interface AuditLogInput {
   resultJson?: Record<string, unknown> | null;
 }
 
-// Prisma's InputJsonValue rejects `unknown` leaves; the persisted payloads are
-// already JSON-serializable, so assert once at the boundary.
 const asJson = (value: unknown): Prisma.InputJsonValue =>
   value as Prisma.InputJsonValue;
 
-// Append an audit row. Failures are swallowed by callers that must not let
-// auditing break the primary operation; this function itself does throw on a
-// real DB error so the caller decides.
 export async function writeAuditLog(input: AuditLogInput): Promise<AuditLog> {
   return prisma.auditLog.create({
     data: {

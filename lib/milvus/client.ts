@@ -1,18 +1,3 @@
-// Milvus Standalone client (official Node SDK, gRPC :19530), modelled on the
-// proven yukino-agent2 implementation. Replaces the former Redis Stack
-// (RediSearch) vector index.
-//
-// The collection carries BOTH vector paths — dense (COSINE) and a native BM25
-// full-text path where the `content` field (analyzer-enabled) feeds a BM25
-// Function that populates the `sparse` field. BM25 search and dense+BM25
-// hybrid search (RRF fusion) therefore run inside Milvus, not in-process.
-//
-// Semantics preserved from the Redis implementation: the collection is created
-// lazily with the dimension inferred from the first embedding (model-agnostic,
-// never hardcoded), an existing collection with a mismatched dimension is
-// dropped and recreated, a missing collection reads as empty, and every
-// failure throws so callers surface a down Milvus instead of silently
-// degrading.
 import {
   DataType,
   ErrorCode,
@@ -28,17 +13,10 @@ import { config } from "@/lib/config";
 
 const COLLECTION = config.milvus.collection;
 const TIMEOUT_MS = 15_000;
-// Milvus 3.x only returns the primary key when it is listed explicitly, so
-// "id" rides along.
 const OUTPUT_FIELDS = ["id", "content", "source", "metadata", "created_at"];
-// RRF smoothing constant; matches the RRFRanker() default (k=60).
 const RRF_K = 60;
-// Storage cap carried over from the old Redis schema (VarChar max_length).
 export const MAX_CONTENT_LENGTH = 8192;
 
-// A chunk row upserted into Milvus. `vector` is supplied by the caller, while
-// `sparse` is derived server-side by the BM25 Function from `content`, so
-// upserts never set it.
 export interface MilvusRow {
   id: string;
   vector: number[];
@@ -48,8 +26,6 @@ export interface MilvusRow {
   created_at: string;
 }
 
-// A search hit. `score` is the Milvus distance: COSINE similarity for dense,
-// BM25 relevance for sparse, fused RRF value for hybrid — higher is better.
 export interface MilvusHit {
   id: string;
   score: number;
@@ -59,12 +35,8 @@ export interface MilvusHit {
   created_at: string;
 }
 
-// --- connection (lazy singleton) ---
 let cachedClient: MilvusClient | null = null;
-// True once the collection has been loaded into memory in this process; reset by drop().
 let ready = false;
-// Dimension the in-process collection was verified/created with; a different
-// incoming dim triggers the drop-and-recreate path.
 let readyDim = 0;
 
 function connect(): MilvusClient {
@@ -75,22 +47,16 @@ function connect(): MilvusClient {
   const clientConfig: ConstructorParameters<typeof MilvusClient>[0] = {
     address,
     timeout: TIMEOUT_MS,
-    // Keep the SDK's own winston output out of the way.
     logLevel: "warn",
   };
   if (config.milvus.token !== "") {
     clientConfig.token = config.milvus.token;
   }
   cachedClient = new MilvusClient(clientConfig);
-  // The SDK fires a background Connect RPC during construction; when Milvus is
-  // down that promise rejects with no handler attached, which Node treats as
-  // fatal. Awaited calls surface the same error through their own promises,
-  // so swallowing the background copy is safe.
   cachedClient.connectPromise.catch(() => undefined);
   return cachedClient;
 }
 
-// Close the underlying gRPC connections (scripts use this to let the process exit).
 export async function close(): Promise<void> {
   if (cachedClient !== null) {
     await cachedClient.closeConnection();
@@ -100,8 +66,6 @@ export async function close(): Promise<void> {
   }
 }
 
-// The SDK reports logical failures in-band; anything not Success must throw so
-// callers never mistake an error response for an empty result.
 function isSuccess(res: ResStatus | { status: ResStatus }): boolean {
   const status = "status" in res ? res.status : res;
   const code = status.error_code;
@@ -117,8 +81,6 @@ function checkStatus(res: ResStatus | { status: ResStatus }, op: string): void {
   }
 }
 
-// Milvus boolean-expr string literal; values come from user data but are
-// escaped anyway so a quote can never break out of the filter.
 export function quote(value: string): string {
   return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }
@@ -143,7 +105,6 @@ async function hasCollection(): Promise<boolean> {
   return Boolean(res.value);
 }
 
-// Read the stored dense dimension; 0 when the collection/field is missing.
 async function storedDim(): Promise<number> {
   const res = await connect().describeCollection({
     collection_name: COLLECTION,
@@ -157,8 +118,6 @@ async function storedDim(): Promise<number> {
   return Number.isFinite(dim) ? dim : 0;
 }
 
-// Load the collection into memory (idempotent server-side; the `ready` flag
-// skips the redundant round-trip within this process).
 async function loadCollection(): Promise<void> {
   if (ready) {
     return;
@@ -171,12 +130,6 @@ async function loadCollection(): Promise<void> {
   ready = true;
 }
 
-// Idempotent create with a model-agnostic dimension inferred from the first
-// embedded vector. Strong consistency keeps post-write reads deterministic.
-// An existing collection whose dense dim differs from the active embedding
-// model is dropped and recreated — old vectors are useless after a dimension
-// change and startup re-indexing repopulates the data (same policy as the
-// former Redis index).
 export async function ensureCollection(dim: number): Promise<void> {
   const client = connect();
   if (await hasCollection()) {
@@ -204,9 +157,6 @@ export async function ensureCollection(dim: number): Promise<void> {
         max_length: 512,
       },
       { name: "vector", data_type: DataType.FloatVector, dim },
-      // BM25 Function input. The analyzer matches the corpus language;
-      // "standard" (default) also tokenizes CJK as unigrams, "chinese" uses
-      // jieba for mixed CN/EN corpora.
       {
         name: "content",
         data_type: DataType.VarChar,
@@ -214,8 +164,6 @@ export async function ensureCollection(dim: number): Promise<void> {
         enable_analyzer: true,
         analyzer_params: { type: config.milvus.analyzer },
       },
-      // BM25 Function output: derived from `content` server-side, never
-      // written by upserts.
       {
         name: "sparse",
         data_type: DataType.SparseFloatVector,
@@ -257,7 +205,6 @@ export async function ensureCollection(dim: number): Promise<void> {
     collection_name: COLLECTION,
     timeout: TIMEOUT_MS,
   });
-  // Load needs both indexes: when it fails, report the first index that failed.
   if (!isSuccess(loaded)) {
     checkStatus(denseIndexed, "createIndex(vector)");
     checkStatus(sparseIndexed, "createIndex(sparse)");
@@ -267,8 +214,6 @@ export async function ensureCollection(dim: number): Promise<void> {
   readyDim = dim;
 }
 
-// Returns false when the collection does not exist (reads answer empty);
-// otherwise makes sure it is loaded before search/query/delete/flush.
 async function ensureLoaded(): Promise<boolean> {
   if (!(await hasCollection())) {
     ready = false;
@@ -279,7 +224,6 @@ async function ensureLoaded(): Promise<boolean> {
   return true;
 }
 
-// --- public API ---
 export async function upsert(rows: MilvusRow[]): Promise<number> {
   if (rows.length === 0) {
     return 0;
@@ -294,7 +238,6 @@ export async function upsert(rows: MilvusRow[]): Promise<number> {
   return rows.length;
 }
 
-// Dense-only COSINE search.
 export async function search(
   vector: number[],
   topK: number,
@@ -320,8 +263,6 @@ export async function search(
   return toHits(res.results);
 }
 
-// Native BM25 full-text search: the raw query text rides to the `sparse`
-// field produced by the BM25 Function.
 export async function bm25Search(
   text: string,
   topK: number,
@@ -347,8 +288,6 @@ export async function bm25Search(
   return toHits(res.results);
 }
 
-// Dense + BM25 hybrid search fused inside Milvus with RRF. Both legs recall
-// up to max(recall, topK) rows and the fused list is sliced down to topK.
 export async function hybridSearch(
   vector: number[],
   text: string,
@@ -385,8 +324,6 @@ export async function hybridSearch(
   return toHits(res.results).slice(0, topK);
 }
 
-// Fetch rows by primary key (used by the parent/sibling expansion stage).
-// Missing ids are silently omitted from the result.
 export async function getByIds(ids: string[]): Promise<MilvusHit[]> {
   if (ids.length === 0) return [];
   if (!(await ensureLoaded())) {
@@ -410,10 +347,6 @@ export async function getByIds(ids: string[]): Promise<MilvusHit[]> {
   }));
 }
 
-// Scalar-filter query (no vector): fetch the stored rows matching a boolean
-// expression, e.g. every chunk of one document. Used by the KB chunk-preview
-// surface (legacy routes/rag.py documents/{id}/chunks) where the caller needs
-// the exact indexed rows, not a similarity ranking.
 export async function queryByFilter(
   filter: string,
   limit: number,
@@ -450,7 +383,6 @@ export async function count(filter?: string): Promise<number> {
   });
   checkStatus(res, "count");
   if (!filter) return res.data;
-  // count() ignores filters — use a query for filtered counts.
   const queried = await connect().query({
     collection_name: COLLECTION,
     filter,

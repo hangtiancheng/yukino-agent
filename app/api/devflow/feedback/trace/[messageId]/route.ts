@@ -1,6 +1,3 @@
-// GET /api/devflow/feedback/trace/:messageId — evidence for one rated answer:
-// the assistant message, the question that produced it, the conversation/repo
-// and the feedback record.
 import {
   feedbackTrace,
   FeedbackNotFoundError,

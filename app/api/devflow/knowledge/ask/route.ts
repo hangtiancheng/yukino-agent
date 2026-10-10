@@ -1,7 +1,3 @@
-// POST /api/devflow/knowledge/ask — evidence-grounded QA with citations.
-// LLM unavailable/failing degrades to the deterministic extractive answer
-// instead of a 500 (port of the qa.py:197-202 generation_mode fallback); the
-// response carries `generationMode` so clients can tell the two apart.
 import { z } from "zod/v4";
 import { KnowledgeAskSchema } from "@/lib/devflow/schemas";
 import {
@@ -13,8 +9,6 @@ import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
-// Was topK explicitly provided? If not, the per-repo KnowledgeBaseConfig
-// default applies.
 const TopKProbeSchema = z.object({ topK: z.number().optional() });
 
 export async function POST(request: Request) {
@@ -37,7 +31,6 @@ export async function POST(request: Request) {
       const result = await askKnowledge(repoId, question, topK);
       return ok(result);
     } catch (e) {
-      // qa.py:197-202: no usable generation → quote the evidence directly.
       try {
         const fallback = await askKnowledgeExtractive(repoId, question, topK);
         return ok({ ...fallback, degraded: errorMessage(e) });

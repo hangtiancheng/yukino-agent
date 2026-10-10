@@ -1,6 +1,3 @@
-// Bridges yukino-sentry browser reports and Node/V8 runtime state to Prometheus:
-// POST /api/log feeds the browser metrics, GET /api/metrics exposes them plus the
-// runtime collectors for scraping.
 import { performance } from "node:perf_hooks";
 import v8 from "node:v8";
 
@@ -88,8 +85,6 @@ const numericRecordSchema = z.record(z.string(), z.unknown());
 
 type ResourceTiming = z.infer<typeof resourceTimingSchema>;
 
-// Web vitals share one gauge; every other Performance event carries an unrelated
-// unit (bytes, task counts) and must not land in the same series.
 const WEB_VITAL_NAMES = new Set(["LCP", "FCP", "CLS", "INP", "TTFB", "FSP"]);
 
 const NAVIGATION_PHASES = [
@@ -109,14 +104,8 @@ const NAVIGATION_PHASES = [
   "unloadTime",
 ];
 
-// Browser-supplied strings (error names, click ids, custom event names) are
-// attacker- and refactor-controlled; collapsing the tail keeps a bad deploy from
-// exploding Prometheus series count.
 const MAX_LABEL_VALUES = 50;
 
-// Bump whenever the metric set changes. loadMetrics() throws away a cached
-// registry whose version does not match, which is what keeps a long-lived dev
-// server from serving an object with undefined metric fields.
 const METRICS_VERSION = 2;
 
 interface SentryMetrics {
@@ -340,10 +329,6 @@ function defineGauge<T extends string>(
   return new Gauge(config);
 }
 
-// prom-client defaults already cover event loop lag, GC duration, heap spaces,
-// RSS and CPU. These fill the gaps that matter for V8 memory forensics:
-// heap_size_limit (OOM headroom), detached contexts (leak fingerprint),
-// array buffers, code/bytecode growth, and event loop utilization.
 function registerRuntimeMetrics(registry: Registry): void {
   defineGauge({
     name: "yukino_node_memory_bytes",
@@ -497,17 +482,11 @@ function registerRuntimeMetrics(registry: Registry): void {
 }
 
 declare global {
-  // Route bundles and dev HMR re-evaluate this module; the globalThis cache
-  // keeps a single registry per Node process so counters never reset or
-  // double-register.
   var __yukinoSentryMetrics: SentryMetrics | undefined;
 }
 
 function loadMetrics(): SentryMetrics {
   const cached = globalThis.__yukinoSentryMetrics;
-  // A cache built by an earlier version of this module is typed as
-  // SentryMetrics but is missing every field added since, so trusting it throws
-  // TypeError on the first use. Rebuilding costs one counter reset instead.
   if (cached?.version === METRICS_VERSION) {
     return cached;
   }
@@ -604,8 +583,6 @@ function recordReportItem(item: ReportItem): void {
       });
       return;
     default:
-      // ScreenRecord carries only an opaque rrweb blob; History/HashChange never
-      // reach the reporter as their own events. The events counter is enough.
       return;
   }
 }

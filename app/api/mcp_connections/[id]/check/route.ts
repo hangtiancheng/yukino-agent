@@ -1,7 +1,3 @@
-// POST /api/mcp_connections/[id]/check — connectivity probe (port of the
-// agent_py `:check` endpoint): connects, lists tools, records the outcome on
-// the row and returns the tool names. Uses the stored configuration, which
-// only an admin can create, so the probe itself stays public (diagnostic).
 import { getTranslations } from "next-intl/server";
 import { NextRequest } from "next/server";
 import { z } from "zod/v4";
@@ -15,8 +11,6 @@ const CORS_HEADERS = {
 };
 
 const adhocSchema = z.object({
-  // Ad-hoc probe payload (before the connection exists): same fields as the
-  // CRUD schema but without name/enabled.
   transport: z.enum(["sse", "http"]).optional(),
   url: z.string().url().optional(),
   headers: z.record(z.string(), z.string()).optional(),
@@ -39,8 +33,6 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     name: string;
   };
   if (id === "adhoc") {
-    // POST /api/mcp_connections/adhoc/check {transport,url,headers} — probe an
-    // un-saved configuration (legacy UI checked before persisting).
     let body: unknown;
     try {
       body = await request.json();

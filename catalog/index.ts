@@ -47,9 +47,6 @@ const components: ReactComponentImplementation[] = [
   ...shadcnExtensionComponents,
 ];
 
-// Manually maintained shadcn/ui implementation of the official basic catalog
-// (same catalogId and contract), extended with catalog entries for every
-// remaining shadcn/ui component family from src/components/ui.
 export const shadcnCatalog = new Catalog<ReactComponentImplementation>(
   SHADCN_CATALOG_ID,
   components,

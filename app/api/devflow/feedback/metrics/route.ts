@@ -1,4 +1,3 @@
-// GET /api/devflow/feedback/metrics?repoId= — aggregate feedback metrics.
 import { feedbackMetrics } from "@/lib/devflow/feedback";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 

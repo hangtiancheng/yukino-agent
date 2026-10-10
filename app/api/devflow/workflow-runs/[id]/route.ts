@@ -1,6 +1,3 @@
-// GET /api/devflow/workflow-runs/:id — workflow run detail: the (possibly
-// replanned) spec, the observation, the synthesized decision memo, metrics
-// and every AgentTaskRun row.
 import { prisma } from "@/lib/db";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 

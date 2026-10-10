@@ -1,7 +1,3 @@
-// GET    /api/devflow/knowledge/:docId — document metadata (identity + index
-// status), the lookup companion for the search route's docId filter.
-// DELETE /api/devflow/knowledge/:docId — remove a knowledge document and its
-// Milvus vectors.
 import { prisma } from "@/lib/db";
 import { deleteKnowledgeDocument } from "@/lib/devflow/rag";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";

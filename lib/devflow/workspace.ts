@@ -1,13 +1,3 @@
-// Category B: server-side managed git checkouts + workspace file tools.
-// Faithful TS port of the Python code_analysis._sync_checkout (clone/refresh)
-// and code_search (path-guarded list/read/lexical-search), MINUS the git
-// worktree lifecycle (intentionally not migrated). Clones are shallow
-// (--depth 1) and stored under config.devflow.workspace.checkoutDir.
-//
-// SECURITY: every file operation resolves the requested path and asserts it
-// stays inside the checkout (no traversal), skips VCS/build dirs, and refuses
-// secret files (.env, .npmrc, ...). git runs via execFile with an argv array
-// (no shell), so repo/branch/token values cannot inject commands.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdir, readdir, readFile, realpath, rm, stat } from "node:fs/promises";
@@ -131,20 +121,12 @@ const STOP_TERMS = new Set([
   "with",
 ]);
 
-// ---------------------------------------------------------------------------
-// Paths + git
-// ---------------------------------------------------------------------------
-
 export function workspaceRoot(): string {
   const dir = config.devflow.workspace.checkoutDir;
   const abs = path.isAbsolute(dir) ? dir : path.resolve(process.cwd(), dir);
   return abs;
 }
 
-// legacy repos.py:76-98 _parse_git_remote_url — accepts scp-like remotes
-// (`git@host:owner/repo.git`) and http(s) URLs, strips a trailing `.git`.
-// Returns null when no owner/name pair can be recovered (the connect route
-// then falls back to the directory name, unlike legacy which hard-400'd).
 export function parseGitRemoteUrl(
   remoteUrl: string,
 ): { owner: string; name: string; host: string | null } | null {
@@ -177,14 +159,6 @@ export function parseGitRemoteUrl(
   return { owner, name, host: host ? host.toLowerCase() : null };
 }
 
-// The checkout a repo's file tools operate on:
-//  - local mode (legacy repos.py:222 checkout_mode="local"): the user's own
-//    working tree at `localPath`, browsed read-only — we never clone/pull it.
-//  - managed mode: `<id>-<owner__name>` under the optional `cloneParentDir`
-//    (legacy repos.py:185 _clone_target_from_parent) or the default workspace
-//    root. The join stays inside the parent by construction (repo.id is a
-//    uuid and the name has its separators replaced), so no traversal is
-//    possible; removal re-validates with realpath (see removeRepoCheckout).
 export function repoCheckoutPath(repo: Repository): string {
   if (repo.checkoutMode === "local" && repo.localPath) return repo.localPath;
   const safeName = repo.fullName.replace(/[\\/]/g, "__");
@@ -200,9 +174,7 @@ function cloneUrl(repo: Repository): string {
   if (repo.apiBaseUrl) {
     try {
       host = new URL(repo.apiBaseUrl).host;
-    } catch {
-      // fall back to github.com
-    }
+    } catch {}
   }
   return `https://${host}/${repo.owner}/${repo.name}.git`;
 }
@@ -229,7 +201,6 @@ async function runGit(
     cwd,
     timeout: config.devflow.workspace.gitTimeoutMs,
     maxBuffer: 32 * 1024 * 1024,
-    // Never let git prompt for credentials interactively; fail fast instead.
     env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
   });
 }
@@ -259,7 +230,6 @@ async function isGitWorkTree(dir: string): Promise<boolean> {
   return out?.toLowerCase() === "true";
 }
 
-// Dedupe concurrent clone/refresh of the same repo (globalThis survives HMR).
 const globalForSync = globalThis as unknown as {
   devflowWorkspaceSync?: Map<string, Promise<SyncResult>>;
 };
@@ -284,7 +254,6 @@ export interface WorkspaceStatus {
   commitSha: string | null;
 }
 
-// Clone (shallow) or refresh a repository's checkout. Safe to call repeatedly.
 export function syncCheckout(repo: Repository): Promise<SyncResult> {
   const map = syncMap();
   const existing = map.get(repo.id);
@@ -297,10 +266,6 @@ export function syncCheckout(repo: Repository): Promise<SyncResult> {
 async function doSyncCheckout(repo: Repository): Promise<SyncResult> {
   const target = repoCheckoutPath(repo);
   if (repo.checkoutMode === "local") {
-    // legacy code_analysis._sync_checkout only manages checkout_mode=
-    // "managed" clones; a local-mode repo is the user's own working tree and
-    // must never be cloned/fetched/pulled into — read it as-is or report the
-    // tree honestly instead of touching it.
     if (!(await isGitWorkTree(target))) {
       throw new WorkspaceError(
         `Local path ${target} is not a git work tree`,
@@ -319,7 +284,6 @@ async function doSyncCheckout(repo: Repository): Promise<SyncResult> {
   const url = cloneUrlWithToken(cloneUrl(repo), token);
 
   if (await isGitWorkTree(target)) {
-    // Best-effort refresh; on failure keep the cached checkout (like the source).
     try {
       await runGit(["fetch", "--depth", "1", "origin", branch], target);
       await runGit(["checkout", branch], target);
@@ -339,12 +303,9 @@ async function doSyncCheckout(repo: Repository): Promise<SyncResult> {
   }
 
   await mkdir(path.dirname(target), { recursive: true });
-  // Remove a non-git leftover directory before cloning.
   try {
     await rm(target, { recursive: true, force: true });
-  } catch {
-    // ignore
-  }
+  } catch {}
   const cloneArgs = ["clone", "--depth", "1"];
   if (branch) cloneArgs.push("--branch", branch);
   cloneArgs.push(url, target);
@@ -352,7 +313,6 @@ async function doSyncCheckout(repo: Repository): Promise<SyncResult> {
     await runGit(cloneArgs, path.dirname(target));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    // Never leak the token in an error surfaced to the client.
     throw new WorkspaceError(
       `git clone failed: ${msg.replaceAll(token ?? "\u0000", "***")}`,
       502,
@@ -381,12 +341,6 @@ export async function workspaceStatus(
   };
 }
 
-// Delete a repo's managed clone(s) on repo removal (legacy repos.py:422-448
-// cleaned managed artifacts; a local-mode repo's user working tree is NOT
-// ours to delete, so this is a no-op there). Only directories directly under
-// the checkout root (or the repo's cloneParentDir) whose name starts with
-// `<repo.id>-` are removed; each candidate is realpath-validated to stay
-// inside its root before `rm -rf` (symlink-escape guard).
 export async function removeRepoCheckout(repo: Repository): Promise<string[]> {
   if (repo.checkoutMode === "local") return [];
   const roots = [
@@ -399,7 +353,7 @@ export async function removeRepoCheckout(repo: Repository): Promise<string[]> {
     try {
       realRoot = await realpath(root);
     } catch {
-      continue; // root does not exist → nothing to clean
+      continue;
     }
     const entries = await readdir(realRoot, { withFileTypes: true }).catch(
       () => [],
@@ -412,7 +366,6 @@ export async function removeRepoCheckout(repo: Repository): Promise<string[]> {
       if (!real) continue;
       const rel = path.relative(realRoot, real);
       if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
-        // Symlinked outside the root — refuse to delete.
         continue;
       }
       await rm(real, { recursive: true, force: true });
@@ -421,10 +374,6 @@ export async function removeRepoCheckout(repo: Repository): Promise<string[]> {
   }
   return removed;
 }
-
-// ---------------------------------------------------------------------------
-// Path guarding + text helpers
-// ---------------------------------------------------------------------------
 
 function isTextFile(name: string): boolean {
   if (SECRET_FILENAMES.has(name)) return false;
@@ -463,16 +412,12 @@ async function readTextBounded(
   try {
     const data = await readFile(file);
     if (data.length === 0 || data.length > maxBytes) return null;
-    if (data.subarray(0, 4096).includes(0)) return null; // binary
+    if (data.subarray(0, 4096).includes(0)) return null;
     return data.toString("utf8");
   } catch {
     return null;
   }
 }
-
-// ---------------------------------------------------------------------------
-// File tools
-// ---------------------------------------------------------------------------
 
 export interface FileEntry {
   path: string;
@@ -480,7 +425,6 @@ export interface FileEntry {
   size: number | null;
 }
 
-// Bounded recursive listing of files under a directory (relative posix paths).
 export async function listFiles(
   checkout: string,
   relPath: string,
@@ -526,7 +470,6 @@ export interface FileContent {
   truncated: boolean;
 }
 
-// Read a text file (optionally a line range). Refuses binaries and secrets.
 export async function readCodeFile(
   checkout: string,
   relPath: string,
@@ -622,9 +565,6 @@ export interface CodeSearchHit {
   score: number;
 }
 
-// Bounded lexical code search (port of code_search._python_matches). Scans text
-// files under the root, scores each line against the query terms, keeps the best
-// line per file, and returns the top `limit` files.
 export async function searchCode(
   checkout: string,
   query: string,
@@ -678,7 +618,6 @@ export async function searchCode(
   };
 
   if (s.isFile()) {
-    // Single-file search.
     const rel = path.relative(checkout, root).split(path.sep).join("/");
     if (isTextFile(path.basename(root))) {
       const text = await readTextBounded(root, maxBytes);
@@ -711,7 +650,6 @@ export async function searchCode(
     .map((h) => ({ ...h, score: h.score / maxScore }));
 }
 
-// Convenience: resolve a repo's checkout, throwing a clear error if not cloned.
 export async function requireCheckout(repo: Repository): Promise<string> {
   const target = repoCheckoutPath(repo);
   if (!(await isGitWorkTree(target))) {

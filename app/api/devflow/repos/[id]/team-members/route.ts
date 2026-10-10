@@ -1,7 +1,3 @@
-// GET  /api/devflow/repos/:id/team-members — list team-member profiles
-// POST /api/devflow/repos/:id/team-members — create a team member
-// (legacy /{repo_id}/team-members endpoints on team_member Documents, now on
-// the TeamMember table)
 import { prisma } from "@/lib/db";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 import {

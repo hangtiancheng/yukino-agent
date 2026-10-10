@@ -1,7 +1,3 @@
-// GET /api/config_check — static configuration sanity report (port of the
-// agent_py config-check route). Never echoes secret values: each item reports
-// configured + a non-sensitive detail. The issues list names variables that
-// must be set before the corresponding capability works.
 import { getTranslations } from "next-intl/server";
 import { config } from "@/lib/config";
 

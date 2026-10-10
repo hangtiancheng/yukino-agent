@@ -1,10 +1,3 @@
-// GET /api/ready — dependency readiness probe (port of the agent_py
-// readiness/config-check routes). Each check reports ok + latency + short
-// detail; the endpoint returns 200 when the core checks (database, vector
-// store) pass, 503 otherwise. Optional integrations (rerank, Langfuse,
-// Prometheus, MCP, alert sources) degrade to ok=false informational
-// entries, never to 503 — same "single dependency fails, surface degrades"
-// shape as the legacy /ready payload (agent_py app.py:1900-1990).
 import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/db";
 import { config } from "@/lib/config";
@@ -73,9 +66,6 @@ export async function GET() {
       detail: `collection ${config.milvus.collection} loaded`,
     };
   });
-  // Config-presence checks (no outbound LLM/embedding calls — the readiness
-  // probe must stay cheap and side-effect-free; real credentials are exercised
-  // by the smoke tests instead).
   const embedding = await check("embedding", async () => {
     return {
       ok: config.openaiEmbedding.apiKey !== "",
@@ -112,15 +102,11 @@ export async function GET() {
     return { ok: res.ok, detail: `HTTP ${res.status}` };
   });
   const mcp = await check("mcp", async () => {
-    // Reachability only: any HTTP answer proves the endpoint is up (the SSE
-    // body itself is a long-lived stream — headers are enough here).
     const res = await fetch(config.mcpUrl, {
       signal: AbortSignal.timeout(3000),
     });
     return { ok: true, detail: `HTTP ${res.status}` };
   });
-  // Per-source alert reachability (legacy alert-provider readiness): one
-  // dead source marks only its own entry degraded.
   const alertProbes = await probeAlertSources(3000);
   const alertChecks: CheckResult[] = await Promise.all(
     Object.entries(alertProbes).map(async ([name, probe]) => {

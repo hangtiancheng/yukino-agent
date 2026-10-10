@@ -1,6 +1,3 @@
-// POST /api/log — yukino-sentry report endpoint (dsn).
-// The SDK posts a JSON array of IReportData via sendBeacon (text/plain) or
-// fetch (application/json); events are converted to Prometheus metrics.
 import {
   recordInvalidReportBatch,
   recordReportBatch,

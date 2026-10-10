@@ -1,10 +1,3 @@
-// Category B: project-doc index. Discovers a repository's documentation and
-// manifests from its managed checkout, chunks + embeds them into the shared
-// Milvus collection (source = "devflow:project:<repoId>:<docHash>"), and tracks
-// a per-repo ProjectIndex row (status/fingerprint/summary) in PostgreSQL.
-// Port of the Python project_indexing.py discovery + indexing (minus the
-// policy-file loader, kept to a built-in classification). Vectors live in
-// Milvus; only state + summary live in Postgres.
 import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
@@ -25,8 +18,6 @@ import {
 import type { ProjectIndex, Repository } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
 
-// Prisma's InputJsonValue rejects `unknown` leaves; the persisted payloads are
-// already JSON-serializable, so assert once at the boundary.
 const asJson = (value: unknown): Prisma.InputJsonValue =>
   value as Prisma.InputJsonValue;
 
@@ -164,7 +155,6 @@ export async function discoverProjectDocs(
     }
   };
   await walk(checkout);
-  // Deterministic order: core first, then docs, then support; path as tiebreak.
   const tierRank: Record<string, number> = { core: 0, docs: 1, support: 2 };
   out.sort(
     (a, b) =>
@@ -233,14 +223,6 @@ export function projectFingerprint(
   return policyDigest === "" ? base : `${base}:${policyDigest}`;
 }
 
-// ---------------------------------------------------------------------------
-// .devflow/index.yml policy (port of legacy project_indexing.py:79-241).
-// Repo-local opt-in/out of which files enter the project-doc index: mode
-// auto|allowlist, include/exclude glob patterns (fnmatch semantics), and an
-// include_manifests switch. The digest participates in the fingerprint so a
-// policy edit marks the index stale.
-// ---------------------------------------------------------------------------
-
 export interface ProjectIndexPolicy {
   mode: "auto" | "allowlist";
   include: string[];
@@ -255,8 +237,6 @@ const DEFAULT_POLICY: ProjectIndexPolicy = {
   includeManifests: true,
 };
 
-// Python fnmatch.fnmatchcase: `*` matches anything (including `/`), `?` any
-// single char, `[seq]` a character class; everything else is literal.
 export function globToRegExp(pattern: string): RegExp {
   let re = "^";
   let i = 0;
@@ -303,8 +283,6 @@ const INDEX_POLICY_SCHEMA = z.object({
   include_manifests: z.boolean().optional(),
 });
 
-// Parse a `.devflow/index.yml` body; throws with legacy-style messages on
-// invalid content so the caller can surface the reason.
 export function parseIndexPolicyYaml(raw: string): ProjectIndexPolicy {
   let parsed: unknown;
   try {
@@ -352,7 +330,6 @@ export async function loadProjectIndexPolicy(
     return parseIndexPolicyYaml(raw);
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("Could not read")) throw e;
-    // Missing file = default policy.
     if ((e as NodeJS.ErrnoException).code === "ENOENT")
       return { ...DEFAULT_POLICY };
     if (e instanceof Error && e.message.startsWith(".devflow/index.yml"))
@@ -436,7 +413,6 @@ export async function getProjectIndexState(repo: Repository): Promise<{
   const status = await workspaceStatus(repo);
   let stale = false;
   if (index && index.status === "ready" && status.cloned) {
-    // Policy participates in staleness (legacy: policy digest in fingerprint).
     const policy = await loadProjectIndexPolicy(status.path).catch(
       () => undefined,
     );
@@ -450,7 +426,6 @@ export async function getProjectIndexState(repo: Repository): Promise<{
   return { index, stale, checkoutCloned: status.cloned };
 }
 
-// Legacy project_indexing._extract_title: first `# ` heading, else fallback.
 function extractTitle(text: string, fallback: string): string {
   for (const line of text.split("\n")) {
     const stripped = line.trim();
@@ -463,9 +438,6 @@ function extractTitle(text: string, fallback: string): string {
   return fallback;
 }
 
-// Index a repository's project docs into Milvus. Requires the checkout to exist
-// (clones it first if needed). Embedding depends on a valid embedding API key
-// (same dependency as the knowledge base).
 export async function indexProject(repo: Repository): Promise<{
   fileCount: number;
   chunkCount: number;
@@ -485,7 +457,6 @@ export async function indexProject(repo: Repository): Promise<{
     );
     const scannedAt = new Date().toISOString();
 
-    // Clear the previous project-doc vectors for this repo, then re-add.
     await deleteBySourcePrefix(`${PROJECT_PREFIX}:${repo.id}:`);
 
     const maxBytes = config.devflow.workspace.maxFileBytes;
@@ -494,7 +465,6 @@ export async function indexProject(repo: Repository): Promise<{
       const abs = path.join(synced.path, ...candidate.rel.split("/"));
       const text = await readBounded(abs, maxBytes);
       if (text === null) continue;
-      // Structure-aware chunking (legacy project_indexing: 1800/180).
       const chunks = chunkDocument(text, candidate.rel, 1800, 180);
       if (chunks.length === 0) continue;
       const source = docSource(repo.id, candidate.rel);
@@ -506,8 +476,6 @@ export async function indexProject(repo: Repository): Promise<{
       const siblings = siblingIdsByParent(chunks, idFor);
       await indexChunks(
         chunks.map((chunk, i) => {
-          // Legacy title: `${docTitle} · ${section_title}` | `${docTitle}#i+1`
-          // | docTitle.
           const title = chunk.section_title
             ? `${docTitle} · ${chunk.section_title}`
             : chunks.length > 1
@@ -570,8 +538,6 @@ export async function searchProjectDocs(
   query: string,
   topK = 5,
 ): Promise<ProjectDocHit[]> {
-  // Same per-repo retrieval settings as the knowledge base (legacy used one
-  // KnowledgeBaseConfig per repository for all doc sources).
   const cfg = await getKnowledgeConfig(repoId);
   const docs = await scopedRetrieve(query, topK, projectFilter(repoId), {
     method: cfg.retrievalMethod,

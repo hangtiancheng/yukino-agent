@@ -1,5 +1,3 @@
-// GET /api/devflow/stats?repoId= — dashboard aggregates for one repository
-// (or all repositories when repoId is omitted).
 import { prisma } from "@/lib/db";
 import { errorMessage, failRaw, ok } from "@/lib/devflow/http";
 

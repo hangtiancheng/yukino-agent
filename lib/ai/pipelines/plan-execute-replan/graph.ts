@@ -1,12 +1,3 @@
-// LangGraph orchestration of the Plan-Execute-Replan loop:
-//
-//   planner → executor (one plan step per node run) → replanner → uiify | executor | exhausted
-//
-// The replanner intervenes after every full plan round: done → uiify (final
-// report + optional A2UI surface), budget left → executor with the remaining
-// steps, budget spent → exhausted. Nodes publish PlanExecuteEvent payloads to
-// the "custom" stream via writer(); index.ts replays that stream to callers.
-// LLM calls are recorded as Langfuse generations (no-op when unconfigured).
 import {
   Annotation,
   END,
@@ -38,41 +29,26 @@ import type { PlanExecuteEvent } from "./events";
 
 export const MAX_ITERATIONS = 20;
 
-// Constant result text of the exhausted branch; the /api/ai_ops route maps it
-// to AiOpsRun.status "exhausted" (events.ts is a fixed contract, so this
-// string is the only done/exhausted discriminator).
 export const EXHAUSTED_RESULT = "Max iterations reached";
 
-// Safety net only — the iteration counter in afterReplanner is the real
-// budget. Each round costs one superstep per plan step plus the replanner, so
-// allow a generous per-round step count before LangGraph itself aborts.
 export const RECURSION_LIMIT = MAX_ITERATIONS * 25 + 25;
 
 const overwrite = <T>(_left: T, right: T): T => right;
 
 const OpsState = Annotation.Root({
-  // The analysis task (defaults to the AI Ops alert-analysis query).
   query: Annotation<string>(),
-  // Structured fields of the alert a targeted diagnosis was asked for
-  // (AI Ops input surface G3); null for generic runs. Feeds the
-  // deterministic report fallback template (port of the legacy alert table).
   alert: Annotation<Record<string, string> | null>({
     reducer: overwrite,
     default: () => null,
   }),
-  // Steps of the current round; the replanner replaces it with the remaining steps.
   plan: Annotation<string[]>({ reducer: overwrite, default: () => [] }),
-  // Next step to execute within the current plan.
   stepIndex: Annotation<number>({ reducer: overwrite, default: () => 0 }),
-  // Outputs of every executed step across all rounds.
   detail: Annotation<string[]>({
     reducer: (left, right) => left.concat(right),
     default: () => [],
   }),
-  // Completed replan rounds.
   iteration: Annotation<number>({ reducer: overwrite, default: () => 0 }),
   done: Annotation<boolean>({ reducer: overwrite, default: () => false }),
-  // Final report produced by the replanner when done.
   report: Annotation<string>({ reducer: overwrite, default: () => "" }),
 });
 
@@ -104,7 +80,6 @@ function usageDetails(usage: LanguageModelUsage) {
   };
 }
 
-// LanguageModel is a union that includes bare model-id strings.
 function modelIdOf(model: LanguageModel): string | undefined {
   if (typeof model === "string") return model;
   if ("modelId" in model && typeof model.modelId === "string") {
@@ -113,10 +88,6 @@ function modelIdOf(model: LanguageModel): string | undefined {
   return undefined;
 }
 
-// Publishes an event to the "custom" stream. Note: use getWriter(), NOT the
-// writer() helper — in @langchain/langgraph 1.4.x writer() reads
-// configurable.writer, which Pregel no longer populates, so it silently
-// drops every event; getWriter() reads the top-level config.writer.
 function writeEvent(event: PlanExecuteEvent): void {
   getWriter()?.(event);
 }
@@ -153,10 +124,6 @@ async function executor(state: OpsGraphState): Promise<OpsGraphUpdate> {
   const step = state.plan[index];
   writeEvent({ type: "step_start", index, step });
   const tools = await buildTools();
-  // Guardrail ported from legacy _validated_plan (diagnostics.py:829-863):
-  // plan steps may only reference DISCOVERED tools. An undiscovered tool
-  // name is never silently narrated — the step is marked skipped and the
-  // observation lands in `detail` so the replanner sees why.
   const unknown = findUnknownToolReferences(step, Object.keys(tools));
   if (unknown.length > 0) {
     const observation = `[skipped] step references undiscovered tool(s): ${unknown.join(", ")}; currently discovered tools: ${Object.keys(tools).join(", ") || "none"}.`;
@@ -228,12 +195,6 @@ Based on the progress above, determine whether the task is complete. If it is, p
   };
 }
 
-// ---- Report structure guardrail (port of legacy _clean_markdown_report +
-// _fallback_report_content, diagnostics.py:63-68 / 1087-1190 — the two
-// anti-hallucination guardrails). The REQUIRED markers are the minimum headings
-// of the current redesigned template (index.ts AI_OPS_QUERY): title, alert list,
-// conclusion — deliberately looser than the legacy exact-heading match because
-// the migration changed the template shape.
 export const AIOPS_REPORT_REQUIRED_MARKERS = [
   "告警分析报告",
   "活跃告警",
@@ -243,9 +204,6 @@ export const AIOPS_REPORT_REQUIRED_MARKERS = [
 const REPORT_FENCE_PATTERN =
   /^```(?:markdown|md)?[ \t]*\r?\n([\s\S]*)\r?\n```[ \t]*$/;
 
-// Legacy _clean_markdown_report: strip surrounding whitespace, unwrap a
-// whole-response ``` fence, reject JSON-shaped text, require every marker.
-// Returns the cleaned report or null when the draft is unusable.
 export function cleanMarkdownReport(content: string): string | null {
   let report = content.trim();
   const fenced = REPORT_FENCE_PATTERN.exec(report);
@@ -261,8 +219,6 @@ export function cleanMarkdownReport(content: string): string | null {
   return report;
 }
 
-// Legacy _report_value (diagnostics.py:1192-1199): first non-empty string
-// field, with '|' escaped for markdown tables; "未获取" when nothing matches.
 function reportValue(
   alert: Record<string, string> | null,
   ...keys: string[]
@@ -276,10 +232,6 @@ function reportValue(
   return "未获取";
 }
 
-// Legacy _fallback_evidence_lines (diagnostics.py:1201-1209), adapted: our
-// `detail` entries are free-text step outputs, so each collapses to one
-// numbered line (whitespace-normalized, bounded like the 500-char evidence
-// summaries in diagnostic-cases.ts).
 const EVIDENCE_LINE_CHARS = 500;
 const MAX_EVIDENCE_LINES = 20;
 
@@ -295,11 +247,6 @@ export function fallbackEvidenceLines(detail: string[]): string[] {
   return lines.length > 0 ? lines : ["未获取工具证据，无法验证日志症状。"];
 }
 
-// Legacy _fallback_report_content (diagnostics.py:1099-1190): a deterministic
-// Chinese template assembled ONLY from the structured alert input and the
-// executed-step evidence — used when the LLM report fails structure
-// validation twice, so a finished run always yields a compliant report and
-// never an unverified root-cause claim.
 export function fallbackReportContent(args: {
   alert: Record<string, string> | null;
   detail: string[];
@@ -388,9 +335,6 @@ export function fallbackReportContent(args: {
   ].join("\n");
 }
 
-// Second LLM attempt when the replanner summary fails validation: one
-// no-tools think-model call that may only restructure the draft around the
-// collected evidence. Any failure returns "" and the caller falls back.
 async function regenerateReport(state: OpsGraphState): Promise<string> {
   const prompt = `You are finalizing an alert operations analysis report (告警分析报告). The draft below failed required-structure validation. Rewrite it as clean Markdown that contains at least these Chinese headings: "# 告警分析报告", "## 活跃告警列表", "## 告警归因 N (第 N 个告警)", "## 处理流程 N (第 N 个告警)", "## 结论".
 
@@ -427,10 +371,6 @@ ${state.report}`;
   return res.text;
 }
 
-// Post "UI-ify" pass: one no-tools think-model call that optionally renders
-// the finished report as an A2UI surface. Returns undefined when the report
-// has nothing structured to visualize, the block stays invalid after one
-// corrective retry, or the call fails — the report itself is never at risk.
 async function uiifyReport(result: string): Promise<unknown[] | undefined> {
   const system = `You render A2UI surfaces for an OnCall assistant.\n${A2UI_PROMPT_SECTION}`;
   const question = `Below is an alert operations analysis report. If it presents structured data worth visualizing (alert lists, metric series, tabular results), reply with ONLY one A2UI block wrapped between ${A2UI_OPEN_TAG} and ${A2UI_CLOSE_TAG}.
@@ -464,7 +404,7 @@ ${result}`;
     });
     const extracted = extractA2ui(gen.text);
     if (extracted.messages) return extracted.messages;
-    if (!extracted.error) return undefined; // no block: nothing to render
+    if (!extracted.error) return undefined;
     return await correctA2uiBlock({
       model: thinkModel,
       system,
@@ -474,27 +414,18 @@ ${result}`;
       error: extracted.error,
     });
   } catch (e) {
-    // The surface is an optional decoration on an expensive multi-iteration
-    // run — never let its failure discard the finished report.
     console.error("[a2ui] ai_ops uiify failed:", e);
     return undefined;
   }
 }
 
 async function uiify(state: OpsGraphState): Promise<OpsGraphUpdate> {
-  // Legacy report pipeline (_generate_report_content, diagnostics.py:669-684):
-  // validate the model report; on failure fall back to the deterministic
-  // template. Here the replanner summary is attempt #1, a single evidence-
-  // bound rewrite is #2, and the template is the guaranteed floor — a
-  // finished run always yields a structurally compliant report.
   let report = cleanMarkdownReport(state.report);
   if (report === null && state.report.trim() !== "") {
     let retryText = "";
     try {
       retryText = await regenerateReport(state);
     } catch (e) {
-      // The rewrite call is best-effort (LLM may be down); the template floor
-      // keeps the report alive.
       console.error("[ai-ops] report regeneration failed:", e);
     }
     report = cleanMarkdownReport(retryText);

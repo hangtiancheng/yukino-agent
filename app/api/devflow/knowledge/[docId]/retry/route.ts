@@ -1,6 +1,3 @@
-// POST /api/devflow/knowledge/:docId/retry — re-chunk + re-embed a FAILED
-// knowledge document from its stored content (legacy routes/rag.py
-// repositories/{repo_id}/documents/{document_id}/retry).
 import { retryDocument } from "@/lib/devflow/rag";
 import { errorMessage, failRaw, ok } from "@/lib/devflow/http";
 

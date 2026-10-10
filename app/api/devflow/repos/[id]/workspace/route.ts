@@ -1,5 +1,3 @@
-// GET  /api/devflow/repos/:id/workspace — clone status (cloned?, branch, commit)
-// POST /api/devflow/repos/:id/workspace — clone or refresh the managed checkout
 import {
   getRepoOrThrow,
   syncCheckout,

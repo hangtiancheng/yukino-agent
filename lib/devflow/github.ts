@@ -1,12 +1,3 @@
-// GitHub REST client (fetch-based). Replaces the Python httpx client and the
-// per-resource helper modules (issues / pull_requests / actions).
-//
-// Read-path responses are validated at this boundary with the zod schemas in
-// ./schemas.ts — loose objects, so fields DevFlow does not consume survive
-// untouched while everything sync.ts reads is statically typed. Write-path
-// responses are returned as `unknown` on purpose: they are only summarized
-// into the draft audit trail, and a validation failure must never mask a
-// write that already succeeded on GitHub's side.
 import { z } from "zod/v4";
 import { config } from "@/lib/config";
 import {
@@ -86,8 +77,6 @@ async function ghFetch(
   return response.text();
 }
 
-// Validates one decoded GitHub response against its schema. Throws with the
-// offending path so sync.ts's per-section error capture stays informative.
 function parseResponse<T>(
   schema: z.ZodType<T>,
   payload: unknown,
@@ -115,7 +104,6 @@ export async function getRepo(
   );
 }
 
-// The issues endpoint also returns pull requests; filter them out.
 export async function listIssues(
   owner: string,
   repo: string,
@@ -207,7 +195,6 @@ export async function listWorkflowRunJobs(
   return data.jobs ?? [];
 }
 
-// Plain-text log for a single job (the endpoint redirects to blob storage).
 export async function getJobLogs(
   owner: string,
   repo: string,
@@ -220,11 +207,6 @@ export async function getJobLogs(
   );
   return typeof text === "string" ? text : JSON.stringify(text);
 }
-
-// ---------------------------------------------------------------------------
-// Write actions — only used after a human confirms an action draft.
-// Responses are deliberately `unknown` (see file header).
-// ---------------------------------------------------------------------------
 
 export async function createIssueComment(
   owner: string,

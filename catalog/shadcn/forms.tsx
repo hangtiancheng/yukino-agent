@@ -70,8 +70,6 @@ const toOptions = (raw: unknown): { label: string; value: string }[] => {
   const result: { label: string; value: string }[] = [];
   for (const o of Array.isArray(raw) ? (raw as OptionDef[]) : []) {
     const value = String(o.value ?? "");
-    // value is the option identity; duplicates would collide as React keys
-    // and confuse the controlled selection.
     if (seen.has(value)) continue;
     seen.add(value);
     result.push({ label: String(o.label ?? ""), value });

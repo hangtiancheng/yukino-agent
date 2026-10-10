@@ -1,8 +1,3 @@
-// Offline smoke test for the PDF/DOCX extraction port (Yukino.md §3.3
-// reclassified from "ecosystem limit" to portable: unpdf + mammoth).
-// Covers: heading->markdown mapping, zip-bomb entry/size guards, OLE and
-// per-entry encryption rejection, and honest errors for broken PDFs.
-//   npx tsx tests/doc-extract.smoke.ts
 import assert from "node:assert/strict";
 import {
   extractBinaryDocumentText,
@@ -27,7 +22,6 @@ const CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`;
 
 async function main() {
-  // 1. happy path: heading style maps to markdown `#`
   const happyEntries = new Map<string, string>();
   happyEntries.set("[Content_Types].xml", CONTENT_TYPES);
   happyEntries.set("word/document.xml", DOC_XML);
@@ -41,7 +35,6 @@ async function main() {
     `heading mapping (got ${JSON.stringify(text!.slice(0, 40))})`,
   );
 
-  // 2. entry-count zip bomb guard
   const many = new Map<string, string>();
   for (let i = 0; i < MAX_DOCX_ENTRIES + 5; i++) many.set(`x${i}.xml`, "<a/>");
   many.set("[Content_Types].xml", CONTENT_TYPES);
@@ -56,7 +49,6 @@ async function main() {
   }
   assert.ok(rejectedEntries, "entry/size bomb rejected");
 
-  // 3. high-ratio decompressed-size guard (stored zeros compress tiny)
   const bomb: Record<string, Uint8Array> = {};
   for (let i = 0; i < 30; i++)
     bomb[`z${i}.bin`] = new Uint8Array(4 * 1024 * 1024);
@@ -76,7 +68,6 @@ async function main() {
   }
   assert.ok(rejectedSize, "decompressed size guard rejected");
 
-  // 4. OLE-encrypted container magic
   const ole = Buffer.concat([
     Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe2]),
     Buffer.alloc(64),
@@ -87,7 +78,6 @@ async function main() {
     "OLE encrypted rejected",
   );
 
-  // 5. per-entry encryption flag in the central directory
   const plain = makeDocx(
     new Map([
       ["[Content_Types].xml", CONTENT_TYPES],
@@ -111,22 +101,19 @@ async function main() {
     "central-directory encryption flag rejected",
   );
 
-  // 6. broken PDF fails honestly (no silent empty index)
   await assert.rejects(
     () => extractBinaryDocumentText("x.pdf", Buffer.from("%PDF-1.4\nbroken")),
     (e: unknown) => e instanceof DocumentExtractionError,
     "broken pdf rejected with DocumentExtractionError",
   );
 
-  // 7. non-document extensions fall through (caller handles text)
   assert.equal(
     await extractBinaryDocumentText("notes.md", Buffer.from("# hi")),
     null,
   );
 
-  // 8. decodeTextBytes: NUL sniff + gb18030 fallback
   assert.throws(() => decodeTextBytes(Buffer.from([104, 105, 0, 1])), /binary/);
-  const gbk = Buffer.from([0xd6, 0xd0, 0xce, 0xc4]); // "中文" in gb18030
+  const gbk = Buffer.from([0xd6, 0xd0, 0xce, 0xc4]);
   assert.equal(decodeTextBytes(gbk), "中文");
 
   console.log("DOC-EXTRACT SMOKE OK");

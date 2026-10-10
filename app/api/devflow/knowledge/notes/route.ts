@@ -1,7 +1,3 @@
-// POST /api/devflow/knowledge/notes — create a user-authored memory note that
-// lands directly in the repo KB as a `memory_note` document (legacy
-// routes/knowledge.py:234-256 create_memory_note). Distinct from the
-// candidate-approval flow: this writes the note immediately.
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
 import { addMemoryNote } from "@/lib/devflow/rag";

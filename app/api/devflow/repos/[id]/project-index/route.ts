@@ -1,9 +1,3 @@
-// GET  /api/devflow/repos/:id/project-index — index state (+ staleness, snooze)
-// POST /api/devflow/repos/:id/project-index — (re)build the project-doc index,
-//      or {action:"snooze", days?} to silence the stale/missing reminder for
-//      N days (legacy project_index.py:49-57 snooze endpoint).
-// Indexing clones/refreshes the checkout, discovers docs/manifests, and embeds
-// them into Milvus. It can take a while, so it runs inline and returns counts.
 import { prisma } from "@/lib/db";
 import {
   getProjectIndexState,
@@ -24,9 +18,6 @@ export async function GET(_request: Request, context: RouteContext) {
     const { id } = await context.params;
     const repo = await getRepoOrThrow(id);
     const state = await getProjectIndexState(repo);
-    // legacy project_indexing.py:342/577-578: state carries snoozed_until and
-    // is_snoozed(); a snoozed index must not surface as a reminder, so the
-    // stale flag is gated on the snooze window here at the display boundary.
     const snoozedUntil = state.index?.snoozedUntil ?? null;
     const snoozed =
       snoozedUntil !== null && snoozedUntil.getTime() > Date.now();
@@ -60,10 +51,6 @@ export async function POST(request: Request, context: RouteContext) {
     const body = await request.json().catch(() => null);
     const snooze = ProjectIndexSnoozeSchema.safeParse(body);
     if (snooze.success) {
-      // legacy project_indexing.snooze_project_index:362-370 — write
-      // snoozed_until = now + days on the (created if absent) state row.
-      // The legacy status downgrade to "missing" for never-indexed repos is
-      // not ported: this stack's "idle" default already reads as not-indexed.
       const snoozedUntil = new Date(Date.now() + snooze.data.days * 86_400_000);
       await prisma.projectIndex.upsert({
         where: { repoId: repo.id },

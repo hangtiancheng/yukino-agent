@@ -1,7 +1,5 @@
 "use client";
 
-// Weekly Reports: generate an engineering report for a date range; the report
-// is also stored in the repository knowledge base for later RAG citations.
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { CalendarRange, FileText, Sparkles } from "lucide-react";

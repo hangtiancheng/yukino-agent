@@ -1,13 +1,3 @@
-/**
- * A2UI Elemental inference format system prompt generator.
- *
- * Ported from the A2UI Python agent SDK `ElementalPromptGenerator`
- * (`a2ui/inference_formats/experimental/elemental/prompt_generator.py`).
- * Translates catalog JSON schemas into TypeScript interface declarations and
- * instruction blocks. (Few-shot example decompilation to Elemental HTML is not
- * ported; provide examples already formatted for Elemental.)
- */
-
 import { withPruning } from "./pruning";
 import { CatalogSchemaHelper } from "./schema-helper";
 import type {
@@ -66,7 +56,6 @@ You can call these functions inside attribute expressions \`{...}\` using named 
 [FUNCTION_DECLARATIONS]
 \`\`\`[CATALOG_INSTRUCTIONS_BLOCK]`;
 
-/** Checks whether a JSON schema allows data binding. */
 function schemaAllowsDatabinding(propSchema: JsonValue | undefined): boolean {
   if (!isJsonObject(propSchema)) return false;
   const ref = propSchema["$ref"];
@@ -94,7 +83,6 @@ function schemaAllowsDatabinding(propSchema: JsonValue | undefined): boolean {
   return subs.some((sub) => schemaAllowsDatabinding(sub));
 }
 
-/** Checks whether a JSON schema represents an Action. */
 function isAction(propSchema: JsonValue | null | undefined): boolean {
   if (!isJsonObject(propSchema)) return false;
   const ref = propSchema["$ref"];
@@ -108,14 +96,10 @@ function isAction(propSchema: JsonValue | null | undefined): boolean {
   return false;
 }
 
-/** Converts a CamelCase string to kebab-case. */
 function toKebabCase(name: string): string {
   return name.replace(/(?<!^)(?=[A-Z])/g, "-").toLowerCase();
 }
 
-/**
- * Generates system prompt contracts guiding models to produce A2UI Elemental.
- */
 export class ElementalPromptGenerator implements PromptGenerator {
   private catalog: A2uiCatalogSchemas;
   private helper: CatalogSchemaHelper;
@@ -173,7 +157,6 @@ export class ElementalPromptGenerator implements PromptGenerator {
       isJsonObject(propSchema["properties"]) &&
       "path" in propSchema["properties"]
     ) {
-      // Direct mapping of DataBinding object to TS type.
       baseType = "DataBinding";
     } else if (
       Array.isArray(propSchema["oneOf"]) ||
@@ -190,8 +173,6 @@ export class ElementalPromptGenerator implements PromptGenerator {
       }
       if (types.length > 0) {
         types = [...new Set(types)];
-        // If we have both 'DataBinding' and some object representation of it,
-        // we keep only 'DataBinding'.
         if (types.includes("DataBinding")) {
           types = types.filter((t) => !t.startsWith("{"));
         }
@@ -295,14 +276,12 @@ export class ElementalPromptGenerator implements PromptGenerator {
       .map((line) => `${indent}// ${line}`);
   }
 
-  /** Compiles component definitions into TypeScript element interfaces. */
   generateComponentDeclarations(): string {
     const declarations: string[] = [];
     for (const name of Object.keys(this.helper.componentProperties).sort()) {
       const props = this.helper.getComponentProperties(name);
       const reqs = this.helper.getComponentRequired(name);
 
-      // Find all action properties to handle renaming.
       const actionProps = props.filter((p) =>
         isAction(this.helper.getPropertySchema(name, p)),
       );
@@ -345,7 +324,6 @@ export class ElementalPromptGenerator implements PromptGenerator {
     return declarations.join("\n\n");
   }
 
-  /** Compiles function definitions into TypeScript function declarations. */
   generateFunctionDeclarations(): string {
     const declarations: string[] = [];
     for (const name of Object.keys(this.helper.functionProperties).sort()) {
@@ -389,7 +367,6 @@ export class ElementalPromptGenerator implements PromptGenerator {
     return declarations.join("\n");
   }
 
-  /** Assembles the system prompt component catalog signatures block. */
   catalogDescription(includeSchema = true): string {
     if (!includeSchema) return "";
 

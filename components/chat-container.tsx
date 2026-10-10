@@ -7,8 +7,6 @@ import type { A2uiClientAction } from "@a2ui/web_core/v0_9";
 import MessageList from "./msg-list";
 import ChatInput from "./chat-input";
 
-// Empty-state hero: one orchestrated entrance for the whole block. Chips send
-// the question straight into the chat.
 const SUGGESTION_KEYS = [
   { key: "suggestionOncall", icon: LifeBuoy },
   { key: "suggestionRunbook", icon: BookSearch },

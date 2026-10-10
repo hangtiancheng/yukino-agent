@@ -1,19 +1,8 @@
-// Optional rerank stage on top of the Milvus RRF-fused retrieval results.
-// Port of the Python QwenVlRerankModel (agent_py super_ai/llm/rerank.py):
-// an Aliyun DashScope text-rerank HTTP client (qwen3-vl-rerank) with bounded
-// retries and strict response validation.
-//
-// Enabled only when RERANK_API_KEY is set. Unlike the Python original — which
-// hard-failed retrieval when the rerank service was unavailable — a failure
-// here degrades to the incoming fusion order (tryRerank returns null): rerank
-// is a quality refinement and a flaky provider must not take down RAG chat.
 import { z } from "zod/v4";
 import { config } from "@/lib/config";
 
 export interface RerankItem {
-  // Index into the documents array passed to the rerank call.
   index: number;
-  // Relevance score in [0, 1]; higher is better.
   score: number;
 }
 
@@ -24,7 +13,6 @@ export class RerankError extends Error {
   }
 }
 
-// DashScope text-rerank response: { output: { results: [{ index, relevance_score }] } }.
 const rerankResultSchema = z.object({
   index: z.number().int(),
   relevance_score: z.number(),
@@ -44,10 +32,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Validate + normalize one rerank response (same rules as the Python
-// _parse_rerank_results): indexes must be unique and in range, scores must be
-// finite and within [0, 1]; results are sorted by score descending and cut to
-// topN.
 export function parseRerankResults(
   payload: unknown,
   documentCount: number,
@@ -80,10 +64,6 @@ export function parseRerankResults(
   return items.slice(0, topN);
 }
 
-// Rerank `documents` for `query`, returning up to topN items ordered by
-// relevance. Retries 429/5xx/transport errors with exponential backoff
-// (0.25 * 2^attempt seconds, same as the Python original). Throws RerankError
-// when the service is unavailable or returns an invalid response.
 export async function rerankDocuments(
   query: string,
   documents: string[],
@@ -129,7 +109,6 @@ export async function rerankDocuments(
       return parseRerankResults(await response.json(), documents.length, topN);
     } catch (e) {
       if (e instanceof RerankError) throw e;
-      // Network/timeout/parse failures are retryable.
       if (attempt < maxRetries) {
         await sleep(250 * 2 ** attempt);
         continue;
@@ -139,9 +118,6 @@ export async function rerankDocuments(
   }
 }
 
-// Fail-open wrapper used by the retrieval pipeline: returns null when rerank
-// is disabled or when the service fails, so callers fall back to the fusion
-// order instead of failing the request.
 export async function tryRerank(
   query: string,
   documents: string[],

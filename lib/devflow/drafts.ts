@@ -1,7 +1,3 @@
-// Action draft execution. Drafts are the safety gate from the original
-// DevFlow design: agents may only PROPOSE external writes (GitHub comments,
-// new issues, labels, closing issues, sending reports); a human confirms, and
-// only then does executeDraft() perform the real action.
 import { prisma } from "@/lib/db";
 import { decryptToken } from "./crypto";
 import {
@@ -32,7 +28,6 @@ async function repoContextFor(repoId: string): Promise<{
   };
 }
 
-// Execute a confirmed draft against the GitHub API and record the outcome.
 export async function executeDraft(draftId: string) {
   const draft = await prisma.actionDraft.findUnique({ where: { id: draftId } });
   if (!draft) throw new Error(`Action draft ${draftId} not found`);
@@ -92,10 +87,6 @@ export async function executeDraft(draftId: string) {
         break;
       }
       case "send_report": {
-        // legacy routes/action_drafts.py:60-61: send_report does NOT call
-        // GitHub or any external channel — confirming it only records the
-        // report as sent (execution_result.status === "recorded"); see
-        // tests/test_expansion_features.py test_send_report_action_draft_confirm_records_execution.
         executionResult = {
           status: "recorded",
           message:
@@ -124,8 +115,6 @@ export async function executeDraft(draftId: string) {
   }
 }
 
-// Keep only identity/URL fields from the GitHub response — full payloads are
-// large and mostly irrelevant for the audit trail.
 function summarizeResult(result: unknown): object {
   if (!result || typeof result !== "object") return { raw: String(result) };
   const r = result as Record<string, unknown>;

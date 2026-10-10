@@ -1,5 +1,3 @@
-// GET /api/devflow/skills/:name — one skill with its full instruction body
-// (legacy routes/skills.py get_skill, include_instructions=True).
 import { getSkillRegistry } from "@/lib/devflow/skills";
 import { errorMessage, failRaw, ok } from "@/lib/devflow/http";
 

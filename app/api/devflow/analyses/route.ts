@@ -1,5 +1,3 @@
-// GET /api/devflow/analyses?targetType=&targetId= — saved analysis history
-// for one target, newest first.
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";

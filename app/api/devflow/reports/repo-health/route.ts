@@ -1,6 +1,3 @@
-// POST /api/devflow/reports/repo-health — quick repo health snapshot (legacy
-// routes/reports.py:108-121 repo_health): open issue/PR counts, failed CI runs
-// and the derived risk hints. Deterministic; no model call.
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";

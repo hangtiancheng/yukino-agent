@@ -1,6 +1,3 @@
-// GET /api/devflow/repos/:id/memory — thread memory + per-conversation memory
-// list for the repo memory panel (#25; legacy routes/knowledge.py
-// /{repo_id}/memory/* surface, reduced to the models this stack persists).
 import { prisma } from "@/lib/db";
 import { getRepoMemoryOverview } from "@/lib/devflow/memory";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";

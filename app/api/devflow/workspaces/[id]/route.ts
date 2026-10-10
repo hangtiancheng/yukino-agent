@@ -1,10 +1,3 @@
-// GET    /api/devflow/workspaces/:id — workspace detail + aggregated stats.
-// PATCH  /api/devflow/workspaces/:id — rename / re-describe / re-pick repos.
-// DELETE /api/devflow/workspaces/:id — remove the grouping (repos untouched).
-// GET mirrors legacy workspaces.py:73-78 listing semantics for one row; PATCH
-// and DELETE are the round-2 CRUD additions (legacy had neither). Mutations
-// keep the legacy settings:manage gate and audit naming (workspace.update /
-// workspace.delete, modeled on legacy workspace.create).
 import { prisma } from "@/lib/db";
 import {
   PermissionError,

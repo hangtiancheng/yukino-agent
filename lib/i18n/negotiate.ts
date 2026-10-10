@@ -5,7 +5,6 @@ interface LanguageEntry {
   q: number;
 }
 
-// Parses an Accept-Language header into q-ranked entries.
 function parseAcceptLanguage(header: string): LanguageEntry[] {
   return header
     .split(",")
@@ -19,8 +18,6 @@ function parseAcceptLanguage(header: string): LanguageEntry[] {
     .sort((a, b) => b.q - a.q);
 }
 
-// Maps an Accept-Language header onto a supported locale: entries are ranked
-// by q-value and the first one with a supported language prefix wins.
 export function negotiateLocale(
   acceptLanguage: string | null | undefined,
 ): Locale {

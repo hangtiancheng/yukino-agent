@@ -1,7 +1,5 @@
 "use client";
 
-// Issues: master-detail workspace. Select an issue, run AI triage, inspect the
-// structured verdict, and turn suggested drafts into confirmable actions.
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -39,9 +37,6 @@ import type {
   IssueSummary,
 } from "@/lib/devflow/types";
 
-// Client-side mirror of lib/devflow/content-index.ts SimilarIssueHit
-// (GET /api/devflow/issues/:id/similar); the lib module owns runtime
-// prisma/milvus imports, so only the shape is mirrored here.
 interface SimilarIssueHit {
   itemId: string;
   number: number;
@@ -65,7 +60,6 @@ export default function DevflowIssuesPage() {
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  // Similar issues (GET /issues/:id/similar over the GitHub content index)
   const [similarOpen, setSimilarOpen] = useState(false);
   const [similarHits, setSimilarHits] = useState<SimilarIssueHit[] | null>(
     null,
@@ -73,8 +67,6 @@ export default function DevflowIssuesPage() {
   const [similarLoading, setSimilarLoading] = useState(false);
   const [similarError, setSimilarError] = useState<string | null>(null);
 
-  // Fetches live in inline async IIFEs — see the note in provider.tsx
-  // (react-hooks/set-state-in-effect). Manual reloads bump reloadKey.
   useEffect(() => {
     if (!repoId) {
       return;
@@ -108,8 +100,6 @@ export default function DevflowIssuesPage() {
     };
   }, [repoId, state, query, reloadKey]);
 
-  // Load the latest saved analysis whenever the selection changes; the
-  // similar-issues panel belongs to the previous selection, so it resets.
   useEffect(() => {
     if (!selected) return;
     let cancelled = false;
@@ -171,7 +161,6 @@ export default function DevflowIssuesPage() {
     } catch (e) {
       setSimilarHits(null);
       if (e instanceof DevflowApiError && e.status === 503) {
-        // Vector backend down — honest unavailability, never fake results.
         setSimilarError(t("similar.unavailable"));
       } else {
         setSimilarError(e instanceof Error ? e.message : String(e));
@@ -226,7 +215,6 @@ export default function DevflowIssuesPage() {
       />
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[360px_1fr]">
-        {/* Master: issue list */}
         <Card className="flex min-h-0 flex-col py-0">
           <div className="space-y-3 p-3 pb-2">
             <div className="relative">
@@ -307,7 +295,6 @@ export default function DevflowIssuesPage() {
           </ScrollArea>
         </Card>
 
-        {/* Detail */}
         <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
           {!selected ? (
             <Card className="border-dashed">

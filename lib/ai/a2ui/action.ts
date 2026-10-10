@@ -1,7 +1,3 @@
-// A2UI action pipeline: a surface action (button click) is answered with
-// updateComponents/updateDataModel messages for the SAME surface, which the
-// client appends to that surface's message list — the A2uiView applies them
-// in place. No user chat message is involved.
 import { generateText, isStepCount, type ModelMessage } from "ai";
 import { quickModel, providerOptions } from "@/lib/ai/models";
 import { builtinTools } from "@/lib/ai/tools";
@@ -23,10 +19,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// Keeps only messages the renderer can apply to the existing surface:
-// updateComponents/updateDataModel targeting the action's surfaceId. A stray
-// createSurface would make the client-side MessageProcessor throw ("Surface
-// already exists") and drop the whole batch.
 function filterInPlaceMessages(
   messages: unknown[],
   surfaceId: string,

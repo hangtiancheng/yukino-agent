@@ -1,5 +1,3 @@
-// GET /api/devflow/repos/:id/workspace/file?path=&startLine=&lineCount= — read a
-// text file (or a line range) from the managed checkout.
 import {
   getRepoOrThrow,
   readCodeFile,

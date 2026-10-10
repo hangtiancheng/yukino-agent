@@ -1,21 +1,12 @@
 "use client";
 
-// import { RandomCrash } from "@/crash";
-// import { startErrorSeeder } from "@/crash/seeder";
 import { enablePlugin, init, isInitialized } from "@yukino.js/sentry";
 import { ExposurePlugin, PerformancePlugin } from "@yukino.js/sentry/plugins";
 import { ReactErrorBoundary } from "@yukino.js/sentry/react";
 import type { ReactNode } from "react";
 
-// Browser-only SDK: this module is also evaluated during SSR of client
-// components, so gate on window before touching it.
-//
-// Oversized single events (rrweb ScreenRecord payloads, ResourceList on dev
-// pages that load hundreds of modules) push the batch past the 64KB
-// fetch-keepalive body limit, permanently wedging every retry — drop them.
 const MAX_EVENT_BYTES = 50 * 1024;
 
-// https://github.com/toss/es-toolkit/blob/main/src/predicate/isBrowser.ts
 function isBrowser(): boolean {
   return typeof window !== "undefined" && window?.document != null;
 }
@@ -31,10 +22,6 @@ if (isBrowser() && !isInitialized()) {
       ),
   });
   enablePlugin(new PerformancePlugin(), new ExposurePlugin());
-
-  // if (process.env.NODE_ENV === "development") {
-  //   startErrorSeeder();
-  // }
 }
 
 export function SentryProvider({ children }: { children: ReactNode }) {
@@ -50,7 +37,6 @@ export function SentryProvider({ children }: { children: ReactNode }) {
       }
     >
       {children}
-      {/* {process.env.NODE_ENV === "development" && <RandomCrash />} */}
     </ReactErrorBoundary>
   );
 }

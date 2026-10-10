@@ -1,14 +1,3 @@
-// GET /api/devflow/knowledge/config?repoId= — effective per-repo KB config
-// (stored row merged over the code defaults).
-// PUT /api/devflow/knowledge/config — upsert KnowledgeBaseConfig
-// (retrievalMethod/rerankEnabled/topK/chunkSize/chunkOverlap). Port of the
-// legacy routes/rag.py knowledge_base_config slice (§5 minimal face).
-//
-// What is ACTUALLY applied: topK (search/ask/retrieval-test defaults) and
-// chunkSize/chunkOverlap (upload chunking). retrievalMethod/rerankEnabled are
-// persisted + echoed, but the live pipeline always runs Milvus hybrid fusion
-// and gates rerank on the global RERANK_API_KEY (lib/devflow/search.ts) —
-// applying them per repo would require a search.ts change.
 import { prisma } from "@/lib/db";
 import {
   KnowledgeConfigUpdateSchema,
@@ -53,7 +42,6 @@ export async function PUT(request: Request) {
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
     if (!repo) return fail(404, "repoNotFound");
 
-    // Only carry explicitly provided fields (undefined must not overwrite).
     const patch: Partial<KnowledgeConfigValues> = {};
     if (rest.retrievalMethod !== undefined)
       patch.retrievalMethod = rest.retrievalMethod;

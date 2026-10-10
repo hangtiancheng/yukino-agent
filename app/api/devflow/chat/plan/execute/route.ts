@@ -1,9 +1,3 @@
-// POST /api/devflow/chat/plan/execute — phase 2 of the two-phase workflow
-// protocol (legacy chat.py @router.post("/plan/execute/stream") →
-// _conversation_plan_execute_sse): executes a planned AgentWorkflowRun and
-// streams progress as SSE. Events: connected / task_start / task_result /
-// observation / memo / done / error — same framing conventions as
-// /api/devflow/chat (id + event + one `data:` line per text line).
 import { prisma } from "@/lib/db";
 import {
   WorkflowExecuteRequestSchema,
@@ -24,8 +18,6 @@ export async function POST(request: Request) {
   }
   const { runId } = parsed.data;
 
-  // Pre-checks happen before the stream opens so ordinary JSON errors are
-  // possible; once streaming starts, failures become `error` frames.
   try {
     const run = await prisma.agentWorkflowRun.findUnique({
       where: { id: runId },

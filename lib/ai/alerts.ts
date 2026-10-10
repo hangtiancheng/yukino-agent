@@ -1,26 +1,3 @@
-// Multi-source alert aggregation — port of the legacy Python
-// `super_ai/alerts.py` (agent_py-release-2026-09-08).
-//
-// Legacy shape kept:
-//   - ActiveAlert normalized fields (alerts.py:24-38) expanded onto the
-//     current SimplifiedAlert snake_case contract (the AI Ops prompt and the
-//     OnCall chat reference these keys): alert_name/description/state/
-//     active_at/duration plus service/severity/labels/annotations/
-//     context_url/fingerprint provenance.
-//   - Prometheus v1 `/api/v1/alerts` + Alertmanager v2 `/api/v2/alerts`
-//     providers (alerts.py:49-105), HTTP basic auth (alerts.py:189-193),
-//     the "active|firing" state filter (alerts.py:232-234), fingerprint-or-
-//     derived id (alerts.py:244-245), and per-source failure tolerance
-//     (alerts.py:114-124: valid sources still serve results; only a total
-//     failure raises).
-//
-// Config: `ALERT_SOURCES` (config.alertSourcesJson) is a JSON array of
-// {name, type: "prometheus"|"alertmanager", baseUrl, username?, password?}.
-// When unset or unparseable we fall back to the single-source behavior the
-// surface had before: one prometheus source at PROMETHEUS_BASE_URL.
-// Same-name dedup keeps the FIRST occurrence (existing queryPrometheusAlerts
-// semantics, operations.ts:75-81), applied after the legacy (source,
-// starts_at, id) sort (alerts.py:125).
 import { z } from "zod/v4";
 import { config } from "@/lib/config";
 
@@ -38,7 +15,6 @@ export interface Alert {
   annotations: Record<string, string>;
   context_url: string;
   fingerprint: string;
-  /** Which configured source produced this alert (provenance). */
   source: string;
 }
 
@@ -50,7 +26,6 @@ export interface AlertSourceError {
 export interface AlertAggregate {
   alerts: Alert[];
   sourceErrors: AlertSourceError[];
-  /** True when at least one configured source responded successfully. */
   anySourceOk: boolean;
 }
 
@@ -70,10 +45,6 @@ const alertSourceSchema = z.object({
   password: z.string().min(1).optional(),
 });
 
-// One raw alert as it appears in either provider payload. Prometheus v1 uses
-// `state` + `activeAt`; Alertmanager v2 uses `status.state` + `startsAt` +
-// `fingerprint`. Everything else stays optional; string-map values are
-// filtered exactly like the legacy `_string_mapping` (alerts.py:270-277).
 const rawAlertSchema = z.looseObject({
   labels: z.record(z.string(), z.unknown()).optional(),
   annotations: z.record(z.string(), z.unknown()).optional(),
@@ -103,9 +74,6 @@ export function fallbackSource(): AlertSourceConfig {
   };
 }
 
-// Parse config.alertSourcesJson; invalid/empty config falls back to the
-// single PROMETHEUS_BASE_URL source so the surface keeps its pre-migration
-// behavior (AGENTS.md: single-source prometheus v1 /api/v1/alerts).
 export function parseAlertSources(raw: string): AlertSourceConfig[] {
   const trimmed = raw.trim();
   if (trimmed === "") return [fallbackSource()];
@@ -128,7 +96,6 @@ function alertsEndpoint(
     : `${trimmed}/api/v1/alerts`;
 }
 
-// Legacy _string_mapping (alerts.py:270-277): keep only string→string pairs.
 function stringMap(
   value: Record<string, unknown> | undefined,
 ): Record<string, string> {
@@ -152,10 +119,6 @@ export function calculateDuration(activeAt: string): string {
   return `${s}s`;
 }
 
-// Legacy _normalize_alert (alerts.py:225-263), lifted onto the snake_case
-// field contract the OnCall surface already uses. Returns null for states
-// outside {active, firing} and for alerts without an `alertname` label
-// (the current dedup also drops unnamed alerts, operations.ts:79-80).
 export function normalizeAlert(
   raw: z.infer<typeof rawAlertSchema>,
   sourceId: string,
@@ -173,13 +136,9 @@ export function normalizeAlert(
   if (alertName === "") return null;
   const service = labels["service"] ?? labels["job"] ?? "Unspecified service";
   const severity = labels["severity"] ?? "unknown";
-  // startsAt (alertmanager) first, then activeAt (prometheus) — legacy
-  // precedence alerts.py:241-243.
   const activeAt = raw.startsAt ?? raw.activeAt ?? "";
   const fingerprint =
     raw.fingerprint ?? `${sourceId}:${alertName}:${service}:${activeAt}`;
-  // Context URL: not a legacy ActiveAlert field; surfaced from the common
-  // annotation conventions so the panel can deep-link an incident.
   const contextUrl =
     annotations["context_url"] ??
     annotations["runbook_url"] ??
@@ -234,13 +193,9 @@ export function parseAlertmanagerAlerts(
 export interface FetchOptions {
   fetch?: typeof globalThis.fetch;
   timeoutMs?: number;
-  /** Override the parsed ALERT_SOURCES (offline tests / explicit callers). */
   sources?: AlertSourceConfig[];
 }
 
-// Fetch one source. Errors (network / timeout / non-2xx / bad payload)
-// propagate to the aggregator, which records them per source — legacy
-// AggregatedAlertProvider tolerance (alerts.py:114-124).
 export async function fetchAlertsFromSource(
   source: AlertSourceConfig,
   options: FetchOptions = {},
@@ -249,14 +204,11 @@ export async function fetchAlertsFromSource(
   const url = alertsEndpoint(source.baseUrl, source.type);
   const headers: Record<string, string> = {};
   if (source.username !== undefined && source.password !== undefined) {
-    // Legacy httpx.BasicAuth (alerts.py:189-193).
     const token = Buffer.from(`${source.username}:${source.password}`).toString(
       "base64",
     );
     headers["Authorization"] = `Basic ${token}`;
   } else if (source.username !== undefined || source.password !== undefined) {
-    // Legacy refused a half-configured pair (alerts.py:158-161); surface it
-    // as this source's error rather than sending a broken credential header.
     throw new Error(
       "Alert source credentials must include username and password.",
     );
@@ -274,9 +226,6 @@ export async function fetchAlertsFromSource(
     : parsePrometheusAlerts(payload, source.name);
 }
 
-// Legacy dedup note: alerts.py deduped by provider id; the OnCall surface
-// deduped by alert name and keeps the first occurrence (AGENTS.md). We sort
-// legacy-style first, then apply the name dedup.
 export function dedupeAlerts(alerts: Alert[]): Alert[] {
   const sorted = [...alerts].sort(
     (a, b) =>
@@ -321,12 +270,6 @@ export async function aggregateAlerts(
   return { alerts: dedupeAlerts(alerts), sourceErrors, anySourceOk };
 }
 
-// ---- Readiness primitives (legacy agent_py app.py:423-429 /ready: every
-// dependency answered with ok + latencyMs; a degraded dependency flips the
-// aggregate to "degraded", never an exception). Kept here so /api/ready
-// stays thin and the aggregation is offline-smoke-testable with injected
-// fake checkers. ----
-
 export interface ReadinessCheck {
   name: string;
   ok: boolean;
@@ -340,10 +283,6 @@ export type ReadinessChecker = () => Promise<{
   detail?: string;
 }>;
 
-// Runs every checker concurrently; a throwing checker degrades to ok:false
-// (legacy gather-then-aggregate, app.py:1900-1908). "ready" requires ALL
-// checks to pass — alert-source probes included, matching the legacy
-// all-components rule; the route decides how to weight the HTTP status.
 export async function runReadinessChecks(
   checkers: Record<string, ReadinessChecker>,
 ): Promise<{ status: "ready" | "degraded"; checks: ReadinessCheck[] }> {
@@ -373,9 +312,6 @@ export async function runReadinessChecks(
   return { status, checks: results };
 }
 
-// Probes each configured alert source's alerts endpoint with a short
-// timeout (legacy readiness used provider health; here the provider surface
-// IS the endpoint). Failures degrade the check, never throw.
 export async function probeAlertSources(
   timeoutMs = 3000,
   options: FetchOptions = {},

@@ -1,8 +1,3 @@
-// PATCH  /api/skills/[id] — toggle `enabled` and/or replace the SKILL.md body
-// (frontmatter re-validated; the name stays the row's own).
-// DELETE /api/skills/[id] — remove the asset.
-// Enabled state drives the load_skill catalog (Yukino.md #19: only enabled
-// skills are exposed to the model), so this is the admin review gate.
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
@@ -77,8 +72,6 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
     if (validated !== null && validated.name !== existing.name) {
-      // Identity comes from the row; re-naming via a content rewrite would
-      // silently fork the catalog. Honest refusal instead.
       return Response.json(
         {
           message: t("skillValidation", {

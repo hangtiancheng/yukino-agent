@@ -1,20 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-/*
- * ---break---
- */
 @custom-variant dark (&:is(.dark *));
 
-/* Let Tailwind detect the utility classes used inside Streamdown's dist files. */
 @source "../node_modules/streamdown/dist/*.js";
 @source "../node_modules/@streamdown/code/dist/*.js";
 
-/*
- * Streamdown ships a pre-level background class with a syntax error
- * (`bg-[var(--sdm-bg,inherit]`, missing paren), so Tailwind never generates
- * it. Recreate the intended rule: Shiki sets --sdm-bg inline per theme.
- */
 [data-streamdown="code-block-body"] pre {
   background-color: var(--sdm-bg, transparent);
 }
@@ -28,9 +19,6 @@
     "PingFang SC", "Microsoft YaHei", monospace;
 }
 
-/*
- * ---break---
- */
 @theme inline {
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -74,12 +62,6 @@
   --shadow-soft: var(--app-shadow-soft);
   --shadow-lift: var(--app-shadow-lift);
 }
-/*
- * ---break---
- */
-/*
- * Sage green light theme: hue 155 with low chroma reads as muted "sage".
- */
 :root {
   --background: oklch(0.993 0.006 155);
   --foreground: oklch(0.24 0.02 155);
@@ -113,16 +95,11 @@
   --sidebar-accent-foreground: oklch(0.3 0.04 155);
   --sidebar-border: oklch(0.9 0.018 155);
   --sidebar-ring: oklch(0.62 0.08 155);
-  /* Sage-tinted elevation: shadows carry a faint green-gray instead of pure
-     black so cards sit inside the palette rather than on top of it. */
   --app-shadow-soft:
     0 1px 2px 0 rgb(23 42 32 / 4%), 0 4px 12px -4px rgb(23 42 32 / 8%);
   --app-shadow-lift:
     0 2px 4px -2px rgb(23 42 32 / 6%), 0 12px 28px -8px rgb(23 42 32 / 14%);
 }
-/*
- * ---break---
- */
 .dark {
   --background: oklch(0.17 0.015 155);
   --foreground: oklch(0.96 0.01 155);
@@ -160,37 +137,26 @@
   --app-shadow-lift:
     0 2px 4px -2px rgb(0 0 0 / 35%), 0 12px 28px -8px rgb(0 0 0 / 55%);
 }
-/*
- * ---break---
- */
-/*
- * Dracula/Hell theme, scoped to the complaint-mailbox surface
- * ([data-theme="hell"]). MailboxShell carries the attribute (plus a `dark`
- * class, so the dark: variants in the UI primitives apply) on its root and
- * mirrors both onto <html> while mounted, so portalled popovers (language
- * select) resolve the same tokens. This block must stay after `.dark` —
- * equal specificity, later declaration wins.
- */
 [data-theme="hell"] {
   color-scheme: dark;
-  --background: #282a36; /* Dracula Background */
-  --foreground: #f8f8f2; /* Dracula Foreground */
-  --card: #343746; /* Dracula Background (lighter) */
+  --background: #282a36;
+  --foreground: #f8f8f2;
+  --card: #343746;
   --card-foreground: #f8f8f2;
   --popover: #343746;
   --popover-foreground: #f8f8f2;
-  --primary: #bd93f9; /* Dracula Purple */
-  --primary-foreground: #21222c; /* Dracula Background (darker) */
-  --secondary: #44475a; /* Dracula Current Line */
+  --primary: #bd93f9;
+  --primary-foreground: #21222c;
+  --secondary: #44475a;
   --secondary-foreground: #f8f8f2;
   --muted: #44475a;
-  --muted-foreground: #8292c2; /* Dracula Comment, brightened for contrast */
+  --muted-foreground: #8292c2;
   --accent: #44475a;
   --accent-foreground: #f8f8f2;
-  --destructive: #ff5555; /* Dracula Red — the hellfire accent */
+  --destructive: #ff5555;
   --border: #44475a;
   --input: #44475a;
-  --ring: #ff79c6; /* Dracula Pink */
+  --ring: #ff79c6;
   --chart-1: #bd93f9;
   --chart-2: #ff79c6;
   --chart-3: #ff5555;
@@ -205,9 +171,6 @@
   --sidebar-border: #44475a;
   --sidebar-ring: #ff79c6;
 }
-/*
- * ---break---
- */
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -223,7 +186,6 @@
   ::selection {
     background-color: color-mix(in oklch, var(--primary), transparent 82%);
   }
-  /* Thin, theme-aware scrollbars: content stays the focus, chrome recedes. */
   * {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklch, var(--foreground), transparent 82%)

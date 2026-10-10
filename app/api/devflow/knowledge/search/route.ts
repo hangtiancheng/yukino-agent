@@ -1,8 +1,3 @@
-// POST /api/devflow/knowledge/search — retrieval test over a repo's KB.
-// `scope` selects the source slice (knowledge base / synced GitHub content
-// items / project docs), `docId` narrows a KB scope to one document and
-// `sourceType` post-filters chunk metadata — the minimal set of the legacy
-// routes/search.py metadata_filters. Defaults keep the old behavior.
 import { z } from "zod/v4";
 import { quote } from "@/lib/milvus/client";
 import { KnowledgeSearchSchema } from "@/lib/devflow/schemas";
@@ -24,8 +19,6 @@ const SearchBodySchema = KnowledgeSearchSchema.extend({
   sourceType: z.string().min(1).max(80).optional(),
 });
 
-// Was topK explicitly provided? If not, the per-repo KnowledgeBaseConfig
-// default applies (legacy knowledge_base_config).
 const TopKProbeSchema = z.object({ topK: z.number().optional() });
 
 export async function POST(request: Request) {

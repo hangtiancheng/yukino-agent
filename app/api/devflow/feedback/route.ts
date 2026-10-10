@@ -1,5 +1,3 @@
-// GET  /api/devflow/feedback?repoId=&conversationId=&limit= — list feedback
-// POST /api/devflow/feedback — rate an assistant answer (helpful/unhelpful)
 import {
   createFeedback,
   FeedbackNotFoundError,

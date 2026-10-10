@@ -1,4 +1,3 @@
-// GET /api/devflow/repos/:id/pulls — synced pull requests with file summaries.
 import { prisma } from "@/lib/db";
 import { errorMessage, failRaw, ok } from "@/lib/devflow/http";
 
@@ -12,7 +11,7 @@ export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const url = new URL(request.url);
-    const state = url.searchParams.get("state"); // open | closed | merged | null(all)
+    const state = url.searchParams.get("state");
     const q = url.searchParams.get("q")?.toLowerCase() ?? "";
 
     const pulls = await prisma.pullRequest.findMany({

@@ -1,5 +1,3 @@
-// GET /api/devflow/runs/:id/failed-jobs — the failed jobs (with their failed
-// steps) of one workflow run (legacy routes/ci.py:511-525 get_failed_jobs).
 import { prisma } from "@/lib/db";
 import { errorMessage, failRaw, ok } from "@/lib/devflow/http";
 

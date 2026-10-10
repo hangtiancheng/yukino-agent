@@ -1,7 +1,3 @@
-// One corrective retry for an invalid A2UI block: replay the conversation
-// with the invalid output and the validation error, without tools, asking for
-// ONLY a corrected block. Returns undefined when the retry is still invalid —
-// callers must degrade honestly, never fabricate UI data.
 import { generateText, type LanguageModel, type ModelMessage } from "ai";
 import { providerOptions } from "@/lib/ai/models";
 import { extractA2ui } from "./extract";

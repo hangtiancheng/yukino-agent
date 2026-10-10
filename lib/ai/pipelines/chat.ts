@@ -1,12 +1,3 @@
-// Chat pipeline: RAG retrieval + system prompt + ReAct agent (streamText/generateText with tools + maxSteps).
-//
-// Stream protocol (port of legacy agent_py chat/streaming.py): besides text
-// chunks the stream forwards model reasoning deltas (`reasoning.delta` →
-// {type:"reasoning"}) and tool-call lifecycle events (`tool.call` →
-// {type:"tool", name, state}), and every completed tool call is written to
-// the Prisma ToolCallAudit table fire-and-forget (GET /api/tool_audits).
-// Memory compaction folds window-evicted pairs into a rolling summary
-// injected into the system prompt (lib/memory.ts).
 import {
   streamText,
   generateText,
@@ -38,8 +29,6 @@ import {
 } from "@/lib/ai/prompts-skills";
 import { prisma } from "@/lib/db";
 
-// P3-5 fix: read log topic config from env vars instead of hardcoding
-// region/id in the system prompt.
 const LOG_TOPIC_REGION = process.env.LOG_TOPIC_REGION ?? "";
 const LOG_TOPIC_ID = process.env.LOG_TOPIC_ID ?? "";
 const logTopicLine =
@@ -47,7 +36,6 @@ const logTopicLine =
     ? `  • Log topic region: ${LOG_TOPIC_REGION}; log topic id: ${LOG_TOPIC_ID}`
     : "";
 
-// System prompt for the conversational assistant.
 const SYSTEM_PROMPT = `# Role: Conversational Assistant
 
 ## Core capabilities
@@ -101,16 +89,11 @@ function buildSystemPrompt(
     );
 }
 
-// Progressive disclosure (legacy agent_py configuration.py:62-76): only
-// `name: description` lines ride in the system prompt; the load_skill tool
-// (already part of builtinTools) returns the full body on demand.
 function skillCatalogSection(catalog: string): string {
   if (catalog.trim() === "") return "";
   return `\n\n## Available skills\n${catalog.trim()}\nUse the load_skill tool with the skill name to read its full instructions before following them.`;
 }
 
-// Best-effort skill catalog fetch: storage errors degrade to no catalog,
-// never to a failed chat turn.
 async function loadSkillCatalog(): Promise<string> {
   try {
     return await getSkillCatalogPrompt();
@@ -119,8 +102,6 @@ async function loadSkillCatalog(): Promise<string> {
   }
 }
 
-// Best-effort custom-instruction fetch: storage errors degrade to no section,
-// never to a failed chat turn.
 async function loadCustomPrompt(): Promise<string> {
   try {
     return await getChatPromptSection();
@@ -131,7 +112,6 @@ async function loadCustomPrompt(): Promise<string> {
 
 interface ChatTools {
   tools: Record<string, Tool>;
-  // MCP-sourced tool names — audited calls are tagged "mcp" vs "builtin".
   mcpNames: Set<string>;
 }
 
@@ -148,16 +128,11 @@ export interface ChatReference {
   source: string;
   score: number;
   excerpt: string;
-  /** Document classification from the knowledge index (legacy knowledgeType metadata). */
   knowledgeType?: KnowledgeType;
 }
 
 const REFERENCE_EXCERPT_CHARS = 200;
 
-// Port of the Python retrieval tool's citation sources (agent_py
-// retrieval/tool.py): the docs that grounded this turn, with title, source
-// tag, relevance score, a whitespace-normalized excerpt and the chunk's
-// knowledge classification (drives the reference chip label in the UI).
 export function toReferences(docs: RetrievedDoc[]): ChatReference[] {
   return docs.map((doc) => {
     const metaTitle = doc.metadata.title;
@@ -187,18 +162,11 @@ export interface ChatResult {
   answer: string;
   a2ui?: unknown[];
   references?: ChatReference[];
-  /** Model reasoning (extended thinking), when the provider emits any. */
   reasoning?: string;
 }
 
-// ============ tool-call audit (legacy _persist_tool_call_audit) ============
-
-// Storage cap for the audit input/result excerpts (legacy resultSummary cut
-// at 500 chars too).
 export const AUDIT_TEXT_CHARS = 500;
 
-// Pure: normalize any tool input/output value into a single-line, capped
-// summary safe for the audit row.
 export function summarizeAuditText(value: unknown): string {
   let text: string;
   if (typeof value === "string") {
@@ -226,7 +194,6 @@ interface ToolAuditInput {
   durationMs: number;
 }
 
-// Fire-and-forget: an audit write must never fail or delay the answer.
 function recordToolAudit(input: ToolAuditInput): void {
   prisma.toolCallAudit
     .create({
@@ -249,7 +216,6 @@ function recordToolAudit(input: ToolAuditInput): void {
     });
 }
 
-// Non-streaming chat.
 export async function chat(id: string, question: string): Promise<ChatResult> {
   const mem = getSimpleMemory(id);
   const history = mem.getMessages();
@@ -276,15 +242,11 @@ export async function chat(id: string, question: string): Promise<ChatResult> {
     providerOptions,
   });
 
-  // Memory keeps the raw tagged text so the conversation retains what was
-  // rendered (surface actions are handled out of band by /api/a2ui_action).
   const raw = result.text;
   mem.setMessages({ role: "user", content: question });
   mem.setMessages({ role: "assistant", content: raw });
   void mem.maybeSummarize();
 
-  // Aggregate reasoning + audit trail from the completed steps. The
-  // non-streaming path has no per-tool timing, so durationMs stays 0.
   const reasoningParts: string[] = [];
   let turnIndex = 0;
   for (const step of result.steps) {
@@ -335,9 +297,7 @@ export type ChatStreamEvent =
   | { type: "notice"; content: string }
   | { type: "references"; references: ChatReference[] }
   | { type: "a2ui"; messages: unknown[] }
-  /** Reasoning (extended thinking) delta — legacy "reasoning.delta". */
   | { type: "reasoning"; content: string }
-  /** Tool-call lifecycle — legacy "tool.call" (state: call → result/error). */
   | {
       type: "tool";
       id: string;
@@ -345,9 +305,6 @@ export type ChatStreamEvent =
       state: "call" | "result" | "error";
     };
 
-// Completed tool-call info handed to the audit collector (legacy persisted
-// the full ChatAgentToolCall payload; here the generator pairs the call with
-// its output and wall-clock duration).
 export interface ChatToolEvent {
   id: string;
   name: string;
@@ -357,16 +314,12 @@ export interface ChatToolEvent {
   durationMs: number;
 }
 
-// Mutable view of the raw assistant text (tags included) for callers that
-// need to persist partial output when the stream is cut short.
 export interface ChatStreamProgress {
   text: string;
 }
 
 export interface ChatStreamPartsHooks {
-  /** Called once per completed tool call (result or error). */
   onToolEvent?: (event: ChatToolEvent) => void;
-  /** Invalid a2ui block → corrective retry events; default: honest notice. */
   handleInvalidBlock?: (
     block: string,
     rawTextSoFar: string,
@@ -375,16 +328,10 @@ export interface ChatStreamPartsHooks {
 }
 
 export interface ChatStreamPartsResult {
-  /** Raw assistant text including any <a2ui-json> tags — the memory body. */
   text: string;
-  /** Concatenated reasoning deltas for the turn ("" when none). */
   reasoning: string;
 }
 
-// Pure-of-model stream mapping: turns AI SDK fullStream parts into the
-// OnCall ChatStreamEvent protocol (text through the a2ui stream filter,
-// reasoning deltas, tool lifecycle), so the event ordering is testable with
-// a fake part stream. Returns the raw text + reasoning for memory upkeep.
 export async function* processChatStreamParts(
   parts: AsyncIterable<TextStreamPart<ToolSet>>,
   hooks: ChatStreamPartsHooks = {},
@@ -392,7 +339,6 @@ export async function* processChatStreamParts(
   const filter = createA2uiStreamFilter();
   let full = "";
   let reasoning = "";
-  // toolCallId → wall-clock start ms, to time completed calls for the audit.
   const startedAt = new Map<string, number>();
 
   for await (const part of parts) {
@@ -466,14 +412,10 @@ export async function* processChatStreamParts(
         durationMs: at !== undefined ? Date.now() - at : 0,
       });
     }
-    // Other part types (step boundaries, sources, usage, raw provider
-    // metadata) are internal plumbing and never surface as events.
   }
 
   const rest = filter.flush();
   if (rest.startsWith(A2UI_OPEN_TAG)) {
-    // Unterminated block at stream end: treat as an invalid block instead
-    // of leaking raw JSON into the visible text.
     const block = rest.slice(A2UI_OPEN_TAG.length);
     const parsed = parseA2uiBlock(block);
     if (parsed.messages) {
@@ -493,12 +435,6 @@ export async function* processChatStreamParts(
   return { text: full, reasoning };
 }
 
-// Streaming chat. Yields pass-through text chunks immediately; <a2ui-json>
-// blocks are buffered by the stream filter, validated, and yielded as a
-// single a2ui event (invalid blocks get one corrective retry, then degrade
-// to a notice). Reasoning deltas and tool-call lifecycle events stream as
-// their own event types; completed tool calls are audit-logged
-// fire-and-forget. Memory is persisted after the stream completes.
 export async function* chatStream(
   id: string,
   question: string,
@@ -516,15 +452,10 @@ export async function* chatStream(
     await loadCustomPrompt(),
   );
 
-  // Grounding sources for this turn, emitted before any text so the client
-  // can render them while the reply streams in.
   if (references.length > 0) {
     yield { type: "references", references };
   }
 
-  // streamText swallows errors into onError by default and just ends the
-  // text stream, which the client would see as an empty reply — capture and
-  // rethrow so the SSE route emits a real error event.
   let streamError: unknown;
   const result = streamText({
     model: quickModel,
@@ -555,8 +486,6 @@ export async function* chatStream(
     });
   };
 
-  // Invalid a2ui blocks get exactly one corrective model retry, then the
-  // generator's own honest-notice fallback.
   const handleInvalidBlock = async function* (
     block: string,
     rawTextSoFar: string,
@@ -593,9 +522,6 @@ export async function* chatStream(
         : new Error(String(streamError));
     }
   } finally {
-    // Persist when the generator ran to completion OR was cut short by the
-    // consumer (client abort), as long as any text arrived — the legacy
-    // behavior kept the partial answer too.
     if (progress.text) {
       mem.setMessages({ role: "user", content: question });
       mem.setMessages({ role: "assistant", content: progress.text });

@@ -1,11 +1,3 @@
-// GET /api/devflow/repos/:id/code-graph/impact?files=a.ts,b.ts — one-hop
-// change-impact report: symbols defined in the changed files plus the other
-// files/symbols that depend on them (task spec endpoint).
-// Legacy ports: pull_requests.py:269-308 _pr_code_graph_impact and
-// ci.py:231-270 _ci_code_graph_impact — legacy returned changed-file
-// symbols plus ALL surrounding relations; this endpoint narrows to
-// dependents (computeImpact in lib/devflow/code-graph.ts documents the
-// difference).
 import { z } from "zod/v4";
 import { impactForFiles } from "@/lib/devflow/code-graph";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";

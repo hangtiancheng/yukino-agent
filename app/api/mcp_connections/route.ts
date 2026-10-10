@@ -1,8 +1,3 @@
-// GET/POST /api/mcp_connections — administrator-managed MCP connections
-// (port of the agent_py mcp_connections CRUD + duplicate-aware tool listing).
-// Reads are public; writes require ONCALL_ADMIN_TOKEN (fail-closed when unset:
-// the product is public/no-login, and these rows steer server-side outbound
-// connections).
 import { getTranslations } from "next-intl/server";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
@@ -18,7 +13,6 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, x-admin-token",
 };
 
-// Header values may carry credentials — never echo them back verbatim.
 function sanitizeRow(row: {
   id: string;
   name: string;

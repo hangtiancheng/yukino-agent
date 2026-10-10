@@ -1,5 +1,3 @@
-// At-rest encryption for per-repository GitHub tokens (AES-256-GCM).
-// Replaces the Python `cryptography` Fernet helper from the original backend.
 import {
   createCipheriv,
   createDecipheriv,

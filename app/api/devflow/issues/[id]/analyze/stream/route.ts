@@ -1,15 +1,3 @@
-// POST /api/devflow/issues/:id/analyze/stream — SSE-streamed Issue Triage.
-// Legacy port: issues.py:299-305 analyze_issue_stream / :243-268
-// _issue_analysis_sse (trace events → final result → error). Same input
-// semantics as the synchronous POST /api/devflow/issues/:id/analyze: an
-// unknown issue returns the JSON 404 envelope before the stream starts
-// (sync-route parity), while mid-analysis failures emit an `error` event
-// (legacy parity). Event framing follows this repo's chat SSE conventions
-// (trace / result / done / error). Documented divergences from legacy:
-// (1) trace granularity is coarse — the rules/LLM/merge stages run as one
-// unit inside analysis.ts's orchestrator; (2) legacy's `thinking_delta`
-// second-LLM-pass reasoning stream is NOT ported — see the HONEST SCOPE
-// NOTE in lib/devflow/analyze-stream.ts.
 import { getTranslations } from "next-intl/server";
 import {
   analyzeIssue,

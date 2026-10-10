@@ -1,11 +1,3 @@
-// Offline smoke test for the A6 GitHub-content retrieval surface:
-// item source naming + source policy, CI log windowing caps, item payload /
-// chunk-row construction, similar-hit mapping, the deterministic PR review
-// checklist, the extractive QA fallback, and the KB-config zod contract.
-// No network / Milvus / embedding key required:
-//   npx tsx tests/devflow-content-index.smoke.ts
-// The Milvus WRITE path (indexRepositoryContent → indexChunks) is NOT
-// exercised here — it needs a live Milvus + embedding key.
 import assert from "node:assert/strict";
 import { z } from "zod/v4";
 import type { RetrievedDoc } from "@/lib/milvus/retriever";
@@ -34,10 +26,6 @@ import {
   buildExtractiveAnswer,
 } from "@/lib/devflow/rag";
 
-// ---------------------------------------------------------------------------
-// Source policy + naming (source_policy.py / indexing.py shapes)
-// ---------------------------------------------------------------------------
-
 function checkSourcePolicy() {
   assert.equal(retrievalMode("issue"), "rag");
   assert.equal(retrievalMode("pull_request"), "rag");
@@ -55,15 +43,9 @@ function checkSourceNaming() {
     contentScopeFilter("r1", "issue"),
     'source like "devflow:item:r1:issue:%"',
   );
-  // The issue scope expression must NOT match pull_request/workflow_run
-  // sources (the "issue:" segment is a prefix-anchored discriminator).
   assert.ok(!contentScopeFilter("r1", "issue").includes("pull_request"));
   assert.equal(contentScopeFilter("r1"), 'source like "devflow:item:r1:%"');
 }
-
-// ---------------------------------------------------------------------------
-// CI log windowing (indexing.py:43-52: sanitize + ≤8000 chars × ≤6 chunks)
-// ---------------------------------------------------------------------------
 
 function checkCiLogChunks() {
   const mid = ciLogChunks("a".repeat(10_000));
@@ -94,10 +76,6 @@ function checkCiLogChunks() {
   const blank = ciLogChunks("   \n  ");
   assert.deepEqual(blank.chunks, []);
 }
-
-// ---------------------------------------------------------------------------
-// Item payloads + chunk rows
-// ---------------------------------------------------------------------------
 
 const issueFixture: IssueContentInput = {
   id: "issue-1",
@@ -194,13 +172,11 @@ function checkBuildItemPayloads() {
   assert.equal(issue.metadata.closed_at, null);
   assert.equal(issue.metadata.created_at, "2026-09-01T00:00:00.000Z");
 
-  // Empty title+body → skipped (indexing.py _payload).
   assert.equal(
     payloads.find((p) => p.itemId === "issue-blank"),
     undefined,
   );
 
-  // Long titles clip to 500 chars.
   const long = buildItemPayloads({
     issues: [{ ...issueFixture, title: "t".repeat(600) }],
     pullRequests: [],
@@ -213,7 +189,6 @@ function checkBuildItemPayloads() {
   assert.ok(pr.content.includes("changed files:"));
   assert.ok(pr.content.includes("src/auth/login.ts"));
   assert.ok(pr.content.includes("review comments:"));
-  // outdated comment: line=null falls back to originalLine (42).
   assert.ok(
     pr.content.includes("src/auth/login.ts:42 dave: Why not throw here?"),
   );
@@ -223,7 +198,6 @@ function checkBuildItemPayloads() {
   ]);
   assert.equal(pr.metadata.path, "pull/main...fix/null-token");
 
-  // Failed run only, multi-window titles `name#i+1` (indexing.py:155).
   const runPayloads = payloads.filter((p) => p.itemId === "run-1");
   assert.equal(runPayloads.length, 3);
   assert.equal(runPayloads[0].title, "ci/build#1");
@@ -269,7 +243,6 @@ function checkItemChunkRows() {
     assert.ok(Array.isArray(siblings) && siblings.includes(row.id));
   }
 
-  // CI windows are ATOMIC rows (no 800-char re-splitting of an 8000 window).
   const runRows = payloads
     .filter((p) => p.itemId === "run-1")
     .flatMap((p) => itemChunkRows("r1", p));
@@ -285,10 +258,6 @@ function checkItemChunkRows() {
     .flatMap((p) => itemChunkRows("r1", p));
   assert.equal(prRows[0].metadata.path, "pull/main...fix/null-token");
 }
-
-// ---------------------------------------------------------------------------
-// Similar-issue hit mapping
-// ---------------------------------------------------------------------------
 
 function fakeDoc(itemId: string, number: number, content = "c"): RetrievedDoc {
   return {
@@ -308,9 +277,9 @@ function fakeDoc(itemId: string, number: number, content = "c"): RetrievedDoc {
 
 function checkMapSimilarHits() {
   const docs = [
-    fakeDoc("issue-1", 41), // self — excluded
+    fakeDoc("issue-1", 41),
     fakeDoc("issue-2", 42),
-    fakeDoc("issue-2", 42), // duplicate chunk of the same item — deduped
+    fakeDoc("issue-2", 42),
     fakeDoc("issue-3", 43),
     fakeDoc("issue-4", 44),
     fakeDoc("issue-5", 45),
@@ -332,10 +301,6 @@ function checkMapSimilarHits() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Deterministic review checklist (prompts.py:55-60 rules)
-// ---------------------------------------------------------------------------
-
 const baseChecklistInput: ChecklistInput = {
   number: 7,
   title: "fix(login): guard null token",
@@ -355,15 +320,12 @@ const baseChecklistInput: ChecklistInput = {
 };
 
 function checkReviewChecklist() {
-  // A PR with tests + green CI + a description: no blocking finding, and the
-  // legacy "never just looks good" fallback item is present (prompts.py:60).
   const clean = buildReviewChecklist(baseChecklistInput);
   assert.equal(clean.blocking, false);
   assert.ok(
     clean.checklist.some((item) => item.includes("No blocking findings")),
   );
 
-  // Code without tests → P2 blocking (prompts.py:56 测试覆盖不足).
   const noTests = buildReviewChecklist({
     ...baseChecklistInput,
     files: [{ filename: "src/core/sync.ts" }],
@@ -373,7 +335,6 @@ function checkReviewChecklist() {
   assert.equal(cov.severity, "P2");
   assert.equal(cov.blocking, true);
 
-  // Failing CI → P1 blocking (prompts.py:55 失败 CI 阻塞).
   const failingCi = buildReviewChecklist({
     ...baseChecklistInput,
     runs: [{ name: "ci/build", status: "completed", conclusion: "failure" }],
@@ -384,7 +345,6 @@ function checkReviewChecklist() {
     ),
   );
 
-  // Docs-only change does not demand tests.
   const docsOnly = buildReviewChecklist({
     ...baseChecklistInput,
     files: [{ filename: "README.md" }],
@@ -394,7 +354,6 @@ function checkReviewChecklist() {
     undefined,
   );
 
-  // Sensitive files → verification items; auth touches P1, lockfiles P2.
   const sensitive = buildReviewChecklist({
     ...baseChecklistInput,
     files: [
@@ -412,7 +371,6 @@ function checkReviewChecklist() {
     sensitive.findings.some((f) => f.title.includes("dependency manifests")),
   );
 
-  // Breaking change markers (title `!:` and BREAKING CHANGE body).
   const breaking = buildReviewChecklist({
     ...baseChecklistInput,
     title: "feat(api)!: drop legacy endpoints",
@@ -426,7 +384,6 @@ function checkReviewChecklist() {
   });
   assert.ok(breakingBody.findings.some((f) => f.title === "Breaking change"));
 
-  // Unaddressed review comments → P2 blocking (prompts.py:56).
   const withComments = buildReviewChecklist({
     ...baseChecklistInput,
     reviewCommentCount: 3,
@@ -437,11 +394,9 @@ function checkReviewChecklist() {
     ),
   );
 
-  // No CI data at all → honest P3 reminder.
   const noCi = buildReviewChecklist({ ...baseChecklistInput, runs: [] });
   assert.ok(noCi.findings.some((f) => f.title === "No CI status recorded"));
 
-  // Findings are ordered P1 → P2 → P3.
   const all = buildReviewChecklist({
     ...baseChecklistInput,
     files: [{ filename: "src/core/sync.ts" }],
@@ -457,10 +412,6 @@ function checkReviewChecklist() {
   );
   assert.equal(all.blocking, true);
 }
-
-// ---------------------------------------------------------------------------
-// Extractive fallback (qa.py:96-148)
-// ---------------------------------------------------------------------------
 
 function checkAnswerTerms() {
   const en = answerTerms("Milvus sync-timeout");
@@ -514,30 +465,21 @@ function checkBuildExtractiveAnswer() {
     ),
     "faq sentence surfaced",
   );
-  // Legacy spread rule (qa.py:136): once 2+ sentences are selected, a third
-  // sentence from an already-cited source is dropped.
   assert.ok(
     !selected.some((s) => /EMBED_BATCH_SIZE/.test(s.sentence)),
     "second sentence from an already-cited source dropped",
   );
-  // Weak-overlap sentence ("cafeteria") pruned by the 0.6×best threshold.
   assert.ok(
     !selected.some((s) => /cafeteria/.test(s.sentence)),
     "low-overlap sentence dropped",
   );
-  // Identical duplicate sentence quoted once.
   const proxyQuotes = selected.filter((s) =>
     /restart the proxy/.test(s.sentence),
   );
   assert.equal(proxyQuotes.length, 1);
-  // Heading marker stripped from the quote.
   assert.ok(!selected.some((s) => s.sentence.startsWith("#")));
   assert.ok(/\[\d\]/.test(selected.length ? answer : ""));
 }
-
-// ---------------------------------------------------------------------------
-// KB config zod contract (routes/rag.py knowledge_base_config + chunking)
-// ---------------------------------------------------------------------------
 
 function checkConfigSchema() {
   const full = KnowledgeConfigUpdateSchema.safeParse({
@@ -554,7 +496,6 @@ function checkConfigSchema() {
   assert.ok(partial.success);
   assert.equal(partial.data.topK, undefined);
 
-  // Legacy _validate_chunking: overlap must stay below the size.
   const badChunking = KnowledgeConfigUpdateSchema.safeParse({
     repoId: "r1",
     chunkSize: 800,
@@ -574,13 +515,10 @@ function checkConfigSchema() {
   });
   assert.equal(badTopK.success, false);
 
-  // Fallback == the constants the KB used before config existed.
   assert.equal(KB_CONFIG_FALLBACK.chunkSize, 800);
   assert.equal(KB_CONFIG_FALLBACK.chunkOverlap, 100);
   assert.equal(KB_CONFIG_FALLBACK.topK, 5);
 
-  // The search route's extended body shape (scope/docId/sourceType minimal
-  // metadata_filters) — same .extend pattern the route uses.
   const SearchShape = z.object({
     repoId: z.string().min(1),
     query: z.string().min(1),

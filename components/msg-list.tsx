@@ -39,7 +39,6 @@ import { cn } from "@/lib/utils";
 interface MessageListProps {
   messages: ChatMessage[];
   isStreaming: boolean;
-  /** Receives raw A2UI surface actions to resolve into in-place surface updates. */
   onA2uiAction: (messageIndex: number, action: A2uiClientAction) => void;
 }
 
@@ -149,9 +148,6 @@ function DetailSteps({ detail }: { detail: string[] }) {
   );
 }
 
-// Grounding sources for an assistant reply: one chip per retrieved knowledge
-// chunk, with the relevance score and excerpt on hover and (G6) the legacy
-// knowledgeType classification label.
 const KNOWLEDGE_TYPE_KEYS: Record<
   KnowledgeType,
   "sop" | "document" | "diagnosticCase"
@@ -186,8 +182,6 @@ function References({ references }: { references: ChatReference[] }) {
   );
 }
 
-// Live tool-call badges for a streaming assistant reply (legacy tool.call
-// events): name + state, spinner while the call is in flight.
 const TOOL_STATE_KEYS: Record<
   ChatToolCall["state"],
   "call" | "result" | "error"
@@ -222,8 +216,6 @@ function ToolCallBadges({ toolCalls }: { toolCalls: ChatToolCall[] }) {
   );
 }
 
-// Collapsible model reasoning (legacy reasoning.delta display): a native
-// details/summary disclosure, muted body, scroll-capped for long thoughts.
 function ReasoningDetails({
   reasoning,
   streaming,
@@ -248,8 +240,6 @@ function ReasoningDetails({
   );
 }
 
-// P1-6 fix: wrap MessageItem in memo so streaming chunks (which only change
-// the last message) don't re-render every message in the list.
 const MessageItem = memo(function MessageItem({
   message,
   index,

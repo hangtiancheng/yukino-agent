@@ -1,11 +1,3 @@
-/**
- * Offline i18n sanity checks:
- *  1. en.json and zh-CN.json carry identical key trees;
- *  2. every leaf is a non-empty string;
- *  3. ICU argument names ({count}, {name}, plural selectors...) match per key;
- *  4. the Accept-Language negotiator maps onto the supported locales.
- * Run: npx tsx tests/i18n.smoke.ts
- */
 import assert from "node:assert/strict";
 import en from "@/messages/en.json";
 import zhCN from "@/messages/zh-CN.json";
@@ -34,8 +26,6 @@ function collectLeaves(
   }
 }
 
-// ICU argument names: "{name}", "{count, plural, ...}" — nested plural arms
-// start with "#" or a keyword, so \w+ only ever matches real arguments.
 function argumentNames(message: string): string[] {
   const names = new Set<string>();
   for (const match of message.matchAll(/\{(\w+)\s*[,}]/g)) {
@@ -63,7 +53,6 @@ for (const [key, enMessage] of enLeaves) {
   );
 }
 
-// Accept-Language negotiation.
 assert.equal(negotiateLocale("zh-CN,zh;q=0.9,en;q=0.8"), "zh-CN");
 assert.equal(negotiateLocale("en-US,en;q=0.9"), "en");
 assert.equal(negotiateLocale("en;q=0.4,zh;q=0.9"), "zh-CN");
@@ -73,7 +62,6 @@ assert.equal(negotiateLocale("*"), defaultLocale);
 assert.equal(negotiateLocale(null), defaultLocale);
 assert.equal(negotiateLocale(undefined), defaultLocale);
 
-// Locale registry sanity.
 assert(isLocale("en"));
 assert(isLocale("zh-CN"));
 assert(!isLocale("fr"));

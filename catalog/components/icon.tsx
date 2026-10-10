@@ -129,7 +129,6 @@ export const ICON_MAP: Record<string, LucideIcon> = {
 export const Icon = createComponentImplementation(IconApi, ({ props }) => {
   const name = props.name;
 
-  // The svgPath variant carries path data inside the protocol message itself.
   if (typeof name === "object" && name !== null && "svgPath" in name) {
     return (
       <svg viewBox="0 0 24 24" className="size-6 shrink-0 fill-current">

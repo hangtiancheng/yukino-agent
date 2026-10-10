@@ -67,8 +67,6 @@ export const ChartApi = {
 
 type SeriesDef = { key?: unknown; label?: unknown };
 
-// --chart-1 is near-white in the neutral theme, so the rotation stays on
-// chart-2..chart-5; a 5th+ series reuses chart-2.
 const PALETTE = [
   "var(--chart-2)",
   "var(--chart-3)",

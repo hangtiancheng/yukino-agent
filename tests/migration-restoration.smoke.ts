@@ -1,7 +1,3 @@
-// Offline smoke test for the migration-restoration pieces: CI log
-// sanitization, the DevFlow QA answer gate, and the rerank response parser.
-// No network/Milvus/embedding keys required:
-//   npx tsx tests/migration-restoration.smoke.ts
 import assert from "node:assert/strict";
 import { sanitizeCiLog } from "@/lib/devflow/sanitize";
 import { evaluateAnswerGate, strongQuerySignals } from "@/lib/devflow/rag";
@@ -12,14 +8,8 @@ function checkSanitize() {
     "-----BEGIN RSA PRIVATE KEY-----",
     "MIIEowIBAAKCAQEA7crypted",
     "-----END RSA PRIVATE KEY-----",
-    // Bare token (not behind a key=) so the GitHub-token rule is what fires;
-    // a `token=ghp_...` form ends up as token=[REDACTED] because the
-    // key/value rule re-redacts the placeholder afterwards — same as the
-    // Python original, where the patterns run in this order.
     "found ghp_ABCDEF012345678901234567890123456789 in output",
     "aws AKIAIOSFODNN7EXAMPLE used",
-    // Bare JWT (the bearer rule would otherwise re-redact the JWT
-    // placeholder, same order as the Python original).
     "jwt eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U here",
     "Authorization: Bearer abc123token",
     "::add-mask::my-secret-value",
@@ -65,33 +55,28 @@ function checkAnswerGate() {
     content: "Restart the payment-gateway service when TimeoutError occurs.",
   };
 
-  // Strong signals: identifier + digits extracted from the query.
   assert.deepEqual(
     strongQuerySignals("payment-gateway TimeoutError #123 怎么办"),
     ["payment-gateway", "timeouterror", "#123"],
   );
   assert.deepEqual(strongQuerySignals("how are you"), []);
 
-  // Identifier present in evidence → allowed to answer.
   assert.equal(
     evaluateAnswerGate("payment-gateway TimeoutError 怎么办", [hit]).decision,
     "answer",
   );
 
-  // ALL strong signals absent from evidence → refuse (anti-fabrication).
   assert.equal(
     evaluateAnswerGate("checkout-service NullPointerException #999", [hit])
       .decision,
     "insufficient_evidence",
   );
 
-  // Partial match (one signal present) → not refused by the signal rule.
   assert.equal(
     evaluateAnswerGate("payment-gateway and unknown-thing", [hit]).decision,
     "answer",
   );
 
-  // Ambiguous marker + multiple sources → ask clarification.
   assert.equal(
     evaluateAnswerGate("这个怎么处理", [
       hit,
@@ -100,13 +85,11 @@ function checkAnswerGate() {
     "ask_clarification",
   );
 
-  // Ambiguous marker + single source + long query → still answerable.
   assert.equal(
     evaluateAnswerGate("这个怎么处理 payment-gateway timeout", [hit]).decision,
     "answer",
   );
 
-  // Empty hits → insufficient.
   assert.equal(
     evaluateAnswerGate("anything", []).decision,
     "insufficient_evidence",
@@ -124,13 +107,11 @@ function checkRerankParser() {
       ],
     },
   };
-  // Sorted by score desc, cut to topN.
   assert.deepEqual(parseRerankResults(payload, 3, 2), [
     { index: 2, score: 0.9 },
     { index: 1, score: 0.7 },
   ]);
 
-  // Invalid index (out of range) → throws.
   assert.throws(() =>
     parseRerankResults(
       { output: { results: [{ index: 9, relevance_score: 0.5 }] } },
@@ -138,7 +119,6 @@ function checkRerankParser() {
       2,
     ),
   );
-  // Duplicate index → throws.
   assert.throws(() =>
     parseRerankResults(
       {
@@ -153,7 +133,6 @@ function checkRerankParser() {
       2,
     ),
   );
-  // Score outside [0, 1] → throws.
   assert.throws(() =>
     parseRerankResults(
       { output: { results: [{ index: 0, relevance_score: 1.5 }] } },
@@ -161,7 +140,6 @@ function checkRerankParser() {
       2,
     ),
   );
-  // Malformed envelope → throws.
   assert.throws(() => parseRerankResults({ results: [] }, 3, 2));
   console.log("rerank parser: 5 assertions passed");
 }

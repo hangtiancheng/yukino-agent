@@ -1,9 +1,5 @@
 "use client";
 
-// Code graph: rebuild symbols/relations from the repository checkout, search
-// indexed symbols, and query one-hop change impact. Backed by
-// /api/devflow/repos/:id/code-graph (+ /impact). Navigation entry is added
-// by the shell owner (task split).
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { GitBranch, Network, RefreshCw, Search, Share2 } from "lucide-react";
@@ -24,8 +20,6 @@ import PageHeader from "@/components/devflow/page-header";
 import { dfGet, dfPost, useDevflow } from "@/components/devflow/provider";
 import type { WorkspaceStatus } from "@/lib/devflow/types";
 
-// Response shapes mirror lib/devflow/code-graph.ts (server module; kept as
-// local types so this client component carries no server imports).
 interface SymbolRow {
   id: string;
   path: string;
@@ -85,7 +79,6 @@ function linesLabel(row: SymbolRow): string {
 export default function DevflowCodeGraphPage() {
   const { repoId, repo } = useDevflow();
   const t = useTranslations("devflow.codeGraph");
-  // Reuse the existing not-cloned copy from the Code page.
   const tCode = useTranslations("devflow.code");
 
   const [workspace, setWorkspace] = useState<WorkspaceStatus | null>(null);
@@ -105,8 +98,6 @@ export default function DevflowCodeGraphPage() {
   const [impact, setImpact] = useState<ImpactReport | null>(null);
   const [impactLoading, setImpactLoading] = useState(false);
 
-  // Workspace status for the selected repo (clone state drives the rebuild
-  // affordance; branch/sha mirror the snapshot the graph was built from).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -134,8 +125,6 @@ export default function DevflowCodeGraphPage() {
     };
   }, [repoId]);
 
-  // Symbol table: fetches on repo change, on committed search filters and on
-  // manual reloads (rebuild bumps reloadKey).
   useEffect(() => {
     let cancelled = false;
     (async () => {

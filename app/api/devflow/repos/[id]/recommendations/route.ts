@@ -1,7 +1,3 @@
-// GET /api/devflow/repos/[id]/recommendations — context-aware suggested chat
-// questions (port of the legacy RecommendationAgent, pure rules, no LLM).
-// `?exclude=` (repeatable) passes prior suggestions to rotate the set, like
-// the legacy client's refresh flow.
 import { getTranslations } from "next-intl/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod/v4";

@@ -1,22 +1,3 @@
-// DevFlow memory system (#25) — port of the DevFlow-AI memory layer:
-//  - services/chat_memory.py SessionSealer.seal / _build_memory_update /
-//    _update_thread_memory: conversation sealing → ConversationMemory upsert
-//    with the sessions_incorporated counter, model snapshot folded into the
-//    existing memory (never replacing it);
-//  - services/context_compression.py fallback_memory_update / merge_memory /
-//    structured_memory_from_model / render_structured_memory /
-//    clip_to_token_budget / _unique_preserve_order: deterministic extraction,
-//    incremental list merge with caps, prompt rendering, token budgets;
-//  - services/memory_hub.py capture_memory_candidates / list_memory_candidates /
-//    approve_memory_candidate / reject_memory_candidate: human-review pipeline
-//    where an approved candidate becomes a `memory_note` knowledge document.
-// Legacy updated ThreadMemory per turn for repo-global chats; this port merges
-// ConversationMemory rows into the per-repo ThreadMemory explicitly
-// (mergeThreadMemory) keeping the same counter semantics.
-//
-// No-LLM degradation: every model call is optional. Without an API key (or on
-// any model/schema failure) the deterministic fallback snapshot is used, so
-// sealing never throws and never discards accumulated memory.
 import { generateText, Output } from "ai";
 import { z } from "zod/v4";
 import { config } from "@/lib/config";
@@ -26,9 +7,6 @@ import { observeGeneration } from "@/lib/observability";
 import { addKnowledgeDocument } from "@/lib/devflow/rag";
 import { Prisma, type MemoryCandidate } from "@/generated/prisma/client";
 
-// Prisma's InputJsonValue rejects `unknown` leaves; the persisted payloads are
-// already JSON-serializable, so assert once at the boundary (same convention
-// as lib/devflow/conversations.ts).
 const asJson = (value: unknown): Prisma.InputJsonValue =>
   value as Prisma.InputJsonValue;
 
@@ -38,13 +16,6 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-// ---------------------------------------------------------------------------
-// Snapshot shape + token budgets (context_compression.py)
-// ---------------------------------------------------------------------------
-
-// Lenient parse schema for model output and stored rows: every list optional
-// (legacy structured_memory_from_model coerced missing keys to []). Normalized
-// through normalizeSnapshot before use — all LLM output passes zod safeParse.
 export const MemorySnapshotSchema = z.object({
   summary: z.string().optional(),
   facts: z.array(z.string()).optional(),
@@ -67,7 +38,6 @@ export interface MemorySnapshot {
 
 export type MemoryGenerationMode = "llm" | "deterministic";
 
-// Legacy merge_memory caps per list.
 export const MEMORY_LIST_LIMITS = {
   facts: 16,
   decisions: 16,
@@ -77,19 +47,12 @@ export const MEMORY_LIST_LIMITS = {
   repoContext: 16,
 } as const;
 
-// Legacy _update_thread_memory: clip_to_token_budget(summary, 1100).
 export const SUMMARY_TOKEN_BUDGET = 1100;
-// Messages fed to the sealing model (transcript tail, oldest dropped).
 export const SEAL_TRANSCRIPT_LIMIT = 120;
-// Per-message clip inside the model transcript.
 export const SEAL_TRANSCRIPT_MESSAGE_CHARS = 500;
-// fallback_snapshot: "最近 N 条消息的 role:content 截断" (spec) — legacy
-// fallback_memory_update clipped user/assistant content to 90/140 tokens.
 export const FALLBACK_RECENT_MESSAGES = 12;
 export const FALLBACK_MESSAGE_CHARS = 160;
 
-// Legacy context_compression.TOKEN_PATTERN + estimate_tokens: CJK chars count
-// as 1 token, alphanumeric words as ceil(len/4), any other non-space char as 1.
 const TOKEN_PATTERN = /[\u4e00-\u9fff]|[a-zA-Z0-9_-]+|[^\s]/g;
 
 export function estimateTokens(text: string): number {
@@ -104,7 +67,6 @@ export function estimateTokens(text: string): number {
   return total;
 }
 
-// Port of context_compression.clip_to_token_budget.
 export function clipToTokenBudget(
   text: string,
   maxTokens: number,
@@ -121,8 +83,6 @@ export function clipToTokenBudget(
   return clipped ? `${clipped}${suffix}` : "";
 }
 
-// Port of context_compression._unique_preserve_order: whitespace-collapsed,
-// case-insensitive dedupe keeping insertion order, cut at `limit` (first N).
 export function uniquePreserveOrder(
   items: readonly string[],
   limit: number,
@@ -144,7 +104,6 @@ export function uniquePreserveOrder(
   return output;
 }
 
-// Legacy memory_hub._clip: collapse whitespace then clip with "...".
 export function clipInline(text: string, limit: number): string {
   const cleaned = String(text ?? "")
     .split(/\s+/)
@@ -167,7 +126,6 @@ export function emptySnapshot(): MemorySnapshot {
   };
 }
 
-// Port of structured_memory_from_model: normalize + cap a parsed snapshot.
 export function normalizeSnapshot(
   raw: z.infer<typeof MemorySnapshotSchema> | null | undefined,
 ): MemorySnapshot {
@@ -235,8 +193,6 @@ function snapshotToData(snapshot: MemorySnapshot) {
   };
 }
 
-// Port of context_compression.merge_memory: summaries concatenate under the
-// token budget; lists merge order-preserving with the legacy caps.
 export function mergeSnapshots(
   existing: MemorySnapshot,
   update: MemorySnapshot,
@@ -273,20 +229,12 @@ export function mergeSnapshots(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Deterministic fallback extraction (context_compression.fallback_memory_update)
-// ---------------------------------------------------------------------------
-
 export interface TranscriptMessage {
   role: string;
   content: string;
   toolNames?: string[];
 }
 
-// Deterministic no-LLM snapshot: the summary is the recent-message
-// "role: content" concatenation (each message clipped), and the list fields
-// come from the legacy keyword buckets of fallback_memory_update (questions,
-// decision/task/preference markers, long lines as facts).
 export function fallbackSnapshot(
   messages: readonly TranscriptMessage[],
 ): MemorySnapshot {
@@ -358,28 +306,16 @@ export function fallbackSnapshot(
   });
 }
 
-// ---------------------------------------------------------------------------
-// Optional LLM snapshot extraction
-// ---------------------------------------------------------------------------
-
-// Same key check as agents/analysis.llmConfigured, against the quick model
-// this module calls (kept local so lib/devflow/memory.ts does not import the
-// agents layer). No key → deterministic path only, never a thrown
-// LoadAPIKeyError.
 export function memoryLlmConfigured(): boolean {
   return config.provider === "anthropic"
     ? Boolean(config.anthropic.quick.apiKey)
     : Boolean(config.openai.quick.apiKey);
 }
 
-// Legacy SessionSealer._build_memory_update prompt: return the UPDATED
-// COMPLETE snapshot, keep important artifacts, never invent facts.
 const SEAL_MEMORY_SYSTEM = `You maintain the long-term memory of a software-engineering agent for one repository conversation.
 Given the existing memory snapshot and the conversation transcript, return the UPDATED COMPLETE snapshot (not a diff).
 Keep important files, functions, commands, error fixes and user corrections; drop open questions and tasks the transcript shows as resolved; the summary must describe the current working state and the next step. Never invent facts the transcript does not support.`;
 
-// Thread-level consolidation prompt (legacy used the same snapshot contract
-// with _update_mode "snapshot" in SessionSealer._update_thread_memory).
 const MERGE_MEMORY_SYSTEM = `You consolidate the per-conversation memories of one repository into a single repository-level thread memory.
 Given the current thread snapshot, the conversation snapshots and their deterministic merge, return the consolidated COMPLETE snapshot.
 Prefer recent, still-relevant items; fold duplicates; the summary must describe the overall repository working state. Never invent facts.`;
@@ -402,8 +338,6 @@ async function generateSnapshot(
       generation?.update({ input: prompt, output: res.text });
       return res;
     });
-    // AGENTS.md quality bar: every LLM payload passes zod safeParse before
-    // use; anything invalid degrades to the deterministic snapshot.
     const parsed = MemorySnapshotSchema.safeParse(result.output ?? null);
     if (!parsed.success) return null;
     return normalizeSnapshot(parsed.data);
@@ -429,10 +363,6 @@ function toolNamesOf(toolCalls: unknown): string[] {
   return parsed.success ? parsed.data.map((entry) => entry.name) : [];
 }
 
-// ---------------------------------------------------------------------------
-// Sealing (chat_memory.py SessionSealer)
-// ---------------------------------------------------------------------------
-
 export interface SealResult {
   conversationId: string;
   repoId: string;
@@ -442,10 +372,6 @@ export interface SealResult {
   candidatesCreated: number;
 }
 
-// Seal a conversation: fold its transcript into the ConversationMemory row
-// (sessionsIncorporated + 1) and capture pending review candidates from the
-// update's list items (legacy capture_memory_candidates with source
-// "session_sealer"). Returns null when the conversation is missing or empty.
 export async function sealConversation(
   conversationId: string,
 ): Promise<SealResult | null> {
@@ -474,8 +400,6 @@ export async function sealConversation(
     ? memoryRowToSnapshot(existing)
     : emptySnapshot();
 
-  // Legacy SessionSealer.seal: the deterministic fallback is computed first
-  // and only replaced when the model returns a schema-valid snapshot.
   const fallback = fallbackSnapshot(messages);
   let update = fallback;
   let generationMode: MemoryGenerationMode = "deterministic";
@@ -495,8 +419,6 @@ export async function sealConversation(
     }
   }
 
-  // Legacy _update_thread_memory merge path: the update folds into the
-  // existing snapshot, so a degraded seal never discards accumulated memory.
   const merged = mergeSnapshots(existingSnapshot, update);
   const sessionsIncorporated = (existing?.sessionsIncorporated ?? 0) + 1;
   await prisma.conversationMemory.upsert({
@@ -526,9 +448,6 @@ export async function sealConversation(
   };
 }
 
-// Legacy sealed every turn; this port seals once enough NEW messages have
-// accumulated since the last seal (spec: ≥ 8). "New" = created after the
-// ConversationMemory row's updatedAt (all messages when never sealed).
 export const SEAL_MESSAGE_THRESHOLD = 8;
 
 export function shouldSeal(
@@ -553,9 +472,6 @@ export async function newMessagesSinceSeal(
   });
 }
 
-// Fire-and-forget hook for the chat agent: seal + merge when the threshold is
-// reached. Any failure is the caller's to swallow — memory must never affect
-// the chat stream.
 export async function maybeSealAndMerge(
   repoId: string,
   conversationId: string,
@@ -568,21 +484,12 @@ export async function maybeSealAndMerge(
   return true;
 }
 
-// ---------------------------------------------------------------------------
-// Thread memory merge (repo-level consolidation of ConversationMemory rows)
-// ---------------------------------------------------------------------------
-
 export interface ThreadMergePlan {
   shouldMerge: boolean;
   newSessions: number;
   totalSessions: number;
 }
 
-// Counter semantics: ThreadMemory.sessionsIncorporated is the total number of
-// sealed conversation sessions already folded in; the repo's conversation
-// memories each count their own seals. Only the delta above the thread's
-// counter triggers a merge (spec: 只合并 sessionsIncorporated 大于 thread
-// 已计数的), and the merge itself is idempotent thanks to uniquePreserveOrder.
 export function planThreadMerge(
   threadSessionsIncorporated: number,
   conversationSessions: readonly number[],
@@ -639,8 +546,6 @@ export async function mergeThreadMemory(
     };
   }
 
-  // Deterministic fold in seal order (legacy merge_memory), newer sessions
-  // land at the tail of the merged summary.
   let merged = conversations.reduce(
     (acc, row) => mergeSnapshots(acc, memoryRowToSnapshot(row)),
     threadSnapshot,
@@ -687,12 +592,6 @@ export async function mergeThreadMemory(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Prompt injection (context_compression.render_structured_memory)
-// ---------------------------------------------------------------------------
-
-// Item caps for the injected system-prompt section (legacy sliced each list
-// at 12; the conversation section is tighter per spec 各限条目数).
 export const MEMORY_CONTEXT_LIMITS = {
   threadSummaryTokens: 400,
   threadDecisions: 4,
@@ -702,9 +601,6 @@ export const MEMORY_CONTEXT_LIMITS = {
   conversationTasks: 5,
 } as const;
 
-// Pure renderer so tests can exercise truncation without a database. English
-// section labels: this text is model-facing (the chat system prompt is
-// English), not UI copy.
 export function renderMemoryContext(input: {
   thread: MemorySnapshot | null;
   conversation: MemorySnapshot | null;
@@ -774,8 +670,6 @@ export function renderMemoryContext(input: {
   return sections.join("\n\n");
 }
 
-// Memory section injected into the chat system prompt (failure is the
-// caller's to swallow — chat must work without memory).
 export async function buildMemoryContext(
   repoId: string,
   conversationId?: string | null,
@@ -793,10 +687,6 @@ export async function buildMemoryContext(
     conversation: conversation ? memoryRowToSnapshot(conversation) : null,
   });
 }
-
-// ---------------------------------------------------------------------------
-// Memory candidates (memory_hub.py)
-// ---------------------------------------------------------------------------
 
 export const MEMORY_CANDIDATE_KINDS = [
   "decision",
@@ -852,8 +742,6 @@ export function toMemoryCandidateView(
   };
 }
 
-// Legacy memory_hub._candidate_title (the zh label table there is UI copy;
-// the stored title stays locale-neutral with the kind slug as prefix).
 export function candidateTitle(kind: string, content: string): string {
   return `${kind}: ${clipInline(content, 80)}`;
 }
@@ -873,9 +761,6 @@ export interface ProposeCandidateResult {
   deduped: boolean;
 }
 
-// Create a pending candidate. Legacy memory_hub._candidate_exists: an
-// identical (repo, kind, content) candidate that is still pending or already
-// approved short-circuits creation.
 export async function proposeMemoryCandidate(
   input: ProposeCandidateInput,
 ): Promise<ProposeCandidateResult> {
@@ -909,8 +794,6 @@ export async function proposeMemoryCandidate(
   return { candidate: toMemoryCandidateView(created), deduped: false };
 }
 
-// Legacy memory_hub.capture_memory_candidates: fold a snapshot's list items
-// into pending candidates (spec order: decision/fact/task/preference/repo).
 const CANDIDATE_KIND_BY_FIELD: Array<
   [MemoryCandidateKind, keyof Omit<MemorySnapshot, "summary">]
 > = [
@@ -963,17 +846,10 @@ export async function listMemoryCandidates(
 export interface ApproveCandidateResult {
   candidate: MemoryCandidateView;
   documentId: string | null;
-  // "ready"/"skipped" from addKnowledgeDocument; "failed" when KB indexing
-  // threw (e.g. no embedding key) — the approval itself still stands.
   kbStatus: "ready" | "skipped" | "failed";
   kbError: string | null;
 }
 
-// Legacy memory_hub.approve_memory_candidate: status → approved and the
-// content lands in the KB as a `memory_note` document (routes/knowledge.py
-// create_memory_note uses the same source_type). KB indexing is best-effort
-// here: without an embedding key the approval decision persists with the
-// error recorded in meta, mirroring "KB failure never discards the result".
 export async function approveMemoryCandidate(
   repoId: string,
   candidateId: string,
@@ -984,7 +860,6 @@ export async function approveMemoryCandidate(
   if (!candidate) return null;
 
   if (candidate.status === "approved") {
-    // Idempotent re-approval (legacy early-return).
     const meta = asRecord(candidate.meta);
     const kbStatus = meta.kbStatus;
     return {
@@ -1040,7 +915,6 @@ export async function approveMemoryCandidate(
   };
 }
 
-// Legacy memory_hub.reject_memory_candidate.
 export async function rejectMemoryCandidate(
   repoId: string,
   candidateId: string,
@@ -1058,10 +932,6 @@ export async function rejectMemoryCandidate(
   });
   return toMemoryCandidateView(updated);
 }
-
-// ---------------------------------------------------------------------------
-// Read views for the API routes
-// ---------------------------------------------------------------------------
 
 export interface MemoryStateView extends MemorySnapshot {
   sessionsIncorporated: number;
@@ -1111,11 +981,6 @@ export async function getRepoMemoryOverview(
     })),
   };
 }
-
-// ---------------------------------------------------------------------------
-// Request schemas for the memory routes (colocated here because
-// lib/devflow/schemas.ts is out of this task's edit scope)
-// ---------------------------------------------------------------------------
 
 export const MemoryRepoQuerySchema = z.object({
   repoId: z.string().min(1),

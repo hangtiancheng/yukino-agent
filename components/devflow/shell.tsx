@@ -1,7 +1,5 @@
 "use client";
 
-// DevFlow workspace shell: sidebar navigation + top bar with the global
-// repository picker, theme toggle and a link back to the main assistant.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations, type Messages } from "next-intl";

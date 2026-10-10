@@ -1,13 +1,5 @@
-// Contextual recommended chat questions — port of the legacy
-// RecommendationAgent (DevFlow-AI services/agents/recommendation_agent.py,
-// pure rules, no LLM). The legacy Chinese prompt strings are localized
-// through the `devflow.recommendations` namespace: this module receives a
-// translate function so the candidate selection rules (ordering, exclusion,
-// dedupe, per-source quotas) stay an isomorphic port.
 import type { Repository } from "@/generated/prisma/client";
 
-// Catalog keys of the devflow.recommendations namespace (compile-time
-// enforceable once the catalogs carry them; see messages/en.json).
 export type RecommendationKey =
   | "emptyRepoOverview"
   | "emptyRepoCodeStructure"
@@ -114,7 +106,6 @@ function dedupe(values: string[]): string[] {
   return out;
 }
 
-// Port of _build_candidates + _run selection.
 export function buildRecommendations(
   input: RecommendationInput,
   t: RecommendTranslate,
@@ -249,7 +240,6 @@ export function buildRecommendations(
 
   const ordered = dedupe(candidates);
   let selected = ordered.filter((s) => !seen.has(normalize(s))).slice(0, limit);
-  // Legacy fallback: when the exclusions cover everything, ignore exclusions.
   if (selected.length === 0 && (input.exclude?.length ?? 0) > 0) {
     selected = ordered.slice(0, limit);
   }
@@ -263,8 +253,6 @@ export function buildRecommendations(
   };
 }
 
-// Data loader used by the API route: recent synced rows, mirrors the legacy
-// repository_snapshot input.
 export async function gatherRecommendationInput(repo: Repository) {
   const { prisma } = await import("@/lib/db");
   const [issues, pulls, runs] = await Promise.all([

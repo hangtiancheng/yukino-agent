@@ -1,17 +1,3 @@
-// Offline smoke test for the DevFlow code-graph port (no DB, no network)
-// plus the shared analyze/stream SSE frame sequence:
-//  - regex symbol extraction fixtures (TS / Python / Go) following the
-//    chunking.ts genericRegions approach with legacy code_analysis.py kinds,
-//  - imports / calls / defines relation derivation (legacy IMPORT_RE /
-//    CALL_RE semantics),
-//  - one-hop impact closure (legacy _pr_code_graph_impact narrowing),
-//  - scan-budget truncation + prefix ranking + path normalization,
-//  - SSE trace sequence as pure functions (analysisStreamFrames/encodeSse),
-//  - real-file extraction against this repository's own sources.
-// With CODE_GRAPH_SMOKE_LIVE=1 additionally runs a row-level PostgreSQL pass
-// (temp Repository pointing at ./lib as a local checkout; self-cleaning).
-// Run: npx tsx tests/devflow-code-graph.smoke.ts
-//      CODE_GRAPH_SMOKE_LIVE=1 npx tsx tests/devflow-code-graph.smoke.ts
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -30,8 +16,6 @@ import {
   type ScannedFile,
 } from "@/lib/devflow/code-graph";
 
-// Representative Python module used by the extraction check below (stands in
-// for the legacy code_analysis.py the suite originally read from the source tree).
 const PYTHON_FIXTURE = `import os
 import re
 
@@ -93,62 +77,58 @@ function check(label: string, fn: () => void) {
   console.log(`ok - ${label}`);
 }
 
-// ---------------------------------------------------------------------------
-// Symbol extraction fixtures
-// ---------------------------------------------------------------------------
-
 const TS_FIXTURE = [
-  'import path from "node:path";', // 1
-  'import { prisma } from "@/lib/db";', // 2
-  'const { readFile } = require("node:fs/promises");', // 3
-  "", // 4
-  "export interface SymbolRow {", // 5
-  "  name: string;", // 6
-  "}", // 7
-  "", // 8
-  "export class GraphBuilder {", // 9
-  "  build() {", // 10
-  "    return computeRegions();", // 11
-  "  }", // 12
-  "}", // 13
-  "", // 14
-  "export function computeRegions(text: string): number {", // 15
-  '  if (text === "") return computeRegions("x");', // 16
-  "  return helperFn(text.length);", // 17
-  "}", // 18
-  "", // 19
-  "const helperFn = (x) => x * 2;", // 20
-  "", // 21
-  'export type Mode = "a" | "b";', // 22
-  "", // 23
+  'import path from "node:path";',
+  'import { prisma } from "@/lib/db";',
+  'const { readFile } = require("node:fs/promises");',
+  "",
+  "export interface SymbolRow {",
+  "  name: string;",
+  "}",
+  "",
+  "export class GraphBuilder {",
+  "  build() {",
+  "    return computeRegions();",
+  "  }",
+  "}",
+  "",
+  "export function computeRegions(text: string): number {",
+  '  if (text === "") return computeRegions("x");',
+  "  return helperFn(text.length);",
+  "}",
+  "",
+  "const helperFn = (x) => x * 2;",
+  "",
+  'export type Mode = "a" | "b";',
+  "",
 ].join("\n");
 
 const PY_FIXTURE = [
-  "from app.core.config import settings", // 1
-  "import os", // 2
-  "", // 3
-  "class Repo:", // 4
-  "    def save(self):", // 5
-  "        helper(os.getcwd())", // 6
-  "", // 7
-  "def helper(value):", // 8
-  "    return value", // 9
-  "", // 10
+  "from app.core.config import settings",
+  "import os",
+  "",
+  "class Repo:",
+  "    def save(self):",
+  "        helper(os.getcwd())",
+  "",
+  "def helper(value):",
+  "    return value",
+  "",
 ].join("\n");
 
 const GO_FIXTURE = [
-  "package main", // 1
-  "", // 2
-  'import "fmt"', // 3
-  "", // 4
-  "type Server struct{}", // 5
-  "", // 6
-  "func (s *Server) Start() {", // 7
-  "    fmt.Println(NewServer())", // 8
-  "}", // 9
-  "", // 10
-  "func NewServer() *Server { return &Server{} }", // 11
-  "", // 12
+  "package main",
+  "",
+  'import "fmt"',
+  "",
+  "type Server struct{}",
+  "",
+  "func (s *Server) Start() {",
+  "    fmt.Println(NewServer())",
+  "}",
+  "",
+  "func NewServer() *Server { return &Server{} }",
+  "",
 ].join("\n");
 
 check(
@@ -178,8 +158,6 @@ check(
     const symbols = extractSymbols(TS_FIXTURE, "src/graph.ts");
     const calls = extractCallSites(TS_FIXTURE, symbols);
     const edges = calls.map((c) => [c.name, c.line, c.enclosing] as const);
-    // Declaration lines match CALL_RE like legacy (self-edge, filtered later);
-    // unknown names (build, require) are dropped by buildRelations, not here.
     assert.ok(
       edges.some(
         ([n, l, e]) =>
@@ -239,10 +217,6 @@ check("non-code and symbol-less files yield no symbols", () => {
   assert.deepEqual(extractSymbols("just text\n", "src/plain.ts"), []);
 });
 
-// ---------------------------------------------------------------------------
-// Relation derivation
-// ---------------------------------------------------------------------------
-
 check("buildRelations: defines + imports + known-symbol calls, deduped", () => {
   const tsSymbols = extractSymbols(TS_FIXTURE, "src/graph.ts");
   const file: ScannedFile = {
@@ -250,7 +224,7 @@ check("buildRelations: defines + imports + known-symbol calls, deduped", () => {
     symbols: tsSymbols,
     imports: [
       ...extractImportTargets(TS_FIXTURE),
-      { target: "node:path", line: 99 }, // duplicate import collapses
+      { target: "node:path", line: 99 },
     ],
     calls: extractCallSites(TS_FIXTURE, tsSymbols),
   };
@@ -262,18 +236,17 @@ check("buildRelations: defines + imports + known-symbol calls, deduped", () => {
   assert.ok(defines.every((r) => r.sourceName === "src/graph.ts"));
 
   const imports = relations.filter((r) => r.type === "imports");
-  assert.equal(imports.length, 3); // duplicate node:path deduped
+  assert.equal(imports.length, 3);
   assert.ok(imports.every((r) => r.sourceName === "src/graph.ts"));
 
   const calls = relations.filter((r) => r.type === "calls");
   const callKeys = calls.map((r) => `${r.sourceName}->${r.targetName}`);
   assert.deepEqual([...new Set(callKeys)].sort(), [
     "GraphBuilder->computeRegions",
-    "computeRegions->computeRegions", // legacy kept self-calls; impact filters them
+    "computeRegions->computeRegions",
     "computeRegions->helperFn",
   ]);
-  assert.equal(calls.length, 3); // the two computeRegions self-hits dedupe to one
-  // Unknown callees never become relations.
+  assert.equal(calls.length, 3);
   assert.ok(
     !calls.some((r) => r.targetName === "build" || r.targetName === "require"),
   );
@@ -292,14 +265,10 @@ check(
     const mainCalls = relations.filter(
       (r) => r.type === "calls" && r.targetName === "main",
     );
-    assert.ok(mainCalls.some((r) => r.sourceName === "src/boot.ts")); // line 1: no enclosing region
-    assert.ok(mainCalls.some((r) => r.sourceName === "main")); // line 2: declaration self-hit
+    assert.ok(mainCalls.some((r) => r.sourceName === "src/boot.ts"));
+    assert.ok(mainCalls.some((r) => r.sourceName === "main"));
   },
 );
-
-// ---------------------------------------------------------------------------
-// One-hop impact closure
-// ---------------------------------------------------------------------------
 
 check(
   "computeImpact: one-hop dependents, self/defines excluded, sameFile flagged",
@@ -325,9 +294,8 @@ check(
         meta: { line: 5 },
       },
       { sourceName: "a.ts", targetName: "Foo", type: "defines", path: "a.ts" },
-      { sourceName: "Foo", targetName: "Foo", type: "calls", path: "a.ts" }, // self-call
-      { sourceName: "c.ts", targetName: "./x", type: "imports", path: "c.ts" }, // unknown target
-      // duplicate of the first row collapses
+      { sourceName: "Foo", targetName: "Foo", type: "calls", path: "a.ts" },
+      { sourceName: "c.ts", targetName: "./x", type: "imports", path: "c.ts" },
       {
         sourceName: "useFoo",
         targetName: "Foo",
@@ -363,10 +331,6 @@ check("computeImpact: unknown files produce an empty closure", () => {
   assert.deepEqual(impact.dependents, []);
 });
 
-// ---------------------------------------------------------------------------
-// Scan budget, normalization, ranking
-// ---------------------------------------------------------------------------
-
 check("planScan: truncates at the file cap", () => {
   const candidates = Array.from({ length: 10 }, (_, i) => `f${i}.ts`);
   const capped = planScan(candidates, 4);
@@ -401,10 +365,6 @@ check("rankSymbolMatches: prefix > name-contains > path-only", () => {
   );
 });
 
-// ---------------------------------------------------------------------------
-// Real repository files (task requirement: run the TS regex over real code)
-// ---------------------------------------------------------------------------
-
 const realFileChecks = async (): Promise<void> => {
   const workspaceSrc = await readFile(
     path.join(process.cwd(), "lib/devflow/workspace.ts"),
@@ -434,7 +394,6 @@ const realFileChecks = async (): Promise<void> => {
   const iface = byName.get("SyncResult");
   assert.ok(iface);
   assert.equal(iface.kind, "interface");
-  // Regions are ordered and inside the file.
   const totalLines = workspaceSrc.split("\n").length;
   for (let i = 0; i < symbols.length; i += 1) {
     const symbol = symbols[i];
@@ -447,10 +406,6 @@ const realFileChecks = async (): Promise<void> => {
     `ok - real file: lib/devflow/workspace.ts (${symbols.length} symbols)`,
   );
 
-  // Inline Python fixture exercising the same symbol/relation shapes the
-  // legacy code_analysis.py did (that source tree is no longer bundled):
-  // module + from-imports, helper functions, and a call graph where
-  // _sync_code_graph calls _read_text and _is_text_candidate.
   const pySrc = PYTHON_FIXTURE;
   const pySymbols = extractSymbols(pySrc, "code_analysis.py");
   const pyNames = new Set(pySymbols.map((s) => s.name));
@@ -465,8 +420,6 @@ const realFileChecks = async (): Promise<void> => {
       `code_analysis.py symbol ${expected} extracted`,
     );
   }
-  // Cross-check relation extraction on the real file: _sync_code_graph calls
-  // _read_text and _is_text_candidate.
   const pyCalls = extractCallSites(pySrc, pySymbols);
   const pyRelations = buildRelations(
     [
@@ -496,10 +449,6 @@ const realFileChecks = async (): Promise<void> => {
     `ok - python fixture: code_analysis shape (${pySymbols.length} symbols, ${pyRelations.length} relations)`,
   );
 };
-
-// ---------------------------------------------------------------------------
-// SSE trace sequence (pure functions)
-// ---------------------------------------------------------------------------
 
 async function collect(
   hooks: AnalyzeStreamHooks<{ generationMode?: string }>,
@@ -600,16 +549,9 @@ const sseChecks = async (): Promise<void> => {
   });
 };
 
-// ---------------------------------------------------------------------------
-// Optional live pass against local PostgreSQL (row-level, self-cleaning)
-// ---------------------------------------------------------------------------
-
 async function live(): Promise<void> {
   const { prisma } = await import("@/lib/db");
   const stamp = Date.now();
-  // Use ./lib of this repository as a local-mode checkout: it is inside the
-  // git work tree, small enough to stay under the scan caps, and contains
-  // real TS sources (task requirement: row-level CodeSymbol verification).
   const libDir = path.join(process.cwd(), "lib");
   const repo = await prisma.repository.create({
     data: {
@@ -625,7 +567,6 @@ async function live(): Promise<void> {
     const summary = await rebuildCodeGraph(repo.id);
     assert.ok(summary.filesScanned > 0, "live: files scanned");
     assert.ok(summary.symbolCount > 0, "live: symbols written");
-    // Every symbol contributes at least its defines edge.
     assert.ok(
       summary.relationCount >= summary.symbolCount,
       "live: relations >= symbols",
@@ -664,7 +605,6 @@ async function live(): Promise<void> {
       "live: impact lists symbols of the changed file",
     );
 
-    // Rebuild is a delete-then-insert snapshot: counts stay stable, no dupes.
     const summary2 = await rebuildCodeGraph(repo.id);
     assert.equal(summary2.symbolCount, summary.symbolCount);
     const countAfter = await prisma.codeSymbol.count({
@@ -681,8 +621,6 @@ async function live(): Promise<void> {
     await prisma.repository.delete({ where: { id: repo.id } });
   }
 }
-
-// ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
   await realFileChecks();

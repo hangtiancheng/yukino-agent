@@ -1,11 +1,3 @@
-// POST /api/devflow/pulls/:id/review-checklist — PR review checklist
-// (legacy routes/pull_requests.py:530-533 returned the LLM agent's
-// review_checklist). This port is DETERMINISTIC: the judgment rules of
-// services/llm/prompts.py:55-60 (P1 functional/security/data risk + failing
-// CI, P2 test coverage / unaddressed review comments / unverified sensitive
-// files, never "looks good" without the manual checklist) are evaluated
-// straight from the synced GitHub data, so the endpoint works without any
-// LLM key.
 import { prisma } from "@/lib/db";
 import { buildReviewChecklist } from "@/lib/devflow/content-index";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
@@ -25,7 +17,6 @@ export async function POST(_request: Request, context: RouteContext) {
     });
     if (!pr) return fail(404, "prNotFound");
 
-    // CI status on the PR's head branch (all recent runs when unknown).
     const runs = await prisma.workflowRun.findMany({
       where: pr.headBranch
         ? { repoId: pr.repoId, headBranch: pr.headBranch }

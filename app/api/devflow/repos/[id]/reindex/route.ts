@@ -1,9 +1,3 @@
-// POST /api/devflow/repos/:id/reindex — rebuild the repository's GitHub
-// content vectors (legacy POST /rag/{repo_id}/reindex → qa.py:216
-// reindex_documents → index_repository_documents): the ITEM indexing stage
-// (issues / PRs / failed CI logs). Uploaded KB documents are re-indexed
-// individually via POST /api/devflow/knowledge/:docId/retry (their text is
-// stored in KnowledgeDocumentBody), not by this repo-wide content rebuild.
 import { prisma } from "@/lib/db";
 import { indexRepositoryContent } from "@/lib/devflow/content-index";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";

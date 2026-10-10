@@ -1,35 +1,10 @@
-// Cross-entity knowledge graph over synced DevFlow data.
-// Port of the legacy DevFlow-AI/backend/app/services/knowledge_graph.py
-// (Yukino.md #27), trimmed to the entities that live in PostgreSQL in this
-// stack. The legacy service also derived touches_file / failed_in_ci /
-// cites / used_as_evidence edges from PRFile, WorkflowRun logs, memory
-// citations and AgentRun tool traces; this port covers the assignment's six
-// relations:
-//   references   issue|pull_request → issue|pull_request   (explicit #N, 1.0)
-//   resolves     pull_request       → issue               (closing kw, 0.9)
-//   assigned_to  issue              → team_member|github_user (1.0)
-//   authored_by  issue|pull_request → github_user         (1.0)
-//   documents    knowledge_document → issue|pull_request  (weekly report, 0.8)
-//   decides      conversation       → issue|pull_request  (decision line, 0.6)
-// Edge derivation is a pure function over a snapshot (deriveEdges) so the
-// smoke test can exercise it offline; rebuildGraph reads PostgreSQL, wipes the
-// repo's edges and re-inserts them (legacy rebuild_knowledge_graph,
-// knowledge_graph.py:70-89) with createMany skipDuplicates riding the
-// @@unique([repoId, fromType, fromId, toType, toId, relation]) constraint.
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
 
-// Legacy GRAPH_NODE_LIMIT (knowledge_graph.py:23).
 export const GRAPH_NODE_LIMIT = 72;
-// "Recent edges" rows carried by the summary endpoint.
 export const RECENT_EDGES_LIMIT = 20;
-// Node-picker payload cap for the summary endpoint (nodeCount still counts all).
 export const SUMMARY_NODE_LIMIT = 500;
-// Assistant messages scanned for decision lines. The legacy evidence scan
-// capped AgentRuns at 25 (knowledge_graph.py:276); chat history is larger, so
-// the window is wider but still bounded.
 const DECISION_MESSAGE_SCAN_LIMIT = 200;
-// createMany batch size — keeps each INSERT under the PG bind-parameter limit.
 const CREATE_BATCH_SIZE = 1_000;
 
 export const GRAPH_NODE_TYPES = [
@@ -42,8 +17,6 @@ export const GRAPH_NODE_TYPES = [
 ] as const;
 export type GraphNodeType = (typeof GRAPH_NODE_TYPES)[number];
 
-// Subset of the legacy NODE_TYPE_ALIASES (knowledge_graph.py:31-50) so API
-// callers can pass the short names the legacy frontend used.
 const NODE_TYPE_ALIASES: Record<string, string> = {
   issue: "issue",
   pr: "pull_request",
@@ -59,23 +32,14 @@ const NODE_TYPE_ALIASES: Record<string, string> = {
   conversation: "conversation",
 };
 
-// Legacy normalize_node_type (knowledge_graph.py:65-67).
 export function normalizeNodeType(value: string): string {
   const key = value.trim();
   return NODE_TYPE_ALIASES[key] ?? key;
 }
 
-// Legacy ISSUE_REF_RE (knowledge_graph.py:24): #N unless glued to a letter
-// (branch names like feature#12 stay out).
 const ISSUE_REF_RE = /(?<![A-Za-z])#(\d+)\b/g;
-// Legacy CLOSING_ISSUE_RE (knowledge_graph.py:25-28): GitHub closing keywords
-// (close/closes/closed, fix/fixes/fixed, resolve/resolves/resolved) + #N.
 const CLOSING_ISSUE_RE =
   /\b(?:fix(?:e[sd])?|close[sd]?|resolve[sd]?)\s+(?:issue\s+)?#(\d+)\b/gi;
-// Decision-line heuristic — simplification of the legacy session decisions
-// (knowledge_graph.py:423-445 read memory.decisions arrays; this stack keeps
-// free-form assistant markdown, so an explicit "决定"/"decision:" line prefix
-// marks a decision statement).
 const DECISION_LINE_RE = /^\s*(?:决定|decision\s*:)/i;
 
 export const GRAPH_RELATIONS = [
@@ -88,10 +52,6 @@ export const GRAPH_RELATIONS = [
 ] as const;
 export type GraphRelation = (typeof GRAPH_RELATIONS)[number];
 
-// Per-relation confidence: explicit #N = 1.0, closing keyword = 0.9,
-// documents = 0.8, decides = 0.6; assignee/author are structured GitHub
-// fields, so they carry 1.0 like the legacy add_edge default
-// (knowledge_graph.py:161).
 export const RELATION_CONFIDENCE: Record<GraphRelation, number> = {
   references: 1.0,
   resolves: 0.9,
@@ -101,16 +61,12 @@ export const RELATION_CONFIDENCE: Record<GraphRelation, number> = {
   decides: 0.6,
 };
 
-// Every edge derived here comes from synced GitHub/KB data.
 export const EDGE_SOURCE = "sync";
 
-// Legacy _node_key (knowledge_graph.py:505-506).
 export function nodeKey(type: string, id: string): string {
   return `${type}:${id}`;
 }
 
-// Unique ascending #N references in a text (legacy _issue_refs,
-// knowledge_graph.py:517-518).
 export function extractIssueRefs(text: string): number[] {
   const found = new Set<number>();
   for (const match of text.matchAll(ISSUE_REF_RE)) {
@@ -119,8 +75,6 @@ export function extractIssueRefs(text: string): number[] {
   return [...found].sort((a, b) => a - b);
 }
 
-// Unique ascending closing-keyword targets (legacy _closing_issue_refs,
-// knowledge_graph.py:521-522).
 export function extractClosingRefs(text: string): number[] {
   const found = new Set<number>();
   for (const match of text.matchAll(CLOSING_ISSUE_RE)) {
@@ -129,14 +83,9 @@ export function extractClosingRefs(text: string): number[] {
   return [...found].sort((a, b) => a - b);
 }
 
-// Lines of an assistant message that read as explicit decisions.
 export function extractDecisionLines(text: string): string[] {
   return text.split("\n").filter((line) => DECISION_LINE_RE.test(line));
 }
-
-// ---------------------------------------------------------------------------
-// Pure edge derivation (legacy _generate_edges, knowledge_graph.py:141-284)
-// ---------------------------------------------------------------------------
 
 export interface GraphIssueInput {
   id: string;
@@ -155,15 +104,12 @@ export interface GraphPrInput {
   author: string | null;
 }
 
-// weekly_report documents only; `content` is the best-effort resolved body
-// (null when unavailable — the name is still scanned).
 export interface GraphDocumentInput {
   id: string;
   name: string;
   content: string | null;
 }
 
-// assistant chat messages only.
 export interface GraphMessageInput {
   id: string;
   conversationId: string;
@@ -203,16 +149,11 @@ export function deriveEdges(snapshot: GraphSnapshot): DerivedEdge[] {
   for (const pr of snapshot.pullRequests) {
     prsByNumber.set(pr.number, pr.id);
   }
-  // Legacy matched assignees to team members case-insensitively
-  // (knowledge_graph.py:189).
   const memberIdsByLogin = new Map<string, string>();
   for (const member of snapshot.teamMembers) {
     memberIdsByLogin.set(member.githubLogin.trim().toLowerCase(), member.id);
   }
 
-  // Legacy add_edge closure (knowledge_graph.py:154-185): dedupe on the
-  // unique tuple, keep the max confidence, merge metadata, reject empty ids
-  // and self-loops.
   const edges = new Map<string, DerivedEdge>();
   function addEdge(
     fromType: string,
@@ -245,9 +186,6 @@ export function deriveEdges(snapshot: GraphSnapshot): DerivedEdge[] {
     });
   }
 
-  // A #N reference resolves to an existing entity of THIS repo — issues take
-  // precedence over PRs, mirroring the legacy _issue_refs-then-_pr_refs order
-  // (knowledge_graph.py:300-307). Dangling numbers create no edge.
   function resolveRef(n: number): { type: string; id: string } | null {
     const issueId = issuesByNumber.get(n);
     if (issueId) return { type: "issue", id: issueId };
@@ -305,9 +243,6 @@ export function deriveEdges(snapshot: GraphSnapshot): DerivedEdge[] {
 
   for (const pr of snapshot.pullRequests) {
     const text = `${pr.title}\n${pr.body ?? ""}`;
-    // Legacy PR pass (knowledge_graph.py:205-218): closing-keyword targets
-    // become `resolves` edges and are subtracted from the generic references
-    // so one mention never yields two parallel edges.
     const closing = new Set<number>();
     for (const n of extractClosingRefs(text)) {
       closing.add(n);
@@ -327,9 +262,6 @@ export function deriveEdges(snapshot: GraphSnapshot): DerivedEdge[] {
     }
   }
 
-  // Weekly reports documenting issues/PRs (legacy document pass,
-  // knowledge_graph.py:237-254 — the caller restricts the snapshot to
-  // weekly_report documents; an edge only appears when a #N resolves).
   for (const doc of snapshot.documents) {
     addReferenceEdges(
       "knowledge_document",
@@ -339,7 +271,6 @@ export function deriveEdges(snapshot: GraphSnapshot): DerivedEdge[] {
     );
   }
 
-  // Conversation decisions — best-effort (may legitimately stay empty).
   for (const message of snapshot.messages) {
     for (const line of extractDecisionLines(message.content)) {
       addReferenceEdges(
@@ -356,16 +287,7 @@ export function deriveEdges(snapshot: GraphSnapshot): DerivedEdge[] {
   return [...edges.values()];
 }
 
-// ---------------------------------------------------------------------------
-// Rebuild (legacy rebuild_knowledge_graph, knowledge_graph.py:70-89)
-// ---------------------------------------------------------------------------
-
 export interface RebuildGraphOptions {
-  // The legacy _document_groups read document bodies from PG Document rows;
-  // here KB bodies live in Milvus chunks, so the documents edge resolves the
-  // weekly-report content through this hook. The default is a best-effort
-  // Milvus fetch that degrades to null (name-only extraction) when Milvus is
-  // unavailable.
   resolveWeeklyReportContent?: (doc: {
     id: string;
     name: string;
@@ -378,11 +300,6 @@ export interface RebuildGraphResult {
   nodes: number;
 }
 
-// KB chunk row ids are `${docId}#${chunkIndex}` (rag.ts buildChunkRows) and
-// chunkCount is on the PG row, so the body can be reassembled through
-// getByIds without an embedding call. First failure marks Milvus unavailable
-// for the rest of this rebuild — a down Milvus must not stall every doc on
-// the 15s gRPC timeout.
 function createWeeklyReportContentResolver(): NonNullable<
   RebuildGraphOptions["resolveWeeklyReportContent"]
 > {
@@ -447,8 +364,6 @@ export async function rebuildGraph(
         select: { id: true, name: true, chunkCount: true },
         orderBy: { createdAt: "asc" },
       }),
-      // Prefilter keeps the decision scan bounded: a decision line can only
-      // exist when the marker substring is present.
       prisma.chatMessage.findMany({
         where: {
           repoId,
@@ -483,7 +398,6 @@ export async function rebuildGraph(
     issues,
     pullRequests,
     documents,
-    // Oldest first so meta merges across messages are deterministic.
     messages: [...assistantMessages].reverse(),
     teamMembers,
   });
@@ -522,8 +436,6 @@ export async function rebuildGraph(
       })),
     );
   }
-  // Legacy delete-then-insert rebuild; skipDuplicates rides the @@unique
-  // tuple as the upsert semantics against concurrent rebuilds.
   await prisma.$transaction([
     prisma.knowledgeGraphEdge.deleteMany({ where: { repoId } }),
     ...batches.map((data) =>
@@ -533,10 +445,6 @@ export async function rebuildGraph(
 
   return { edges: derived.length, nodes: nodeKeys.size };
 }
-
-// ---------------------------------------------------------------------------
-// Read models: whole-graph summary + BFS subgraph
-// ---------------------------------------------------------------------------
 
 export interface GraphNodeView {
   type: string;
@@ -586,8 +494,6 @@ const EDGE_VIEW_SELECT = {
   createdAt: true,
 } as const;
 
-// Legacy _node_priority (knowledge_graph.py:529-540) extended with this
-// port's node types — orders the page's node picker.
 const NODE_TYPE_PRIORITY: Record<string, number> = {
   issue: 0,
   pull_request: 1,
@@ -603,9 +509,6 @@ function splitNodeKey(key: string): { type: string; id: string } | null {
   return { type: key.slice(0, at), id: key.slice(at + 1) };
 }
 
-// Batch-resolve display labels per node type. github_user nodes carry the
-// login as their id; vanished entity rows fall back to the raw id (legacy
-// _fallback_node, knowledge_graph.py:494-502).
 async function resolveNodeLabels(
   idsByType: Map<string, string[]>,
 ): Promise<Map<string, string>> {
@@ -667,7 +570,6 @@ async function resolveNodeLabels(
   return labels;
 }
 
-// Node keys → sorted views with resolved labels.
 async function buildNodeViews(keys: string[]): Promise<GraphNodeView[]> {
   const idsByType = new Map<string, string[]>();
   for (const key of keys) {
@@ -699,8 +601,6 @@ async function buildNodeViews(keys: string[]): Promise<GraphNodeView[]> {
 export async function graphSummary(repoId: string): Promise<GraphSummary> {
   const edges = await prisma.knowledgeGraphEdge.findMany({
     where: { repoId },
-    // Newest rebuild batch first, id as the deterministic tiebreak (one
-    // rebuild inserts every row in the same transaction).
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
     select: EDGE_VIEW_SELECT,
   });
@@ -722,12 +622,6 @@ export async function graphSummary(repoId: string): Promise<GraphSummary> {
   };
 }
 
-// Pure BFS core — legacy _select_subgraph center branch
-// (knowledge_graph.py:373-393): breadth-first from the center up to `depth`
-// hops over the UNDIRECTED adjacency, stop selecting at `limit` nodes, and
-// report `truncated` when the frontier was cut off. Adjacency lists must be
-// pre-sorted by the caller for deterministic ring order (legacy sorted
-// neighbors by title).
 export function bfsSubgraphKeys(
   adjacency: Map<string, string[]>,
   centerKey: string,
@@ -757,7 +651,6 @@ export async function fetchSubgraph(
   params: { fromType: string; fromId: string; depth?: number },
 ): Promise<SubgraphResult> {
   const fromType = normalizeNodeType(params.fromType);
-  // Legacy depth clamp: max(1, min(depth, 2)) (knowledge_graph.py:116).
   const depth = Math.max(1, Math.min(params.depth ?? 1, 2));
   const center = nodeKey(fromType, params.fromId);
 
@@ -783,9 +676,6 @@ export async function fetchSubgraph(
     push(b, a);
   }
 
-  // Labels double as the BFS neighbor ordering (legacy expanded neighbors in
-  // title order); the center is resolved too, so an edge-less entity still
-  // gets its real label instead of the raw id.
   const allViews = await buildNodeViews([...keys]);
   const viewByKey = new Map(
     allViews.map((view) => [nodeKey(view.type, view.id), view]),
@@ -805,8 +695,6 @@ export async function fetchSubgraph(
       selectedSet.has(nodeKey(row.fromType, row.fromId)) &&
       selectedSet.has(nodeKey(row.toType, row.toId)),
   );
-  // Nodes come back in BFS order — center first, then discovery order — so
-  // the client can lay out rings without re-running BFS for ordering.
   const nodes = selected.keys.map((key) => {
     const view = viewByKey.get(key);
     if (view) return view;
@@ -823,17 +711,9 @@ export async function fetchSubgraph(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Route contracts
-// ---------------------------------------------------------------------------
-
-// POST /api/devflow/repos/:id/graph body (legacy POST
-// /{repo_id}/knowledge/graph/rebuild, routes/knowledge.py:358-362).
 export const GraphActionSchema = z.object({ action: z.literal("rebuild") });
 export type GraphAction = z.infer<typeof GraphActionSchema>;
 
-// GET subgraph query — legacy depth bounds ge=1 le=2
-// (routes/knowledge.py:349).
 export const SubgraphQuerySchema = z.object({
   fromType: z.string().min(1).max(40),
   fromId: z.string().min(1).max(120),

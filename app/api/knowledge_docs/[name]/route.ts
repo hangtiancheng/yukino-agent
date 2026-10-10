@@ -1,8 +1,3 @@
-// /api/knowledge_docs/[name] — OnCall knowledge-base document operations
-// (legacy knowledge documents API): GET = chunk preview (first 12 chunks,
-// computed on the fly without touching Milvus), POST = re-index, DELETE =
-// remove the file + its vectors. Mutations require ONCALL_ADMIN_TOKEN
-// (fail-closed) because the surface is public.
 import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { getTranslations } from "next-intl/server";
@@ -27,7 +22,6 @@ export async function OPTIONS() {
 
 type Ctx = { params: Promise<{ name: string }> };
 
-// Resolve an untrusted document name to a path strictly inside FILE_DIR.
 function resolveDoc(name: string): string | null {
   const dir = path.resolve(config.fileDir);
   const base = path.basename(name.replaceAll("\\", "/"));
@@ -107,8 +101,6 @@ export async function DELETE(request: Request, ctx: Ctx) {
   } catch {
     return fail(404, t("docNotFound"));
   }
-  // Best-effort vector cleanup: Milvus may be down; the next startup index
-  // will not resurrect a deleted file anyway.
   await deleteByExpr(`source == ${quote(name)}`).catch(() => undefined);
   return Response.json(
     { message: "OK", data: { deleted: name } },

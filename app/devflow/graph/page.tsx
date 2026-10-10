@@ -1,13 +1,5 @@
 "use client";
 
-// Knowledge Graph — whole-graph stats, a node picker and a static ring-layout
-// visualization of one node's ≤2-hop neighborhood (selected node centered,
-// 1-hop ring inside, 2-hop ring outside) plus a relation color legend.
-// Port of the legacy KnowledgeGraphWorkspace
-// (DevFlow-AI/frontend/app/page.tsx:5364-5615) with its static
-// layoutKnowledgeGraph/placeGraphRing ring layout (:5715-5762) and the
-// relation/node color tables (:5794-5822) — no third-party graph library,
-// same as legacy.
 import { useEffect, useMemo, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { Network, RefreshCw } from "lucide-react";
@@ -26,9 +18,6 @@ import type {
   SubgraphResult,
 } from "@/lib/devflow/knowledge-graph";
 
-// Legacy graphRelationColor (page.tsx:5808-5822): resolves/assigned_to/
-// documents keep their legacy colors; references reuses legacy `mentions`,
-// authored_by reuses `touches_file`, decides reuses `produced_from_session`.
 const RELATION_COLORS: Record<string, string> = {
   references: "#64748b",
   resolves: "#16a34a",
@@ -39,8 +28,6 @@ const RELATION_COLORS: Record<string, string> = {
 };
 const FALLBACK_RELATION_COLOR = "#64748b";
 
-// Legacy graphNodeStyle (page.tsx:5794-5806), mapped onto this port's node
-// types (document → knowledge_document, session_decision → conversation).
 const NODE_STYLES: Record<string, { fill: string; stroke: string }> = {
   issue: { fill: "#fef3c7", stroke: "#d97706" },
   pull_request: { fill: "#ccfbf1", stroke: "#0f766e" },
@@ -51,8 +38,6 @@ const NODE_STYLES: Record<string, { fill: string; stroke: string }> = {
 };
 const FALLBACK_NODE_STYLE = { fill: "#f1f5f9", stroke: "#64748b" };
 
-// Dynamic enum values map value→key so the template literal stays
-// compile-time checked; unknown values fall back to the raw string.
 const RELATION_KEYS = {
   references: "references",
   resolves: "resolves",
@@ -81,9 +66,6 @@ function isNodeTypeKey(value: string): value is keyof typeof NODE_TYPE_KEYS {
 
 const DEPTHS: Array<1 | 2> = [1, 2];
 
-// Canvas geometry — legacy used a 720×420 viewBox with the center at
-// (360, 190) and ring radii 122/145/184 (page.tsx:5526, 5731-5742); radii
-// here leave room for the below-node labels on the outer ring.
 const VIEW_W = 720;
 const VIEW_H = 440;
 const CX = 360;
@@ -96,7 +78,6 @@ function keyOf(type: string, id: string): string {
   return `${type}:${id}`;
 }
 
-// Legacy clipGraphLabel (page.tsx:5829-5831).
 function clipLabel(text: string, limit: number): string {
   return text.length <= limit ? text : `${text.slice(0, limit - 1).trim()}…`;
 }
@@ -108,9 +89,6 @@ interface PlacedNode {
   hop: number;
 }
 
-// Static layered layout: BFS hop distance from the center, then one ring per
-// hop band (legacy placeGraphRing, page.tsx:5746-5762 — evenly spaced on a
-// circle starting at the top for ring 1).
 function ringLayout(
   nodes: GraphNodeView[],
   edges: GraphEdgeView[],
@@ -147,8 +125,6 @@ function ringLayout(
     positions.set(centerKey, { node: center, x: CX, y: CY, hop: 0 });
   }
   const ring1 = nodes.filter((n) => hop.get(keyOf(n.type, n.id)) === 1);
-  // Everything at ≥2 hops — or unreachable inside the returned subgraph —
-  // sits on the outer ring (legacy `remaining`, page.tsx:5740-5742).
   const ring2 = nodes.filter((n) => {
     const key = keyOf(n.type, n.id);
     return key !== centerKey && (hop.get(key) ?? 99) >= 2;
@@ -197,8 +173,6 @@ export default function DevflowGraphPage() {
   const [query, setQuery] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Fetch lives in inline async IIFEs — see the note in provider.tsx
-  // (react-hooks/set-state-in-effect). Manual reloads bump reloadKey.
   useEffect(() => {
     if (!repoId) return;
     let cancelled = false;
@@ -210,8 +184,6 @@ export default function DevflowGraphPage() {
         const data = await dfGet<GraphSummary>(`/repos/${repoId}/graph`);
         if (cancelled) return;
         setSummary(data);
-        // Keep the current selection when it still exists; otherwise focus
-        // the first picker node.
         setSelected((current) => {
           if (
             current &&
@@ -335,8 +307,6 @@ export default function DevflowGraphPage() {
     return [...present].sort();
   }, [subgraph, summary]);
 
-  // Legacy showed edge labels only while the picture stays readable
-  // (showEdgeLabels, page.tsx:5417).
   const showEdgeLabels = (subgraph?.edges.length ?? 0) <= 8;
 
   return (

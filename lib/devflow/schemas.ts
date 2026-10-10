@@ -1,10 +1,4 @@
-// Zod schemas for DevFlow: agent structured outputs (ported from the Python
-// pydantic schemas, translated to English) and API request payloads.
 import { z } from "zod/v4";
-
-// ---------------------------------------------------------------------------
-// Agent structured outputs
-// ---------------------------------------------------------------------------
 
 export const IssueConclusionSchema = z.enum([
   "start_development",
@@ -118,14 +112,6 @@ export const CIDebugSchema = z.object({
 });
 export type CIDebug = z.infer<typeof CIDebugSchema>;
 
-// ---------------------------------------------------------------------------
-// API request payloads
-// ---------------------------------------------------------------------------
-
-// legacy repos.py:157-175 — connect either takes owner/repo (GitHub API
-// verification) or a local_path (a user-owned git working tree whose
-// owner/repo are derived from `git remote get-url origin`). cloneParentDir
-// (legacy repos.py:160/185) overrides where managed clones live.
 export const RepoConnectSchema = z
   .object({
     owner: z.string().min(1).max(200).optional(),
@@ -158,8 +144,6 @@ export const WeeklyReportSchema = z.object({
 
 export const DevflowChatSchema = z.object({
   repoId: z.string().min(1),
-  // Omitted on the first turn of a new conversation; the server resolves or
-  // creates the conversation and returns its id in the `done` SSE event.
   conversationId: z.string().min(1).optional(),
   message: z.string().min(1).max(8000),
 });
@@ -212,8 +196,6 @@ export const KnowledgeAskSchema = z.object({
 
 export const DraftCreateSchema = z.object({
   repoId: z.string().min(1),
-  // send_report is the 5th legacy type (routes/action_drafts.py:60-61);
-  // executing it records the report locally instead of calling GitHub.
   draftType: z.enum([
     "issue_comment",
     "create_issue",
@@ -233,36 +215,21 @@ export const DraftActionSchema = z.object({
   action: z.enum(["execute", "reject"]),
 });
 
-// legacy project_index.py:49-57 + project_indexing.snooze_project_index:362 —
-// snooze the project-index reminder for N days (default 7).
 export const ProjectIndexSnoozeSchema = z.object({
   action: z.literal("snooze"),
   days: z.number().int().min(1).max(365).default(7),
 });
 
-// legacy action_drafts.py:115-124 read the audit trail newest-first; this
-// port adds an `action` filter and a bounded limit (default 50, max 200).
 export const AuditLogsQuerySchema = z.object({
   repoId: z.string().min(1).optional(),
   action: z.string().min(1).max(100).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });
 
-// legacy chat.py:140-158 — history paging with a before_message_id cursor.
 export const ConversationMessagesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(200),
   beforeMessageId: z.string().min(1).optional(),
 });
-
-// ---------------------------------------------------------------------------
-// GitHub REST entities — boundary validation for lib/devflow/github.ts.
-// All objects are loose: GitHub (and GitHub-compatible gateways) return many
-// more fields than DevFlow consumes, so unknown keys pass through untouched
-// while everything sync.ts reads is declared and statically typed. Fields the
-// API itself may omit or null are nullish; only the identifiers DevFlow keys
-// its rows by (id/number) are required.
-// Verify against realistic payloads with `npx tsx scripts/devflow-github-schemas-smoke.ts`.
-// ---------------------------------------------------------------------------
 
 const GitHubActorSchema = z
   .object({
@@ -279,8 +246,6 @@ const GitHubLabelSchema = z
   })
   .loose();
 
-// Compat gateways have been observed returning bare label strings; labelsOf()
-// in sync.ts already normalizes both shapes.
 const GitHubLabelListSchema = z
   .array(z.union([z.string(), GitHubLabelSchema]))
   .nullish();
@@ -320,8 +285,6 @@ export const GitHubIssueSchema = z
     created_at: z.string().nullish(),
     updated_at: z.string().nullish(),
     closed_at: z.string().nullish(),
-    // Present (as an object) when the "issue" is actually a pull request;
-    // listIssues() filters those entries out.
     pull_request: z.record(z.string(), z.unknown()).nullish(),
   })
   .loose();
@@ -357,7 +320,6 @@ export const GitHubPullRequestFileSchema = z
     additions: z.number().nullish(),
     deletions: z.number().nullish(),
     changes: z.number().nullish(),
-    // Omitted by the API for binary files.
     patch: z.string().nullish(),
   })
   .loose();
@@ -368,11 +330,7 @@ export const GitHubReviewCommentSchema = z
     id: z.number().nullish(),
     body: z.string().nullish(),
     path: z.string().nullish(),
-    // Null on outdated comments (GitHub then reports original_line instead).
     line: z.number().nullish(),
-    // legacy repos_sync.py:107 folded original_line into `line` with an `or`
-    // fallback; this port keeps both faithful and persists original_line
-    // into its own column (PrReviewComment.originalLine).
     original_line: z.number().nullish(),
     user: GitHubActorSchema.nullish(),
     created_at: z.string().nullish(),
@@ -434,10 +392,6 @@ export const GitHubWorkflowJobsResponseSchema = z
     jobs: z.array(GitHubWorkflowJobSchema).optional(),
   })
   .loose();
-
-// ---------------------------------------------------------------------------
-// Display metadata for enum values (used by the frontend)
-// ---------------------------------------------------------------------------
 
 export const CONCLUSION_LABELS: Record<
   z.infer<typeof IssueConclusionSchema>,

@@ -1,7 +1,3 @@
-// GET /api/diagnostic_cases/:id — one diagnostic case with its markdown body
-// (legacy /aiops/diagnostic-cases/{case_id}). The structured row lives in
-// PostgreSQL; the report markdown is read back from FILE_DIR (path-guarded to
-// the case prefix) so the case library can open a single case.
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { getTranslations } from "next-intl/server";
@@ -35,7 +31,6 @@ export async function GET(_request: Request, ctx: Ctx) {
         { status: 404, headers: CORS_HEADERS },
       );
     }
-    // Read the markdown body from FILE_DIR, guarded to the case file name.
     let body = "";
     const baseName = path.basename(record.fileName);
     if (baseName.startsWith("aiops-case-") && baseName.endsWith(".md")) {

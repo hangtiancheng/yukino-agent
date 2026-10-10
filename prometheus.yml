@@ -1,7 +1,3 @@
-# This copy is mounted into the Prometheus container by docker-compose.yml, so
-# host-run dev servers are reached through host.docker.internal. The Homebrew
-# setup at /opt/homebrew/etc/prometheus.yml is identical except that it targets
-# 127.0.0.1 and points rule_files at /opt/homebrew/etc/prometheus.rules.yml.
 global:
   scrape_interval: 15s
   evaluation_interval: 15s

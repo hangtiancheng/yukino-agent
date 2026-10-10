@@ -1,8 +1,3 @@
-// AI Ops LangGraph smoke: offline structural checks for the plan-execute-replan
-// graph (compile, nodes, edges) and the PlanExecuteEvent schema round-trip.
-// A full live run (LLM upstreams + tools required) is gated behind an env flag.
-// Run: npx tsx tests/ai-ops-graph.smoke.ts
-// Live: AI_OPS_SMOKE_LIVE=1 npx tsx tests/ai-ops-graph.smoke.ts
 import assert from "node:assert/strict";
 
 import { PlanExecuteEventSchema } from "@/lib/ai/pipelines/plan-execute-replan/events";
@@ -12,7 +7,6 @@ import {
   opsGraph,
 } from "@/lib/ai/pipelines/plan-execute-replan/graph";
 
-// ---- 1. Event schema ----
 const validEvents: unknown[] = [
   { type: "plan_created", steps: ["a", "b"] },
   { type: "step_start", index: 0, step: "a" },
@@ -30,8 +24,8 @@ for (const event of validEvents) {
 }
 for (const invalid of [
   { type: "unknown_event" },
-  { type: "done", result: "x" }, // missing detail
-  { type: "step_start", index: "0", step: "a" }, // wrong index type
+  { type: "done", result: "x" },
+  { type: "step_start", index: "0", step: "a" },
   "not-an-object",
 ]) {
   assert.ok(
@@ -40,7 +34,6 @@ for (const invalid of [
   );
 }
 
-// ---- 2. Graph structure ----
 assert.ok(RECURSION_LIMIT > MAX_ITERATIONS, "recursion limit too small");
 const rep = await opsGraph.getGraphAsync({});
 const nodeIds = Object.keys(rep.nodes);
@@ -72,13 +65,11 @@ for (const expected of [
 }
 console.log(rep.drawMermaid());
 
-// ---- 3. Optional live run (requires LLM upstreams; Langfuse when configured) ----
 if (process.env.AI_OPS_SMOKE_LIVE === "1") {
   const { initObservability } = await import("@/lib/observability");
   initObservability();
   const { runPlanExecuteReplan } =
     await import("@/lib/ai/pipelines/plan-execute-replan/index");
-  // AI_OPS_SMOKE_QUERY keeps the live run cheap; default is the alert-analysis query.
   const query = process.env.AI_OPS_SMOKE_QUERY;
   const events = query ? runPlanExecuteReplan(query) : runPlanExecuteReplan();
   for await (const event of events) {
@@ -88,6 +79,4 @@ if (process.env.AI_OPS_SMOKE_LIVE === "1") {
 }
 
 console.log("OK ai-ops-graph-smoke passed");
-// Live mode may leave transient handles (e.g. a failed MCP SSE connect); never
-// let a smoke run linger.
 process.exit(0);

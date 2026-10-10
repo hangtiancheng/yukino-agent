@@ -1,8 +1,3 @@
-// POST /api/devflow/chat/plan — phase 1 of the two-phase workflow protocol
-// (legacy chat.py @router.post("/plan") → _conversation_plan): plan a bounded
-// multi-agent workflow for {repoId, goal}, persist an AgentWorkflowRun
-// (status "running") plus one pending AgentTaskRun per claim, and return the
-// spec so the client can review the claims before executing.
 import { prisma } from "@/lib/db";
 import {
   WorkflowPlanRequestSchema,
@@ -54,8 +49,6 @@ export async function POST(request: Request) {
         runId: run.id,
         spec: planned.spec,
         generationMode: planned.generationMode,
-        // Claim-boundary violations the planner dropped (kept for transparency;
-        // legacy surfaced planner claim boundaries in agent_events).
         violations: planned.violations,
         tasks: run.tasks.map((task) => ({
           taskId: task.taskId,

@@ -1,5 +1,3 @@
-// POST /api/devflow/repos/:id/workspace/search — lexical code search over the
-// managed checkout. Body: { query, path?, limit? }.
 import { z } from "zod/v4";
 import {
   getRepoOrThrow,

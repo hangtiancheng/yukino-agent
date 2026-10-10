@@ -1,5 +1,3 @@
-// GET /api/metrics — Prometheus exposition endpoint scraped by the local
-// Prometheus (job: yukino-agent); serves the yukino-sentry bridge metrics.
 import { sentryMetrics } from "@/lib/metrics";
 
 const CORS_HEADERS = {

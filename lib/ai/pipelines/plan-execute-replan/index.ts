@@ -1,16 +1,9 @@
-// Plan-Execute-Replan driver: runs the LangGraph orchestration in graph.ts
-// (planner → executor → replanner loop) and replays its "custom"-mode event
-// stream as PlanExecuteEvents.
-// Langfuse: every run gets a session id; graph/node spans come from the
-// CallbackHandler and LLM calls from observeGeneration — all no-ops when the
-// LANGFUSE_* env vars are unset.
 import { randomUUID } from "node:crypto";
 import { logEnd, logStart } from "@/lib/ai/callbacks";
 import { aiOpsCallbacks, withAiOpsTrace } from "@/lib/observability";
 import { PlanExecuteEventSchema, type PlanExecuteEvent } from "./events";
 import { opsGraph, RECURSION_LIMIT } from "./graph";
 
-// AI Ops alert-analysis query.
 const AI_OPS_QUERY = `1. You are an intelligent service alert analysis assistant. First, call the tool query_prometheus_alerts to retrieve all active alerts.
 2. For each alert, call the tool query_internal_docs by alert name to retrieve the corresponding handling procedure.
 3. Strictly follow the internal documentation for queries and analysis; do not use any information outside the documentation.
@@ -32,10 +25,6 @@ const AI_OPS_QUERY = `1. You are an intelligent service alert analysis assistant
 ## 结论
 `;
 
-// Fields rendered into the targeted-diagnosis query when the request carries
-// a structured alert (legacy agent_py app.py:186-189 CreateAiopsDiagnostic
-// Request {query, alert}; audit gap G3 — the migrated surface dropped the
-// whole input side and the per-alert entry point).
 const ALERT_QUERY_FIELDS = [
   "alert_name",
   "severity",
@@ -54,9 +43,6 @@ export interface AiOpsRequestBody {
   alert?: Record<string, string> | null;
 }
 
-// Pure request normalization: alert → a targeted "diagnose THIS alert" query
-// (the alert object rides along for the deterministic report fallback),
-// query → passed through verbatim, neither → the default fleet-sweep query.
 export function buildAiOpsQuery(body: AiOpsRequestBody): {
   query: string;
   alert: Record<string, string> | null;
@@ -110,8 +96,6 @@ export async function* runPlanExecuteReplan(
   logStart("PlanExecuteReplan");
 
   try {
-    // withAiOpsTrace keeps the Langfuse session/tags attached to spans created
-    // while the (lazily executed) graph stream advances.
     const stream = await withAiOpsTrace(sessionId, () =>
       opsGraph.stream(
         { query, alert },

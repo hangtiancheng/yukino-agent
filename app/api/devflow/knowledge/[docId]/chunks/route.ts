@@ -1,6 +1,3 @@
-// GET /api/devflow/knowledge/:docId/chunks — preview the exact chunks of one
-// knowledge document as stored in Milvus (legacy routes/rag.py
-// repositories/{repo_id}/documents/{document_id}/chunks).
 import { prisma } from "@/lib/db";
 import { listDocumentChunks } from "@/lib/devflow/rag";
 import { errorMessage, failRaw, ok } from "@/lib/devflow/http";

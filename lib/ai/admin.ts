@@ -1,9 +1,3 @@
-// Admin gate for mutating OnCall operational surfaces.
-// The product is public with no login (AGENTS.md); endpoints that change
-// server-side configuration (MCP connections) or expose audit trails require
-// the ONCALL_ADMIN_TOKEN bearer/`x-admin-token` header when the token is
-// configured. When no token is configured, guarded mutations are disabled
-// outright (fail-closed) rather than left open.
 import { timingSafeEqual } from "node:crypto";
 import { config } from "@/lib/config";
 
@@ -16,8 +10,6 @@ function tokenMatches(candidate: string): boolean {
   return timingSafeEqual(a, b);
 }
 
-// Returns null when authorized, otherwise the reason code for the response:
-// "not_configured" (no token set -> mutations disabled) or "unauthorized".
 export function requireOncallAdmin(
   request: Request,
 ): "not_configured" | "unauthorized" | null {

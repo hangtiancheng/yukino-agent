@@ -1,5 +1,3 @@
-// PATCH  /api/devflow/repos/:id/team-members/:memberId — update a profile
-// DELETE /api/devflow/repos/:id/team-members/:memberId — remove a member
 import { prisma } from "@/lib/db";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 import {

@@ -1,11 +1,5 @@
 "use client";
 
-// Workflow Runs: phase UI for the multi-agent workflow orchestration (legacy
-// /workflow-runs + the chat.py /plan + /plan/execute/stream two-phase
-// protocol). Compose a goal → POST /api/devflow/chat/plan → review the
-// bounded claims → POST /api/devflow/chat/plan/execute streams task_start /
-// task_result / observation / memo / done over SSE (same framing as
-// /api/devflow/chat) → decision memo + findings + task table.
 import { useEffect, useMemo, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { FileText, ListTree, Play, RefreshCw, Workflow } from "lucide-react";
@@ -28,11 +22,6 @@ import PageHeader from "@/components/devflow/page-header";
 import DevflowMarkdown from "@/components/devflow/markdown";
 import { ConfidenceBadge } from "@/components/devflow/badges";
 import { dfGet, dfPost, useDevflow } from "@/components/devflow/provider";
-
-// ---------------------------------------------------------------------------
-// API view types (routes defined in app/api/devflow/chat/plan{,/execute} and
-// app/api/devflow/workflow-runs — types.ts is frozen for this task)
-// ---------------------------------------------------------------------------
 
 type EntityType = "issue" | "pull_request" | "workflow_run" | "repository";
 type TaskType = "issue_analysis" | "pr_review" | "ci_debug" | "repo_health";
@@ -113,8 +102,6 @@ interface RunSummaryView {
   skippedCount: number;
 }
 
-// Typed value→key maps (compile-time checked against the devflow.workflowRuns
-// catalog once the keys land in messages/*.json).
 const RUN_STATUS_KEYS = {
   running: "running",
   success: "success",
@@ -204,8 +191,6 @@ export default function DevflowWorkflowRunsPage() {
   const [runsLoading, setRunsLoading] = useState(false);
   const [runsReloadKey, setRunsReloadKey] = useState(0);
 
-  // History list (inline async IIFE — see provider.tsx note re: the React
-  // Compiler effect rule).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -230,10 +215,6 @@ export default function DevflowWorkflowRunsPage() {
     };
   }, [repoId, runsReloadKey]);
 
-  // Reset the panel when the selected repository changes. Render-phase state
-  // adjustment (the React docs "adjusting state when a prop changes" pattern):
-  // a synchronous effect reset would violate the React Compiler
-  // react-hooks/set-state-in-effect rule.
   const [panelRepoId, setPanelRepoId] = useState(repoId);
   if (panelRepoId !== repoId) {
     setPanelRepoId(repoId);
@@ -305,7 +286,6 @@ export default function DevflowWorkflowRunsPage() {
         );
       }
 
-      // SSE parse — identical framing to the chat page (/api/devflow/chat).
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -326,9 +306,7 @@ export default function DevflowWorkflowRunsPage() {
           if (!dataText) continue;
           try {
             handleSseEvent(event, dataText);
-          } catch {
-            // A malformed frame should never kill the whole run stream.
-          }
+          } catch {}
         }
       }
     } catch (e) {
@@ -393,7 +371,6 @@ export default function DevflowWorkflowRunsPage() {
       const payload = JSON.parse(dataText) as { answer: string };
       setMemo(payload.answer);
     } else if (event === "done") {
-      // Reconcile against the persisted run (replanned claims included).
       if (plan) {
         void loadDetail(plan.runId);
       }
@@ -433,8 +410,6 @@ export default function DevflowWorkflowRunsPage() {
     await loadDetail(runId);
   };
 
-  // The spec on display: live plan claims while a run is being planned /
-  // executed, otherwise the persisted detail spec.
   const displaySpec = useMemo<SpecView | null>(() => {
     if (plan) return plan.spec;
     return detail?.spec ?? null;
@@ -504,7 +479,6 @@ export default function DevflowWorkflowRunsPage() {
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-6">
-          {/* Composer: goal → plan → execute (legacy two-phase protocol) */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -561,7 +535,6 @@ export default function DevflowWorkflowRunsPage() {
             </CardContent>
           </Card>
 
-          {/* Spec claims (claim boundaries + acceptance criteria) */}
           {displaySpec ? (
             <Card>
               <CardHeader>
@@ -607,7 +580,6 @@ export default function DevflowWorkflowRunsPage() {
             </Card>
           ) : null}
 
-          {/* Task status table (live SSE state or persisted detail) */}
           {taskRows.length > 0 ? (
             <Card>
               <CardHeader>
@@ -672,7 +644,6 @@ export default function DevflowWorkflowRunsPage() {
             </Card>
           ) : null}
 
-          {/* Observer findings */}
           {liveObservation ? (
             <Card>
               <CardHeader>
@@ -734,7 +705,6 @@ export default function DevflowWorkflowRunsPage() {
             </Card>
           ) : null}
 
-          {/* Decision memo */}
           {memo ? (
             <Card>
               <CardHeader>
@@ -750,7 +720,6 @@ export default function DevflowWorkflowRunsPage() {
           ) : null}
         </div>
 
-        {/* Run history */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium">{t("historyTitle")}</h2>
