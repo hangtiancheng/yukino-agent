@@ -16,6 +16,7 @@ import {
   compressMessages,
   defaultContextBudget,
   ensureContextHeadroom,
+  extractRelevantSnippet,
   latestCompactBoundary,
   type CompactionOutcome,
   type CompressionStats,
@@ -859,7 +860,7 @@ function buildTools(
               path: h.path,
               source_type: h.sourceType,
               score: Number(h.score.toFixed(4)),
-              content: h.content.slice(0, 1200),
+              content: extractRelevantSnippet(query, h.content, 300),
             })),
           });
         } catch (e) {

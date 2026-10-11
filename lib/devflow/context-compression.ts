@@ -370,6 +370,177 @@ export function compressMessages(
 }
 
 // ---------------------------------------------------------------------------
+// Query-aware extractive retrieval compression (ported `extract_relevant_snippet`
+// + `compress_retrieval_results` from the legacy context_compression.py).
+//
+// The legacy RAG pipeline (retrieve_knowledge / search_similar_documents) clips
+// every retrieved chunk down to the sentences most relevant to the query, inside
+// a per-item and a global token budget, BEFORE the answer gate and the LLM call.
+// The initial port fed whole chunks instead: for CJK content (1 char ~= 1 token)
+// an 800-char chunk is ~800 tokens, so a top-5 evidence set cost ~4000 tokens
+// versus the legacy ~1300-token budget, and diluted the signal with off-query
+// sentences. These helpers restore that stage.
+// ---------------------------------------------------------------------------
+const WORD_PATTERN = /[a-zA-Z0-9_\-\u4e00-\u9fff]+/g;
+// Deliberate improvement over the legacy `SENTENCE_SPLIT_PATTERN`
+// (`(?<=[.!?\n\u3002\uff01\uff1f])\s+`), which only splits when punctuation is
+// followed by whitespace. Space-less CJK prose (the dominant content here) never
+// split under that rule, so `extract_relevant_snippet` degraded to a head clip
+// and could cut the matching sentence away entirely. This variant splits after
+// CJK 。！？ without requiring trailing whitespace, keeps the whitespace
+// requirement for ASCII .!? (so version numbers like 1.2.3 stay intact), and
+// still splits on newlines.
+const SENTENCE_SPLIT_PATTERN = /(?<=[\u3002\uff01\uff1f])|(?<=[.!?])\s+|\n+/;
+
+function words(text: string): string[] {
+  return (text || "").toLowerCase().match(WORD_PATTERN) ?? [];
+}
+
+function countOccurrences(haystack: string, needle: string): number {
+  if (needle === "") {
+    return 0;
+  }
+  let count = 0;
+  let index = haystack.indexOf(needle);
+  while (index !== -1) {
+    count += 1;
+    index = haystack.indexOf(needle, index + needle.length);
+  }
+  return count;
+}
+
+/**
+ * Extract the sentences of `text` most relevant to `query`, clipped to a token
+ * budget. Faithful port of the legacy `extract_relevant_snippet`: a sentence
+ * scores 3 per distinct matched query word plus its total occurrence count, with
+ * a +4 bonus when the whole query appears verbatim; the top 4 positive-scoring
+ * sentences are kept in original order. Falls back to a plain budget clip when
+ * the query has no words or nothing matches.
+ */
+export function extractRelevantSnippet(
+  query: string,
+  text: string,
+  maxTokens = 220,
+): string {
+  const clean = (text || "").replace(/\r/g, "\n").split(/\s+/).join(" ").trim();
+  if (clean === "") {
+    return "";
+  }
+  const terms = new Set(words(query));
+  if (terms.size === 0) {
+    return clipToTokenBudget(clean, maxTokens);
+  }
+  let sentences = clean
+    .split(SENTENCE_SPLIT_PATTERN)
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+  if (sentences.length === 0) {
+    sentences = [clean];
+  }
+  const lowerQuery = query.toLowerCase().trim();
+  const scored = sentences.map((sentence, index) => {
+    const lower = sentence.toLowerCase();
+    let matched = 0;
+    let occurrences = 0;
+    for (const term of terms) {
+      if (term !== "" && lower.includes(term)) {
+        matched += 1;
+        occurrences += countOccurrences(lower, term);
+      }
+    }
+    let score = matched * 3 + occurrences;
+    if (lowerQuery !== "" && lower.includes(lowerQuery)) {
+      score += 4;
+    }
+    return { score, index, sentence };
+  });
+  const positive = scored.filter((item) => item.score > 0);
+  if (positive.length === 0) {
+    return clipToTokenBudget(clean, maxTokens);
+  }
+  positive.sort((a, b) => b.score - a.score || a.index - b.index);
+  const selected = positive
+    .slice(0, 4)
+    .sort((a, b) => a.index - b.index)
+    .map((item) => item.sentence);
+  return clipToTokenBudget(selected.join(" "), maxTokens);
+}
+
+export interface RetrievalCompression {
+  mode: "query_aware_extractive";
+  originalEstimatedTokens: number;
+  compressedEstimatedTokens: number;
+  ratio: number;
+  itemBudgetTokens: number;
+  globalBudgetTokens: number | null;
+  globalTokensBeforeItem: number;
+}
+
+export interface CompressedRetrievalItem<T> {
+  item: T;
+  snippet: string;
+  compression: RetrievalCompression;
+}
+
+/**
+ * Compress retrieved items into query-relevant snippets within a per-item and an
+ * optional global token budget. Faithful port of the legacy
+ * `compress_retrieval_results`: items past the global budget are dropped (the
+ * legacy stops iterating), each kept item carries a `compression` trace.
+ */
+export function compressRetrievalResults<T extends { content: string }>(
+  query: string,
+  items: readonly T[],
+  maxTokensPerItem = 260,
+  maxTotalTokens?: number,
+): CompressedRetrievalItem<T>[] {
+  const compressed: CompressedRetrievalItem<T>[] = [];
+  const totalBudget =
+    maxTotalTokens !== undefined
+      ? Math.max(0, Math.floor(maxTotalTokens))
+      : null;
+  let usedTokens = 0;
+  for (const item of items) {
+    if (totalBudget !== null && usedTokens >= totalBudget) {
+      break;
+    }
+    if (
+      totalBudget !== null &&
+      compressed.length > 0 &&
+      totalBudget - usedTokens <
+        Math.min(24, Math.max(1, Math.floor(maxTokensPerItem)))
+    ) {
+      break;
+    }
+    let itemBudget = Math.max(1, Math.floor(maxTokensPerItem));
+    if (totalBudget !== null) {
+      itemBudget = Math.min(itemBudget, totalBudget - usedTokens);
+    }
+    const rawText = item.content || "";
+    const snippet = extractRelevantSnippet(query, rawText, itemBudget);
+    const originalTokens = estimateTokens(rawText);
+    const compressedTokens = estimateTokens(snippet);
+    compressed.push({
+      item,
+      snippet,
+      compression: {
+        mode: "query_aware_extractive",
+        originalEstimatedTokens: originalTokens,
+        compressedEstimatedTokens: compressedTokens,
+        ratio: originalTokens
+          ? Number((compressedTokens / originalTokens).toFixed(4))
+          : 1,
+        itemBudgetTokens: itemBudget,
+        globalBudgetTokens: totalBudget,
+        globalTokensBeforeItem: usedTokens,
+      },
+    });
+    usedTokens += compressedTokens;
+  }
+  return compressed;
+}
+
+// ---------------------------------------------------------------------------
 // Key-fact preservation (ported).
 // ---------------------------------------------------------------------------
 const PATH_LIKE_PATTERN =

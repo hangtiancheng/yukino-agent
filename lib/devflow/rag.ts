@@ -15,6 +15,7 @@ import { asString } from "@/lib/text";
 
 import { KNOWLEDGE_QA_PROMPT } from "./agents/prompts";
 import { chunkDocument, siblingIdsByParent, type Chunk } from "./chunking";
+import { compressRetrievalResults } from "./context-compression";
 import { scopedRetrieve } from "./search";
 
 const KB_PREFIX = "devflow:kb";
@@ -475,7 +476,16 @@ export async function searchKnowledge(
   const kept = opts?.sourceType
     ? hits.filter((hit) => hit.sourceType === opts.sourceType)
     : hits;
-  return kept.slice(0, topK);
+  const finalHits = kept.slice(0, topK);
+  // Query-aware extractive compression (legacy `retrieve_knowledge`): clip each
+  // hit to the sentences most relevant to the query within a per-item (260 tok)
+  // and global (min(1800, max(520, topK*260)) tok) budget before the answer gate
+  // and the LLM call. Keeps the evidence set small and on-topic, which matters
+  // most for CJK content where 1 char ~= 1 token.
+  const budget = Math.min(1800, Math.max(520, topK * 260));
+  return compressRetrievalResults(query, finalHits, 260, budget).map(
+    ({ item, snippet }) => ({ ...item, content: snippet }),
+  );
 }
 
 export interface KnowledgeCitation {
@@ -675,7 +685,7 @@ export async function askKnowledge(
       return `[${i + 1}] (${where})\n${hit.content}`;
     })
     .join("\n\n---\n\n");
-  const prompt = `Question: ${question}\n\nEvidence passages:\n\n${evidence}`;
+  const prompt = `Question: ${question}\n\n<knowledge>\n${evidence}\n</knowledge>`;
 
   const answer = await observeGeneration(
     "devflow-knowledge-ask",

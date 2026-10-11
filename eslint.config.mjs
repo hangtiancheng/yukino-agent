@@ -13,10 +13,8 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   globalIgnores([
-    ".legacy/**",
     ".next/**",
     "build/**",
-    "catalog/**",
     "components/ui/**",
     "eslint.config.mjs",
     "generated/**",

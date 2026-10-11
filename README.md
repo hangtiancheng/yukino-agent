@@ -115,6 +115,24 @@ Restored on top of the initial port:
   plans bounded claims, runs the task agents in parallel, observes and synthesizes
   a decision memo, and persists an `AgentWorkflowRun` (the same runtime that backs
   the Workflow Runs page).
+- Query-aware retrieval evidence compression — the legacy RAG pipeline
+  (`retrieve_knowledge` / `search_similar_documents`) clipped every retrieved
+  chunk down to the sentences most relevant to the query inside a per-item (260
+  tok) and global (`min(1800, max(520, topK*260))` tok) budget before the answer
+  gate and the LLM call. The initial port fed whole chunks instead, which for CJK
+  content (1 char ≈ 1 token) cost ~3x the tokens and diluted the signal. Restored
+  as `extractRelevantSnippet` + `compressRetrievalResults` in
+  `lib/devflow/context-compression.ts`, applied by `searchKnowledge`
+  (`lib/devflow/rag.ts`) and by the `search_project_docs` chat tool. One deliberate
+  improvement over the legacy: the sentence splitter also breaks after CJK 。！？
+  without requiring trailing whitespace (the legacy `SENTENCE_SPLIT_PATTERN` never
+  split space-less CJK prose, so the snippet degraded to a head clip that could
+  cut the matching sentence away); ASCII `.!?` still require following whitespace
+  so version numbers like `1.2.3` stay intact.
+- Knowledge-QA prompt-injection guard — the legacy DevFlow RAG QA wrapped evidence
+  in `<knowledge>` tags and told the model the passages are untrusted data, not
+  instructions. Restored: `KNOWLEDGE_QA_PROMPT` carries the untrusted-data rule and
+  `askKnowledge` wraps the evidence in `<knowledge>` tags.
 
 Deliberate divergences:
 
@@ -145,9 +163,15 @@ OnCall (from `agent_py`):
 
 DevFlow (from `DevFlow-AI`):
 
-- **Evaluation suites not ported** — the agent/RAG eval runner (incl. the ragas
-  integration) and its UI depend on the Python eval ecosystem; retrieval quality
-  is covered here by the retrieval-test runs on the Knowledge page instead.
+- **Evaluation suites not ported** — the RAG-quality eval (the ragas integration)
+  and the eval-run persistence / compare / rescore UI depend on the Python eval
+  ecosystem and are not ported; retrieval quality is covered by the retrieval-test
+  runs on the Knowledge page instead. The deterministic agent-eval assertions from
+  the legacy `run_basic_eval` (issue-triage category accuracy, PR key-file
+  coverage, CI pytest-failure detection, output-schema validation, skill-registry
+  coverage) are not exposed as a runtime eval feature but are covered by the
+  offline smoke suites (`tests/devflow-analysis.smoke.ts`,
+  `tests/devflow-skills.smoke.ts`, `tests/devflow-context-compression.smoke.ts`).
 - **Single embedding contract** — legacy let each repo KB pick its own embedding
   provider / model / dimensions (`GET /api/rag/models` + a per-KB embedding
   contract with validation); here one global embedding config

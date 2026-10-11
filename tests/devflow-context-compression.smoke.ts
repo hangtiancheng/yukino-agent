@@ -30,6 +30,8 @@ import {
   mustPreserveCandidates,
   normalizeModelName,
   thresholdsForWindow,
+  extractRelevantSnippet,
+  compressRetrievalResults,
 } from "@/lib/devflow/context-compression";
 
 function checkModelWindows() {
@@ -282,6 +284,77 @@ function checkRunEventProjection() {
   console.log("run event projection: 7 assertions passed");
 }
 
+function checkRetrievalCompression() {
+  // extractRelevantSnippet keeps only the query-relevant sentences, in order.
+  const text =
+    "Milvus is a vector database. The weather is nice today. Milvus supports BM25 full-text search. Cats are cute.";
+  const snippet = extractRelevantSnippet("Milvus BM25", text, 260);
+  assert.ok(
+    snippet.includes("Milvus is a vector database."),
+    "keeps first match",
+  );
+  assert.ok(snippet.includes("BM25 full-text search"), "keeps second match");
+  assert.ok(!snippet.includes("weather"), "drops off-query sentence");
+  assert.ok(!snippet.includes("Cats"), "drops unrelated sentence");
+
+  // No query words / no overlap falls back to a plain budget clip.
+  const fallback = extractRelevantSnippet("", text, 260);
+  assert.equal(fallback, text, "empty query clips to budget (fits here)");
+  const noMatch = extractRelevantSnippet("zzzz", text, 260);
+  assert.equal(
+    noMatch,
+    text,
+    "no overlap falls back to full text within budget",
+  );
+
+  // CJK: each char counts as a token, so a tight budget really clips.
+  const zh =
+    "告警处理流程第一步是查看监控面板。第二步是重启服务。第三步是回滚发布。";
+  const zhSnippet = extractRelevantSnippet("重启服务", zh, 12);
+  assert.ok(zhSnippet.includes("重启服务"), "keeps the matched CJK sentence");
+  assert.ok(zhSnippet.length <= zh.length, "CJK snippet never exceeds source");
+
+  // compressRetrievalResults: per-item + global budget, drops past the budget.
+  const items = [
+    { content: "alpha beta gamma. " + "filler ".repeat(40) },
+    { content: "delta epsilon. " + "filler ".repeat(40) },
+    { content: "zeta eta theta. " + "filler ".repeat(40) },
+  ];
+  const compressed = compressRetrievalResults("alpha delta zeta", items, 260);
+  assert.equal(compressed.length, 3, "no global budget keeps all items");
+  for (const c of compressed) {
+    assert.equal(c.compression.mode, "query_aware_extractive");
+    assert.ok(
+      c.compression.originalEstimatedTokens >=
+        c.compression.compressedEstimatedTokens,
+    );
+  }
+
+  // A tiny global budget stops early (legacy break behaviour).
+  const tight = compressRetrievalResults("alpha delta zeta", items, 260, 30);
+  assert.ok(tight.length < items.length, "global budget drops trailing items");
+  assert.equal(tight[0].compression.globalBudgetTokens, 30);
+
+  // The retrieve_knowledge budget formula keeps a top-5 set intact.
+  const five = Array.from({ length: 5 }, (_, i) => ({
+    content: `doc ${i} about kubernetes pods. ` + "padding ".repeat(30),
+  }));
+  const budget = Math.min(1800, Math.max(520, 5 * 260));
+  assert.equal(budget, 1300, "top-5 budget matches legacy formula");
+  const fiveCompressed = compressRetrievalResults(
+    "kubernetes",
+    five,
+    260,
+    budget,
+  );
+  assert.equal(
+    fiveCompressed.length,
+    5,
+    "top-5 evidence set survives the budget",
+  );
+  console.log("retrieval compression: 14 assertions passed");
+}
+
 checkModelWindows();
 checkPressure();
 checkBudget();
@@ -290,5 +363,6 @@ checkStagePlans();
 checkPreservation();
 checkSummaryBuilding();
 checkBoundaryDetection();
+checkRetrievalCompression();
 checkRunEventProjection();
 console.log("\nAll devflow-context-compression smoke checks passed.");
