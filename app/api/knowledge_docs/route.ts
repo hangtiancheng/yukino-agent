@@ -1,10 +1,12 @@
 import { readdir, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
+
 import { getTranslations } from "next-intl/server";
+
+import { classifyKnowledgeType } from "@/lib/ai/pipelines/knowledge-index";
 import { config } from "@/lib/config";
 import { count as milvusCount, quote } from "@/lib/milvus/client";
-import { classifyKnowledgeType } from "@/lib/ai/pipelines/knowledge-index";
-import { readFile } from "node:fs/promises";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",

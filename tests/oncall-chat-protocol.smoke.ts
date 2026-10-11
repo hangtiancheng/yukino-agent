@@ -1,5 +1,13 @@
 import assert from "node:assert/strict";
+
 import type { TextStreamPart, ToolSet } from "ai";
+
+import { parseA2uiBlock } from "@/lib/ai/a2ui/extract";
+import {
+  A2UI_CLOSE_TAG,
+  A2UI_OPEN_TAG,
+  A2UI_PROMPT_SECTION,
+} from "@/lib/ai/a2ui/prompt";
 import {
   AUDIT_TEXT_CHARS,
   processChatStreamParts,
@@ -9,13 +17,10 @@ import {
   type ChatStreamPartsResult,
   type ChatToolEvent,
 } from "@/lib/ai/pipelines/chat";
-import type { RetrievedDoc } from "@/lib/milvus/retriever";
 import {
-  A2UI_CLOSE_TAG,
-  A2UI_OPEN_TAG,
-  A2UI_PROMPT_SECTION,
-} from "@/lib/ai/a2ui/prompt";
-import { parseA2uiBlock } from "@/lib/ai/a2ui/extract";
+  classifyKnowledgeType,
+  parseFrontmatterKnowledgeType,
+} from "@/lib/ai/pipelines/knowledge-index";
 import {
   SUMMARY_MAX_CHARS,
   SUMMARY_TRIGGER_PAIRS,
@@ -25,10 +30,7 @@ import {
   shouldTriggerSummary,
   summarySection,
 } from "@/lib/memory";
-import {
-  classifyKnowledgeType,
-  parseFrontmatterKnowledgeType,
-} from "@/lib/ai/pipelines/knowledge-index";
+import type { RetrievedDoc } from "@/lib/milvus/retriever";
 
 type Part = TextStreamPart<ToolSet>;
 
@@ -50,7 +52,7 @@ function firstPromptExampleBlock(): string {
     );
     const trimmed = body.trim();
     if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
-      if (parseA2uiBlock(body).messages) return block;
+      if (parseA2uiBlock(body).messages) {return block;}
     }
   }
 }
@@ -61,7 +63,7 @@ async function collect(
 ): Promise<{ events: ChatStreamEvent[]; final: ChatStreamPartsResult }> {
   const gen = processChatStreamParts(
     (async function* () {
-      for (const p of parts) yield p;
+      for (const p of parts) {yield p;}
     })(),
     hooks,
   );

@@ -1,12 +1,5 @@
 import assert from "node:assert/strict";
-import {
-  CIDebugSchema,
-  IssueAnalysisSchema,
-  PRReviewSchema,
-  type CIDebug,
-  type IssueAnalysis,
-  type PRReview,
-} from "@/lib/devflow/schemas";
+
 import {
   buildOwnerAllowList,
   chooseMergeRecommendation,
@@ -31,6 +24,14 @@ import {
   type PrFacts,
 } from "@/lib/devflow/agents/analysis";
 import { deterministicWeeklyReport } from "@/lib/devflow/agents/report";
+import {
+  CIDebugSchema,
+  IssueAnalysisSchema,
+  PRReviewSchema,
+  type CIDebug,
+  type IssueAnalysis,
+  type PRReview,
+} from "@/lib/devflow/schemas";
 import {
   TeamMemberCreateSchema,
   TeamMemberUpdateSchema,

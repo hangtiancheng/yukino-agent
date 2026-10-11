@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
-import { AuditLogsQuerySchema } from "@/lib/devflow/schemas";
-import { PermissionError, requirePermission } from "@/lib/devflow/permissions";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
+import { PermissionError, requirePermission } from "@/lib/devflow/permissions";
+import { AuditLogsQuerySchema } from "@/lib/devflow/schemas";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   try {
     await requirePermission("settings:manage");
   } catch (e) {
-    if (e instanceof PermissionError) return failRaw(403, e.message);
+    if (e instanceof PermissionError) {return failRaw(403, e.message);}
     return failRaw(500, errorMessage(e));
   }
 

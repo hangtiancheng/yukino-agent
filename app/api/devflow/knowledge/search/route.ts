@@ -1,15 +1,16 @@
 import { z } from "zod/v4";
-import { quote } from "@/lib/milvus/client";
-import { KnowledgeSearchSchema } from "@/lib/devflow/schemas";
+
+import { contentScopeFilter } from "@/lib/devflow/content-index";
+import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
+import { projectFilter } from "@/lib/devflow/project-index";
 import {
   kbFilter,
   kbSource,
   searchKnowledge,
   getKnowledgeConfig,
 } from "@/lib/devflow/rag";
-import { contentScopeFilter } from "@/lib/devflow/content-index";
-import { projectFilter } from "@/lib/devflow/project-index";
-import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
+import { KnowledgeSearchSchema } from "@/lib/devflow/schemas";
+import { quote } from "@/lib/milvus/client";
 
 export { OPTIONS } from "@/lib/devflow/http";
 

@@ -1,11 +1,12 @@
+import type { NextRequest } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { NextRequest } from "next/server";
-import { prisma } from "@/lib/db";
+
 import { requireOncallAdmin } from "@/lib/ai/admin";
 import {
   mcpConnectionInputSchema,
   invalidateMcpConnections,
 } from "@/lib/ai/tools/query-log";
+import { prisma } from "@/lib/db";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -93,9 +94,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const admin = requireOncallAdmin(request);
   if (admin)
-    return admin === "not_configured"
+    {return admin === "not_configured"
       ? fail(403, "adminNotConfigured")
-      : fail(401, "adminUnauthorized");
+      : fail(401, "adminUnauthorized");}
 
   let body: unknown;
   try {
@@ -104,12 +105,12 @@ export async function POST(request: NextRequest) {
     return fail(400, "invalidJsonBody");
   }
   const parsed = mcpConnectionInputSchema.safeParse(body);
-  if (!parsed.success) return fail(400, "invalidMcpConnection");
+  if (!parsed.success) {return fail(400, "invalidMcpConnection");}
 
   const existing = await prisma.mcpConnection.findUnique({
     where: { name: parsed.data.name },
   });
-  if (existing) return fail(409, "mcpConnectionNameTaken");
+  if (existing) {return fail(409, "mcpConnectionNameTaken");}
 
   try {
     const row = await prisma.mcpConnection.create({

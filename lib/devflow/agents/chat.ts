@@ -8,28 +8,10 @@ import {
 } from "ai";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
-import { prisma } from "@/lib/db";
+
+import type { Repository } from "@/generated/prisma/client";
 import { quickModel, providerOptions, quickModelId } from "@/lib/ai/models";
-import { searchKnowledge } from "@/lib/devflow/rag";
-import { analyzeIssue, debugRun, reviewPull } from "./analysis";
-import { generateWeeklyReport } from "./report";
-import {
-  agentNameForTaskType,
-  executeWorkflow,
-  planWorkflow,
-} from "./workflow";
-import {
-  listFiles,
-  readCodeFile,
-  requireCheckout,
-  searchCode,
-} from "@/lib/devflow/workspace";
-import { searchProjectDocs } from "@/lib/devflow/project-index";
-import {
-  appendMessage,
-  ensureConversation,
-  listMessages,
-} from "@/lib/devflow/conversations";
+import { prisma } from "@/lib/db";
 import {
   compressMessages,
   defaultContextBudget,
@@ -39,6 +21,11 @@ import {
   type CompressionStats,
 } from "@/lib/devflow/context-compression";
 import {
+  appendMessage,
+  ensureConversation,
+  listMessages,
+} from "@/lib/devflow/conversations";
+import {
   buildMemoryContext,
   clipToTokenBudget,
   maybeSealAndMerge,
@@ -47,9 +34,26 @@ import {
   searchRepoMemory,
   MEMORY_CANDIDATE_KINDS,
 } from "@/lib/devflow/memory";
-import { DEVFLOW_CHAT_SYSTEM_PROMPT } from "./prompts";
+import { searchProjectDocs } from "@/lib/devflow/project-index";
+import { searchKnowledge } from "@/lib/devflow/rag";
 import { getSkillRegistry, SkillRegistry } from "@/lib/devflow/skills";
-import type { Repository } from "@/generated/prisma/client";
+import {
+  listFiles,
+  readCodeFile,
+  requireCheckout,
+  searchCode,
+} from "@/lib/devflow/workspace";
+
+import { analyzeIssue, debugRun, reviewPull } from "./analysis";
+import { DEVFLOW_CHAT_SYSTEM_PROMPT } from "./prompts";
+import { generateWeeklyReport } from "./report";
+import {
+  agentNameForTaskType,
+  executeWorkflow,
+  planWorkflow,
+} from "./workflow";
+
+
 
 export type DevflowChatEvent =
   | { type: "text"; content: string }
@@ -73,12 +77,12 @@ function pack(value: unknown): string {
   const json = JSON.stringify(value, (_k, v) =>
     typeof v === "bigint" ? Number(v) : v,
   );
-  if (json.length <= MAX_TOOL_RESULT_CHARS) return json;
+  if (json.length <= MAX_TOOL_RESULT_CHARS) {return json;}
   return `${json.slice(0, MAX_TOOL_RESULT_CHARS)} …[truncated]`;
 }
 
 function clipBody(body: string | null, max = 2000): string | null {
-  if (!body) return body;
+  if (!body) {return body;}
   return body.length > max ? `${body.slice(0, max)}\n…[truncated]` : body;
 }
 
@@ -134,7 +138,7 @@ export function dedupeCitations(
   for (const citation of citations) {
     const key = `${citation.source}:${citation.docName}`;
     const existing = byKey.get(key);
-    if (!existing || citation.score > existing.score) byKey.set(key, citation);
+    if (!existing || citation.score > existing.score) {byKey.set(key, citation);}
   }
   return [...byKey.values()].sort((a, b) => b.score - a.score).slice(0, max);
 }
@@ -153,7 +157,7 @@ export const MAX_REPEATED_TOOL_CALLS = 2;
 export const TOOL_RETRY_ATTEMPTS = 1;
 
 function errorNameOf(error: unknown): string {
-  if (error instanceof Error) return error.name;
+  if (error instanceof Error) {return error.name;}
   if (typeof error === "object" && error !== null) {
     const name = (error as { name?: unknown }).name;
     return typeof name === "string" ? name : "";
@@ -174,7 +178,7 @@ function errorTextChain(error: unknown): string {
       break;
     } else {
       if (current !== undefined && current !== null)
-        parts.push(String(current));
+        {parts.push(String(current));}
       break;
     }
   }
@@ -183,7 +187,7 @@ function errorTextChain(error: unknown): string {
 
 export function classifyToolError(error: unknown): ToolErrorKind {
   const name = errorNameOf(error);
-  if (name === "AbortError" || name === "TimeoutError") return "timeout";
+  if (name === "AbortError" || name === "TimeoutError") {return "timeout";}
   const text = errorTextChain(error);
   const has = (...tokens: string[]) =>
     tokens.some((token) => text.includes(token));
@@ -217,7 +221,7 @@ export function classifyToolError(error: unknown): ToolErrorKind {
   if (has("permission", "forbidden", "unauthorized", "401", "403")) {
     return "permission_denied";
   }
-  if (has("not found", "missing", "404")) return "data_not_found";
+  if (has("not found", "missing", "404")) {return "data_not_found";}
   if (has("validation", "schema", "json", "parse")) {
     return "model_output_invalid";
   }
@@ -262,14 +266,14 @@ export async function executeWithRetry<T>(
 }
 
 function canonicalize(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonicalize);
+  if (Array.isArray(value)) {return value.map(canonicalize);}
   if (typeof value === "object" && value !== null) {
     const entries = Object.entries(value as Record<string, unknown>)
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
       .map(([k, v]) => [k, canonicalize(v)]);
     return Object.fromEntries(entries);
   }
-  if (typeof value === "bigint") return Number(value);
+  if (typeof value === "bigint") {return Number(value);}
   return value;
 }
 
@@ -348,9 +352,9 @@ export function buildEmptyAnswerFallback(input: {
 }): string {
   const unique: string[] = [];
   for (const name of input.toolNames) {
-    if (!unique.includes(name)) unique.push(name);
+    if (!unique.includes(name)) {unique.push(name);}
   }
-  if (unique.length === 0) return input.noToolsTemplate;
+  if (unique.length === 0) {return input.noToolsTemplate;}
   return input.withToolsTemplate.replaceAll("{tools}", unique.join(", "));
 }
 
@@ -409,9 +413,9 @@ function buildTools(
           where: { repoId, number },
         });
         if (!issue)
-          return pack({
+          {return pack({
             error: `Issue #${number} not found — sync the repository first.`,
-          });
+          });}
         return pack({
           number: issue.number,
           title: issue.title,
@@ -463,9 +467,9 @@ function buildTools(
           include: { files: true, reviewComments: true },
         });
         if (!pr)
-          return pack({
+          {return pack({
             error: `PR #${number} not found — sync the repository first.`,
-          });
+          });}
         return pack({
           number: pr.number,
           title: pr.title,
@@ -525,7 +529,7 @@ function buildTools(
               where: { repoId, conclusion: "failure" },
               orderBy: { githubCreatedAt: "desc" },
             });
-        if (!run) return pack({ error: "No matching workflow run found." });
+        if (!run) {return pack({ error: "No matching workflow run found." });}
         return pack({
           name: run.name,
           head_branch: run.headBranch,
@@ -1011,14 +1015,14 @@ function buildTools(
               repoId,
               conversationId,
               goal,
-              specJson: planned.spec as object,
+              specJson: planned.spec,
               status: "running",
               tasks: {
                 create: planned.spec.claims.map((claim) => ({
                   taskId: claim.id,
                   agentName: agentNameForTaskType(claim.task_type),
                   taskType: claim.task_type,
-                  claimJson: claim as object,
+                  claimJson: claim,
                   status: "pending",
                 })),
               },
@@ -1073,9 +1077,9 @@ function resilientTools(
       ): Promise<unknown> => {
         const verdict = guard.check(name, input);
         if (verdict.blocked)
-          return pack(duplicateCallObservation(name, verdict));
+          {return pack(duplicateCallObservation(name, verdict));}
         const outcome = await executeWithRetry(() => execute(input, options));
-        if (outcome.ok) return outcome.value;
+        if (outcome.ok) {return outcome.value;}
         return pack(toolErrorObservation(name, outcome));
       },
     };
@@ -1085,7 +1089,7 @@ function resilientTools(
 
 interface AttemptResult {
   assistantText: string;
-  toolTrace: Array<{ name: string; input?: unknown }>;
+  toolTrace: { name: string; input?: unknown }[];
   citations: ChatCitation[];
   compressionStats?: CompressionStats;
   streamError?: unknown;
@@ -1124,7 +1128,7 @@ async function* streamAssistantAttempt(params: {
   ];
 
   let streamError: unknown;
-  const toolTrace: Array<{ name: string; input?: unknown }> = [];
+  const toolTrace: { name: string; input?: unknown }[] = [];
   const citations: ChatCitation[] = [];
   let assistantText = "";
   const result = streamText({
@@ -1176,7 +1180,7 @@ export async function* devflowChatStream(
   input: { conversationId?: string; message: string },
 ): AsyncGenerator<DevflowChatEvent> {
   const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-  if (!repo) throw new Error(`Repository ${repoId} not found`);
+  if (!repo) {throw new Error(`Repository ${repoId} not found`);}
 
   const conversation = await ensureConversation(repoId, input.conversationId);
   const userMessage = await appendMessage({
@@ -1190,7 +1194,7 @@ export async function* devflowChatStream(
 
   try {
     const memoryContext = await buildMemoryContext(repoId, conversation.id);
-    if (memoryContext) system += `\n\n${memoryContext}`;
+    if (memoryContext) {system += `\n\n${memoryContext}`;}
   } catch {}
 
   // Progressive compaction (legacy ProgressiveContextManager.ensure_headroom):
@@ -1299,8 +1303,8 @@ export async function* devflowChatStream(
   const citations = dedupeCitations(result.citations);
 
   const meta: Record<string, unknown> = {};
-  if (citations.length > 0) meta.citations = citations;
-  if (result.compressionStats) meta.compressionStats = result.compressionStats;
+  if (citations.length > 0) {meta.citations = citations;}
+  if (result.compressionStats) {meta.compressionStats = result.compressionStats;}
   if (compaction !== null && compaction.attempted) {
     meta.progressiveCompaction = {
       compacted: compaction.compacted ?? false,

@@ -1,20 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslations, useFormatter } from "next-intl";
-import { z } from "zod/v4";
 import { BookOpen, Eye, RefreshCw, Trash2, Upload } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useTranslations, useFormatter } from "next-intl";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { z } from "zod/v4";
+
+import { notify } from "@/components/devflow/notify";
+import Dock from "@/components/dock";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,8 +17,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { notify } from "@/components/devflow/notify";
-import Dock from "@/components/dock";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 const listSchema = z.object({
   message: z.string(),
@@ -68,8 +69,8 @@ function isTypeKey(value: string): value is keyof typeof TYPE_LABEL_KEYS {
 }
 
 function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024) {return `${n} B`;}
+  if (n < 1024 * 1024) {return `${(n / 1024).toFixed(1)} KB`;}
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
@@ -99,11 +100,11 @@ export default function KnowledgePage() {
         const resp = await fetch("/api/knowledge_docs");
         const parsed = listSchema.safeParse(await resp.json());
         if (!cancelled)
-          setDocs(parsed.success ? (parsed.data.data?.items ?? []) : []);
+          {setDocs(parsed.success ? (parsed.data.data?.items ?? []) : []);}
       } catch {
-        if (!cancelled) setDocs([]);
+        if (!cancelled) {setDocs([]);}
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {setLoading(false);}
       }
     })();
     return () => {
@@ -248,7 +249,7 @@ export default function KnowledgePage() {
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) void upload(file);
+                if (file) {void upload(file);}
                 e.target.value = "";
               }}
             />
@@ -274,7 +275,7 @@ export default function KnowledgePage() {
               <Input
                 type="password"
                 value={adminToken}
-                onChange={(e) => setAdminToken(e.target.value)}
+                onChange={(e) => { setAdminToken(e.target.value); }}
                 placeholder="••••••••"
                 autoComplete="off"
               />
@@ -360,7 +361,7 @@ export default function KnowledgePage() {
                         className="text-destructive size-7"
                         title={t("delete")}
                         disabled={busy !== null}
-                        onClick={() => setDeleteTarget(doc)}
+                        onClick={() => { setDeleteTarget(doc); }}
                       >
                         <Trash2 className="size-3.5" />
                       </Button>
@@ -376,7 +377,7 @@ export default function KnowledgePage() {
       <Dialog
         open={previewName !== null}
         onOpenChange={(open) => {
-          if (!open) setPreviewName(null);
+          if (!open) {setPreviewName(null);}
         }}
       >
         <DialogContent className="max-h-[80svh] max-w-2xl overflow-y-auto">
@@ -418,7 +419,7 @@ export default function KnowledgePage() {
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
+          if (!open) {setDeleteTarget(null);}
         }}
       >
         <AlertDialogContent>
@@ -434,7 +435,7 @@ export default function KnowledgePage() {
             <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (deleteTarget) void removeDoc(deleteTarget);
+                if (deleteTarget) {void removeDoc(deleteTarget);}
               }}
             >
               {t("delete")}

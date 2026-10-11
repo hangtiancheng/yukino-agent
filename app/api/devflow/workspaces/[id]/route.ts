@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 import {
   PermissionError,
   requirePermission,
@@ -12,7 +13,6 @@ import {
   toWorkspaceView,
   updateWorkspace,
 } from "@/lib/devflow/workspaces";
-import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -25,11 +25,11 @@ export async function GET(_request: Request, context: RouteContext) {
     await requirePermission("repo:read");
     const { id } = await context.params;
     const workspace = await prisma.workspace.findUnique({ where: { id } });
-    if (!workspace) return fail(404, "workspaceNotFound");
+    if (!workspace) {return fail(404, "workspaceNotFound");}
     const stats = await aggregateWorkspaceStats(id);
     return ok({ workspace: toWorkspaceView(workspace), stats });
   } catch (e) {
-    if (e instanceof PermissionError) return failRaw(403, e.message);
+    if (e instanceof PermissionError) {return failRaw(403, e.message);}
     return failRaw(500, errorMessage(e));
   }
 }
@@ -49,7 +49,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     user = await requirePermission("settings:manage");
   } catch (e) {
-    if (e instanceof PermissionError) return failRaw(403, e.message);
+    if (e instanceof PermissionError) {return failRaw(403, e.message);}
     return failRaw(500, errorMessage(e));
   }
 
@@ -61,17 +61,16 @@ export async function PATCH(request: Request, context: RouteContext) {
       targetType: "workspace",
       targetId: workspace.id,
       requestJson: parsed.data,
-    }).catch((err) =>
-      console.warn(
+    }).catch((err) => { console.warn(
         "[devflow:audit] failed to record workspace.update:",
         err instanceof Error ? err.message : String(err),
-      ),
+      ); },
     );
     return ok(workspace);
   } catch (e) {
     if (e instanceof WorkspaceError) {
-      if (e.code === "notFound") return fail(404, "workspaceNotFound");
-      if (e.code === "nameTaken") return fail(409, "workspaceNameTaken");
+      if (e.code === "notFound") {return fail(404, "workspaceNotFound");}
+      if (e.code === "nameTaken") {return fail(409, "workspaceNameTaken");}
       if (e.code === "reposMissing") {
         return fail(404, "workspaceReposMissing", {
           repos: e.missingRepoIds.join(", "),
@@ -89,7 +88,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
   try {
     user = await requirePermission("settings:manage");
   } catch (e) {
-    if (e instanceof PermissionError) return failRaw(403, e.message);
+    if (e instanceof PermissionError) {return failRaw(403, e.message);}
     return failRaw(500, errorMessage(e));
   }
 
@@ -101,11 +100,10 @@ export async function DELETE(_request: Request, context: RouteContext) {
       targetType: "workspace",
       targetId: id,
       requestJson: { name: workspace.name, repoIds: workspace.repoIds },
-    }).catch((err) =>
-      console.warn(
+    }).catch((err) => { console.warn(
         "[devflow:audit] failed to record workspace.delete:",
         err instanceof Error ? err.message : String(err),
-      ),
+      ); },
     );
     return ok({ deleted: id });
   } catch (e) {

@@ -17,7 +17,7 @@ export async function GET(_request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
-    if (!repo) return fail(404, "repoNotFound");
+    if (!repo) {return fail(404, "repoNotFound");}
     const members = await listTeamMembers(id);
     return ok(members.map(teamMemberView));
   } catch (e) {
@@ -29,7 +29,7 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
-    if (!repo) return fail(404, "repoNotFound");
+    if (!repo) {return fail(404, "repoNotFound");}
 
     const parsed = TeamMemberCreateSchema.safeParse(
       await request.json().catch(() => null),

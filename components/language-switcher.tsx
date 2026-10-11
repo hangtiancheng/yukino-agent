@@ -1,8 +1,9 @@
 "use client";
 
 import { Languages } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+
 import {
   Select,
   SelectContent,
@@ -10,8 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { locales, type Locale } from "@/lib/i18n/config";
 import { persistLocale } from "@/lib/i18n/client";
+import { locales, type Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/utils";
 
 const LOCALE_LABELS: Record<Locale, string> = {
@@ -25,7 +26,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
   const router = useRouter();
 
   function handleChange(value: Locale | null) {
-    if (value === null || value === locale) return;
+    if (value === null || value === locale) {return;}
     persistLocale(value);
     router.refresh();
   }

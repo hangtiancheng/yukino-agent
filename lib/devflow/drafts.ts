@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+
 import { decryptToken } from "./crypto";
 import {
   addIssueLabels,
@@ -17,7 +18,7 @@ async function repoContextFor(repoId: string): Promise<{
   ctx: GitHubContext;
 }> {
   const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-  if (!repo) throw new Error(`Repository ${repoId} not found`);
+  if (!repo) {throw new Error(`Repository ${repoId} not found`);}
   return {
     owner: repo.owner,
     name: repo.name,
@@ -30,7 +31,7 @@ async function repoContextFor(repoId: string): Promise<{
 
 export async function executeDraft(draftId: string) {
   const draft = await prisma.actionDraft.findUnique({ where: { id: draftId } });
-  if (!draft) throw new Error(`Action draft ${draftId} not found`);
+  if (!draft) {throw new Error(`Action draft ${draftId} not found`);}
   if (draft.status !== "pending_confirmation") {
     throw new Error(`Draft is already ${draft.status}`);
   }
@@ -41,7 +42,7 @@ export async function executeDraft(draftId: string) {
     switch (draft.draftType) {
       case "issue_comment": {
         if (!draft.targetNumber)
-          throw new Error("issue_comment drafts require targetNumber");
+          {throw new Error("issue_comment drafts require targetNumber");}
         executionResult = await createIssueComment(
           owner,
           name,
@@ -63,7 +64,7 @@ export async function executeDraft(draftId: string) {
       }
       case "close_issue": {
         if (!draft.targetNumber)
-          throw new Error("close_issue drafts require targetNumber");
+          {throw new Error("close_issue drafts require targetNumber");}
         executionResult = await closeIssue(
           owner,
           name,
@@ -74,9 +75,9 @@ export async function executeDraft(draftId: string) {
       }
       case "add_labels": {
         if (!draft.targetNumber)
-          throw new Error("add_labels drafts require targetNumber");
+          {throw new Error("add_labels drafts require targetNumber");}
         if (draft.labels.length === 0)
-          throw new Error("add_labels drafts require labels");
+          {throw new Error("add_labels drafts require labels");}
         executionResult = await addIssueLabels(
           owner,
           name,
@@ -116,18 +117,18 @@ export async function executeDraft(draftId: string) {
 }
 
 function summarizeResult(result: unknown): object {
-  if (!result || typeof result !== "object") return { raw: String(result) };
+  if (!result || typeof result !== "object") {return { raw: String(result) };}
   const r = result as Record<string, unknown>;
   const summary: Record<string, unknown> = {};
   for (const key of ["id", "number", "html_url", "state", "title"]) {
-    if (r[key] !== undefined) summary[key] = r[key];
+    if (r[key] !== undefined) {summary[key] = r[key];}
   }
   return summary;
 }
 
 export async function rejectDraft(draftId: string) {
   const draft = await prisma.actionDraft.findUnique({ where: { id: draftId } });
-  if (!draft) throw new Error(`Action draft ${draftId} not found`);
+  if (!draft) {throw new Error(`Action draft ${draftId} not found`);}
   if (draft.status !== "pending_confirmation") {
     throw new Error(`Draft is already ${draft.status}`);
   }

@@ -1,7 +1,8 @@
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 
 const filename__ = fileURLToPath(import.meta.url);
 const dirname__ = dirname(filename__);

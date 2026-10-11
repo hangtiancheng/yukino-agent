@@ -1,8 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useTranslations, type Messages } from "next-intl";
 import {
   Activity,
   BotMessageSquare,
@@ -25,6 +22,21 @@ import {
   Sun,
   ThumbsUp,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useTranslations, type Messages } from "next-intl";
+
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useTheme } from "@/components/theme-provider";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -40,30 +52,20 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTheme } from "@/components/theme-provider";
-import { LanguageSwitcher } from "@/components/language-switcher";
+
 import { useDevflow } from "./provider";
 
 type DevflowNavKey = keyof Messages["devflow"]["nav"];
 
-const NAV_GROUPS: Array<{
+const NAV_GROUPS: {
   labelKey: DevflowNavKey;
-  items: Array<{
+  items: {
     href: string;
     labelKey: DevflowNavKey;
     icon: typeof Activity;
-  }>;
-}> = [
+  }[];
+}[] = [
   {
     labelKey: "overview",
     items: [{ href: "/devflow", labelKey: "dashboard", icon: LayoutDashboard }],
@@ -116,7 +118,7 @@ function ThemeToggle() {
       variant="ghost"
       size="icon"
       aria-label={t("toggleTheme")}
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={() => { setTheme(isDark ? "light" : "dark"); }}
     >
       {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
     </Button>
@@ -143,7 +145,7 @@ function RepoPicker() {
     <Select
       value={repoId || undefined}
       onValueChange={(value) => {
-        if (value) setRepoId(value);
+        if (value) {setRepoId(value);}
       }}
     >
       <SelectTrigger className="w-56" aria-label={t("selectRepo")}>

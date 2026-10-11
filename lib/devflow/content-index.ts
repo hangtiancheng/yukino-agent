@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
-import { indexChunks, deleteBySourcePrefix } from "@/lib/milvus/indexer";
 import { count as milvusCount } from "@/lib/milvus/client";
+import { indexChunks, deleteBySourcePrefix } from "@/lib/milvus/indexer";
 import type { RetrievedDoc } from "@/lib/milvus/retriever";
+
 import { chunkDocument, siblingIdsByParent, type Chunk } from "./chunking";
 import { chunkRowMetadata } from "./rag";
 import { sanitizeCiLog } from "./sanitize";
@@ -28,8 +29,8 @@ const DIRECT_SOURCE_TYPES = new Set([
 ]);
 
 export function retrievalMode(sourceType: string): RetrievalMode {
-  if (RAG_SOURCE_TYPES.has(sourceType)) return "rag";
-  if (DIRECT_SOURCE_TYPES.has(sourceType)) return "direct";
+  if (RAG_SOURCE_TYPES.has(sourceType)) {return "rag";}
+  if (DIRECT_SOURCE_TYPES.has(sourceType)) {return "direct";}
   return "direct";
 }
 
@@ -83,7 +84,7 @@ export function ciLogChunks(text: string): {
   const chunks: string[] = [];
   for (let start = 0; start < bounded.length; start += CI_LOG_CHUNK_CHARS) {
     const piece = bounded.slice(start, start + CI_LOG_CHUNK_CHARS);
-    if (piece.trim() !== "") chunks.push(piece);
+    if (piece.trim() !== "") {chunks.push(piece);}
   }
   return { chunks, truncated: sanitized.length > maxChars };
 }
@@ -168,7 +169,7 @@ function itemPayload(
   metadata: Record<string, unknown>,
   logWindow?: ItemPayload["logWindow"],
 ): ItemPayload | null {
-  if (!content.trim()) return null;
+  if (!content.trim()) {return null;}
   return {
     itemId,
     sourceType,
@@ -185,12 +186,12 @@ function iso(value: Date | null | undefined): string | null {
 }
 
 function jobNames(jobs: unknown): string[] {
-  if (!Array.isArray(jobs)) return [];
+  if (!Array.isArray(jobs)) {return [];}
   const names: string[] = [];
   for (const job of jobs) {
-    if (typeof job !== "object" || job === null) continue;
+    if (typeof job !== "object" || job === null) {continue;}
     const name = (job as { name?: unknown }).name;
-    if (typeof name === "string") names.push(name);
+    if (typeof name === "string") {names.push(name);}
   }
   return names;
 }
@@ -221,7 +222,7 @@ export function buildItemPayloads(input: {
         closed_at: iso(issue.closedAt),
       },
     );
-    if (payload) payloads.push(payload);
+    if (payload) {payloads.push(payload);}
   }
 
   for (const pr of input.pullRequests) {
@@ -264,11 +265,11 @@ export function buildItemPayloads(input: {
         path: `pull/${pr.baseBranch ?? ""}...${pr.headBranch ?? ""}`,
       },
     );
-    if (payload) payloads.push(payload);
+    if (payload) {payloads.push(payload);}
   }
 
   for (const run of input.workflowRuns) {
-    if (run.conclusion !== "failure" || !(run.logsText ?? "").trim()) continue;
+    if (run.conclusion !== "failure" || !(run.logsText ?? "").trim()) {continue;}
     const { chunks, truncated } = ciLogChunks(run.logsText ?? "");
     chunks.forEach((logChunk, chunkIndex) => {
       const content = [run.name, logChunk].join("\n");
@@ -295,7 +296,7 @@ export function buildItemPayloads(input: {
         },
         { index: chunkIndex, total: chunks.length, truncated },
       );
-      if (payload) payloads.push(payload);
+      if (payload) {payloads.push(payload);}
     });
   }
 
@@ -305,12 +306,12 @@ export function buildItemPayloads(input: {
 export function itemChunkRows(
   repoId: string,
   payload: ItemPayload,
-): Array<{
+): {
   id: string;
   content: string;
   embedText: string;
   metadata: Record<string, unknown>;
-}> {
+}[] {
   const source = contentSource(repoId, payload.sourceType, payload.itemId);
   const identity: Record<string, unknown> = {
     _source: source,
@@ -384,7 +385,7 @@ export async function indexRepositoryContent(
 ): Promise<ContentIndexResult> {
   const started = Date.now();
   const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-  if (!repo) throw new Error(`Repository ${repoId} not found`);
+  if (!repo) {throw new Error(`Repository ${repoId} not found`);}
 
   const issues = await prisma.issue.findMany({ where: { repoId } });
   const pullRequests = await prisma.pullRequest.findMany({
@@ -444,12 +445,12 @@ export async function indexRepositoryContent(
 
   await deleteBySourcePrefix(contentRepoPrefix(repoId));
 
-  const rows: Array<{
+  const rows: {
     id: string;
     content: string;
     embedText: string;
     metadata: Record<string, unknown>;
-  }> = [];
+  }[] = [];
   const byType: Record<ContentSourceType, { items: number; chunks: number }> = {
     issue: { items: 0, chunks: 0 },
     pull_request: { items: 0, chunks: 0 },
@@ -518,7 +519,7 @@ export function mapSimilarHits(
   for (const doc of docs) {
     const itemId = String(doc.metadata.item_id ?? "");
     if (itemId === "" || itemId === opts.excludeItemId || seen.has(itemId))
-      continue;
+      {continue;}
     seen.add(itemId);
     const number = Number(doc.metadata.number ?? 0);
     hits.push({
@@ -532,7 +533,7 @@ export function mapSimilarHits(
       score: doc.score,
       excerpt: doc.content.slice(0, 300),
     });
-    if (hits.length >= opts.limit) break;
+    if (hits.length >= opts.limit) {break;}
   }
   return hits;
 }
@@ -547,9 +548,9 @@ export interface ChecklistInput {
   additions: number;
   deletions: number;
   changedFiles: number;
-  files: Array<{ filename: string }>;
+  files: { filename: string }[];
   reviewCommentCount: number;
-  runs: Array<{ name: string; status: string; conclusion: string | null }>;
+  runs: { name: string; status: string; conclusion: string | null }[];
 }
 
 export type ChecklistSeverity = "P1" | "P2" | "P3";
@@ -569,7 +570,7 @@ export interface ReviewChecklistResult {
   blocking: boolean;
 }
 
-const TEST_FILE_PATTERNS: ReadonlyArray<RegExp> = [
+const TEST_FILE_PATTERNS: readonly RegExp[] = [
   /(^|\/)(__tests__|tests?|specs?)(\/|$)/i,
   /\.(test|spec)\.[a-z]+$/i,
   /(^|\/)test_[^/]+\.py$/i,
@@ -585,7 +586,7 @@ interface SensitiveRule {
   severity: ChecklistSeverity;
 }
 
-const SENSITIVE_RULES: ReadonlyArray<SensitiveRule> = [
+const SENSITIVE_RULES: readonly SensitiveRule[] = [
   {
     label: "authentication/authorization code",
     re: /(^|\/)(auth|security|permission|crypto|credentials?)(\/|$|\.)/i,
@@ -667,7 +668,7 @@ export function buildReviewChecklist(
 
   for (const rule of SENSITIVE_RULES) {
     const matched = filenames.filter((f) => rule.re.test(f));
-    if (matched.length === 0) continue;
+    if (matched.length === 0) {continue;}
     findings.push({
       severity: rule.severity,
       title: `Sensitive area touched: ${rule.label}`,

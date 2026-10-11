@@ -1,8 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useTranslations } from "next-intl";
 import {
   Activity,
   BookOpen,
@@ -13,10 +10,16 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+
+import { notify } from "@/components/devflow/notify";
+import PageHeader from "@/components/devflow/page-header";
+import { dfGet, dfPost, useDevflow } from "@/components/devflow/provider";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Empty,
   EmptyContent,
@@ -24,9 +27,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import PageHeader from "@/components/devflow/page-header";
-import { dfGet, dfPost, useDevflow } from "@/components/devflow/provider";
-import { notify } from "@/components/devflow/notify";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { DevflowStats } from "@/lib/devflow/types";
 
 const ISSUE_STATE_KEYS: Record<string, "open" | "closed" | undefined> = {
@@ -92,11 +93,11 @@ export default function DevflowDashboard() {
         const data = await dfGet<DevflowStats>(
           repoId ? `/stats?repoId=${repoId}` : "/stats",
         );
-        if (!cancelled) setStats(data);
+        if (!cancelled) {setStats(data);}
       } catch {
-        if (!cancelled) setStats(null);
+        if (!cancelled) {setStats(null);}
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {setLoading(false);}
       }
     })();
     return () => {
@@ -105,7 +106,7 @@ export default function DevflowDashboard() {
   }, [repoId, reloadKey]);
 
   const handleSync = async () => {
-    if (!repoId) return;
+    if (!repoId) {return;}
     setSyncing(true);
     try {
       const result = await dfPost<{

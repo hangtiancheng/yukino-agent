@@ -7,26 +7,28 @@ import {
   type TextStreamPart,
   isStepCount,
 } from "ai";
-import { quickModel, providerOptions } from "@/lib/ai/models";
-import { A2UI_OPEN_TAG, A2UI_PROMPT_SECTION } from "@/lib/ai/a2ui/prompt";
+
 import { correctA2uiBlock } from "@/lib/ai/a2ui/correct";
 import {
   createA2uiStreamFilter,
   extractA2ui,
   parseA2uiBlock,
 } from "@/lib/ai/a2ui/extract";
-import { builtinTools } from "@/lib/ai/tools";
-import { getLogMcpTools } from "@/lib/ai/tools/query-log";
-import { retrieve, type RetrievedDoc } from "@/lib/milvus/retriever";
+import { A2UI_OPEN_TAG, A2UI_PROMPT_SECTION } from "@/lib/ai/a2ui/prompt";
+import { quickModel, providerOptions } from "@/lib/ai/models";
 import {
   isKnowledgeType,
   type KnowledgeType,
 } from "@/lib/ai/pipelines/knowledge-index";
-import { getSimpleMemory, summarySection } from "@/lib/memory";
 import {
   getSkillCatalogPrompt,
   getChatPromptSection,
 } from "@/lib/ai/prompts-skills";
+import { recordToolAudit } from "@/lib/ai/tool-audit";
+import { builtinTools } from "@/lib/ai/tools";
+import { getLogMcpTools } from "@/lib/ai/tools/query-log";
+import { getSimpleMemory, summarySection } from "@/lib/memory";
+import { retrieve, type RetrievedDoc } from "@/lib/milvus/retriever";
 
 const LOG_TOPIC_REGION = process.env.LOG_TOPIC_REGION ?? "";
 const LOG_TOPIC_ID = process.env.LOG_TOPIC_ID ?? "";
@@ -89,7 +91,7 @@ function buildSystemPrompt(
 }
 
 function skillCatalogSection(catalog: string): string {
-  if (catalog.trim() === "") return "";
+  if (catalog.trim() === "") {return "";}
   return `\n\n## Available skills\n${catalog.trim()}\nUse the load_skill tool with the skill name to read its full instructions before following them.`;
 }
 
@@ -181,7 +183,6 @@ export {
   recordToolAudit,
   type ToolAuditInput,
 } from "@/lib/ai/tool-audit";
-import { recordToolAudit } from "@/lib/ai/tool-audit";
 
 export async function chat(id: string, question: string): Promise<ChatResult> {
   const mem = getSimpleMemory(id);
@@ -217,7 +218,7 @@ export async function chat(id: string, question: string): Promise<ChatResult> {
   const reasoningParts: string[] = [];
   let turnIndex = 0;
   for (const step of result.steps) {
-    if (step.reasoningText) reasoningParts.push(step.reasoningText);
+    if (step.reasoningText) {reasoningParts.push(step.reasoningText);}
     for (const call of step.toolCalls) {
       const matched = step.toolResults.find(
         (r) => r.toolCallId === call.toolCallId,
@@ -310,11 +311,11 @@ export async function* processChatStreamParts(
 
   for await (const part of parts) {
     if (part.type === "text-delta") {
-      if (part.text === "") continue;
+      if (part.text === "") {continue;}
       full += part.text;
-      if (hooks.progress) hooks.progress.text = full;
+      if (hooks.progress) {hooks.progress.text = full;}
       const out = filter.push(part.text);
-      if (out.text) yield { type: "text", content: out.text };
+      if (out.text) {yield { type: "text", content: out.text };}
       for (const block of out.blocks) {
         const parsed = parseA2uiBlock(block);
         if (parsed.messages) {
@@ -332,7 +333,7 @@ export async function* processChatStreamParts(
         }
       }
     } else if (part.type === "reasoning-delta") {
-      if (part.text === "") continue;
+      if (part.text === "") {continue;}
       reasoning += part.text;
       yield { type: "reasoning", content: part.text };
     } else if (part.type === "tool-call") {
@@ -345,7 +346,7 @@ export async function* processChatStreamParts(
       };
     } else if (part.type === "tool-result") {
       const at = startedAt.get(part.toolCallId);
-      if (at !== undefined) startedAt.delete(part.toolCallId);
+      if (at !== undefined) {startedAt.delete(part.toolCallId);}
       yield {
         type: "tool",
         id: part.toolCallId,
@@ -362,7 +363,7 @@ export async function* processChatStreamParts(
       });
     } else if (part.type === "tool-error") {
       const at = startedAt.get(part.toolCallId);
-      if (at !== undefined) startedAt.delete(part.toolCallId);
+      if (at !== undefined) {startedAt.delete(part.toolCallId);}
       yield {
         type: "tool",
         id: part.toolCallId,

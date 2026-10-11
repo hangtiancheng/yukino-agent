@@ -1,18 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
 import { CalendarRange, FileText, Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
+
+import DevflowMarkdown from "@/components/devflow/markdown";
+import { notify } from "@/components/devflow/notify";
+import PageHeader from "@/components/devflow/page-header";
+import { dfPost, useDevflow } from "@/components/devflow/provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { notify } from "@/components/devflow/notify";
-import PageHeader from "@/components/devflow/page-header";
-import DevflowMarkdown from "@/components/devflow/markdown";
-import { dfPost, useDevflow } from "@/components/devflow/provider";
 
 function isoDaysAgo(days: number): string {
   const date = new Date();
@@ -41,7 +42,7 @@ export default function DevflowReportsPage() {
   const [generating, setGenerating] = useState(false);
 
   const generate = async () => {
-    if (!repoId) return;
+    if (!repoId) {return;}
     if (startDate > endDate) {
       notify.error(t("invalidRange"));
       return;
@@ -82,7 +83,7 @@ export default function DevflowReportsPage() {
               id="report-start"
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => { setStartDate(e.target.value); }}
             />
           </div>
           <div className="space-y-1.5">
@@ -91,7 +92,7 @@ export default function DevflowReportsPage() {
               id="report-end"
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => { setEndDate(e.target.value); }}
             />
           </div>
           <Button

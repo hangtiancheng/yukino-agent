@@ -27,7 +27,7 @@ export function renderAsLlmInstructions(catalog: A2uiCatalogSchemas): string {
     : "{}";
   allSchemas.push(`### Server To Client Schema:\n${serverClientStr}`);
 
-  const commonDefs = catalog.commonTypesSchema?.["$defs"];
+  const commonDefs = catalog.commonTypesSchema?.$defs;
   if (isJsonObject(commonDefs) && Object.keys(commonDefs).length > 0) {
     allSchemas.push(
       `### Common Types Schema:\n${jsonDumpsCompact(catalog.commonTypesSchema)}`,
@@ -71,7 +71,7 @@ export class DirectJsonPromptGenerator implements PromptGenerator {
 
     if (options.includeSchema ?? true) {
       const instructions = renderAsLlmInstructions(selectedCatalog);
-      if (instructions) parts.push(instructions);
+      if (instructions) {parts.push(instructions);}
     }
 
     if (options.examples) {

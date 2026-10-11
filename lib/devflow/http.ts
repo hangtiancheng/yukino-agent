@@ -1,5 +1,5 @@
-import { getTranslations } from "next-intl/server";
 import type { Messages } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 export type ApiDevflowKey = keyof Messages["api"]["devflow"];
 
@@ -40,6 +40,6 @@ export function failRaw(status: number, message: string): Response {
 }
 
 export function errorMessage(e: unknown): string {
-  if (e instanceof Error) return e.message;
+  if (e instanceof Error) {return e.message;}
   return String(e);
 }

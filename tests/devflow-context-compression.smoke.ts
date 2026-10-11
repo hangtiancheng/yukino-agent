@@ -6,6 +6,13 @@
  * Run: npx tsx tests/devflow-context-compression.smoke.ts
  */
 import assert from "node:assert/strict";
+
+import {
+  MAX_RUN_EVENTS,
+  RUN_EVENT_OUTPUT_CHARS,
+  pushRunEvent,
+  toRunEvent,
+} from "@/lib/ai/aiops-run";
 import {
   COMPACT_BOUNDARY_SUBTYPE,
   buildCompactionSummaryPayload,
@@ -24,12 +31,6 @@ import {
   normalizeModelName,
   thresholdsForWindow,
 } from "@/lib/devflow/context-compression";
-import {
-  MAX_RUN_EVENTS,
-  RUN_EVENT_OUTPUT_CHARS,
-  pushRunEvent,
-  toRunEvent,
-} from "@/lib/ai/aiops-run";
 
 function checkModelWindows() {
   assert.equal(normalizeModelName("openai/gpt-4o-2024-05-13"), "gpt-4o");

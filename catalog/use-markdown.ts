@@ -1,6 +1,6 @@
+import { useMarkdownRenderer } from "@a2ui/react/v0_9";
 import { useEffect, useState } from "react";
 
-import { useMarkdownRenderer } from "@a2ui/react/v0_9";
 
 export function useMarkdown(text: string) {
   const renderer = useMarkdownRenderer();
@@ -16,7 +16,7 @@ export function useMarkdown(text: string) {
     let active = true;
     renderer(text)
       .then((result) => {
-        if (active) setHtml(result);
+        if (active) {setHtml(result);}
       })
       .catch((err) => {
         console.error("[useMarkdown] render failed:", err);

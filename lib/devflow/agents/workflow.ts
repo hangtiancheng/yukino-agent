@@ -1,8 +1,8 @@
 import { Output, generateText } from "ai";
 import { z } from "zod/v4";
-import { prisma } from "@/lib/db";
+
 import { thinkModel, providerOptions } from "@/lib/ai/models";
-import { observeGeneration } from "@/lib/observability";
+import { prisma } from "@/lib/db";
 import {
   analyzeIssue,
   debugRun,
@@ -10,6 +10,7 @@ import {
   reviewPull,
 } from "@/lib/devflow/agents/analysis";
 import { AI_META_RULES } from "@/lib/devflow/agents/prompts";
+import { observeGeneration } from "@/lib/observability";
 
 export const TASK_TIMEOUT_MS = 90_000;
 export const MAX_PARALLEL_TASKS = 3;
@@ -182,7 +183,7 @@ export async function loadEntitySnapshot(
   repoId: string,
 ): Promise<EntitySnapshot | null> {
   const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-  if (!repo) return null;
+  if (!repo) {return null;}
   const [issues, pulls, runs] = await Promise.all([
     prisma.issue.findMany({
       where: { repoId },
@@ -244,7 +245,7 @@ export function resolveClaimEntity(
   snapshot: EntitySnapshot,
 ): ResolvedEntity | null {
   const ref = claim.entity_ref.trim();
-  if (ref.length === 0) return null;
+  if (ref.length === 0) {return null;}
   if (claim.entity_type === "issue") {
     const number = Number(ref.replace(/^#/, ""));
     const issue = snapshot.issues.find(
@@ -441,7 +442,7 @@ async function generateSpec(
   let firstError: unknown;
   try {
     const res = await runOnce(prompt);
-    if (res.output) return res.output;
+    if (res.output) {return res.output;}
     firstError = new Error("empty structured output");
   } catch (e) {
     firstError = e;
@@ -449,7 +450,7 @@ async function generateSpec(
   const retryPrompt = `${prompt}\n\nIMPORTANT: respond with ONLY a JSON object that matches the required schema. No markdown, no code fences, no commentary.`;
   try {
     const res = await runOnce(retryPrompt);
-    if (res.output) return res.output;
+    if (res.output) {return res.output;}
   } catch (e) {
     firstError = e;
   }
@@ -471,7 +472,7 @@ export async function planWorkflow(
   goal: string,
 ): Promise<PlanWorkflowResult | null> {
   const snapshot = await loadEntitySnapshot(repoId);
-  if (!snapshot) return null;
+  if (!snapshot) {return null;}
 
   if (llmConfigured()) {
     try {
@@ -539,7 +540,7 @@ export function scheduleClaims(
         cursors[index] += 1;
       }
     });
-    if (heads.length === 0) break;
+    if (heads.length === 0) {break;}
     for (let i = 0; i < heads.length; i += maxParallel) {
       waves.push(heads.slice(i, i + maxParallel));
     }
@@ -578,7 +579,7 @@ export function observeWorkflow(
   results: WorkflowTaskResult[],
 ): WorkflowObservation {
   const findings: WorkflowFinding[] = [];
-  void spec;
+  spec;
 
   for (const result of results) {
     if (result.status === "failed") {
@@ -680,7 +681,7 @@ export function observeWorkflow(
 
   for (const result of results) {
     if (result.status !== "success" || result.taskType === "repo_health")
-      continue;
+      {continue;}
     if (result.evidenceCount <= 0) {
       findings.push(
         finding({
@@ -709,7 +710,7 @@ export function observeWorkflow(
 
   const confidences = results
     .filter((r) => r.status === "success" && r.confidence !== null)
-    .map((r) => r.confidence as number);
+    .map((r) => r.confidence!);
   const base =
     confidences.length > 0
       ? confidences.reduce((sum, value) => sum + value, 0) / confidences.length
@@ -747,9 +748,9 @@ export function shouldReplan(
 
 function uniqueClaimId(spec: WorkflowSpec, base: string): string {
   const existing = new Set(spec.claims.map((claim) => claim.id));
-  if (!existing.has(base)) return base;
+  if (!existing.has(base)) {return base;}
   let index = 2;
-  while (existing.has(`${base}_${index}`)) index += 1;
+  while (existing.has(`${base}_${index}`)) {index += 1;}
   return `${base}_${index}`;
 }
 
@@ -875,7 +876,7 @@ function memoNextSteps(
     steps.push(...strings(issueResult.output.checklist).slice(0, 2));
   }
   for (const f of observation.findings) {
-    if (f.recommendation) steps.push(f.recommendation);
+    if (f.recommendation) {steps.push(f.recommendation);}
   }
   if (steps.length === 0) {
     steps.push(
@@ -1045,11 +1046,11 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
     return await Promise.race([
       promise,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new TaskTimeoutError(ms)), ms);
+        timer = setTimeout(() => { reject(new TaskTimeoutError(ms)); }, ms);
       }),
     ]);
   } finally {
-    if (timer) clearTimeout(timer);
+    if (timer) {clearTimeout(timer);}
   }
 }
 
@@ -1108,7 +1109,7 @@ export async function executeWorkflow(
   const run = await prisma.agentWorkflowRun.findUnique({
     where: { id: runId },
   });
-  if (!run) throw new Error(`Workflow run ${runId} not found`);
+  if (!run) {throw new Error(`Workflow run ${runId} not found`);}
   if (run.status !== "running") {
     throw new Error(
       `Workflow run ${runId} is not runnable (status: ${run.status})`,
@@ -1126,7 +1127,7 @@ export async function executeWorkflow(
     throw new Error(`Workflow run ${runId} has no repository`);
   }
   const snapshot = await loadEntitySnapshot(run.repoId);
-  if (!snapshot) throw new Error(`Repository ${run.repoId} not found`);
+  if (!snapshot) {throw new Error(`Repository ${run.repoId} not found`);}
 
   let spec = parsedSpec.data;
   const resultsByTask = new Map<string, WorkflowTaskResult>();
@@ -1172,13 +1173,13 @@ export async function executeWorkflow(
               taskId: claim.id,
               agentName: agentNameForTaskType(claim.task_type),
               taskType: claim.task_type,
-              claimJson: claim as object,
+              claimJson: claim,
               status: "pending",
             })),
           });
           await prisma.agentWorkflowRun.update({
             where: { id: runId },
-            data: { specJson: spec as object },
+            data: { specJson: spec },
           });
           replanCount += 1;
           replannedClaims.push(...extra.map((claim) => claim.id));
@@ -1225,13 +1226,13 @@ export async function executeWorkflow(
     await prisma.agentWorkflowRun.update({
       where: { id: runId },
       data: {
-        specJson: spec as object,
-        observationJson: observation as object,
+        specJson: spec,
+        observationJson: observation,
         finalAnswer: synthesis.answer,
         metrics: {
           ...metrics,
           synthesisMode: synthesis.generationMode,
-        } as object,
+        },
         status: "success",
         completedAt: new Date(),
       },
@@ -1281,7 +1282,7 @@ export async function executeWorkflow(
           where: { workflowId, taskId: claim.id },
           data: {
             status: rowStatus,
-            resultJson: result as unknown as object,
+            resultJson: result,
             error: result.error,
             completedAt: new Date(),
           },

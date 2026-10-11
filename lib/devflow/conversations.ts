@@ -1,10 +1,11 @@
-import { prisma } from "@/lib/db";
+import type {
+  Prisma} from "@/generated/prisma/client";
 import {
-  Prisma,
   type ChatFeedback,
   type ChatMessage,
   type Conversation,
 } from "@/generated/prisma/client";
+import { prisma } from "@/lib/db";
 
 export type MessageWithFeedback = ChatMessage & {
   feedback: ChatFeedback | null;
@@ -67,7 +68,7 @@ export async function ensureDefaultConversation(
     where: { repoId, status: "active" },
     orderBy: { createdAt: "asc" },
   });
-  if (existing) return existing;
+  if (existing) {return existing;}
   return prisma.conversation.create({
     data: { repoId, title: DEFAULT_TITLE, status: "active" },
   });
@@ -81,7 +82,7 @@ export async function ensureConversation(
     const found = await prisma.conversation.findFirst({
       where: { id: conversationId, repoId, status: "active" },
     });
-    if (found) return found;
+    if (found) {return found;}
   }
   return ensureDefaultConversation(repoId);
 }
@@ -127,7 +128,7 @@ export async function deleteConversation(
   const target = await prisma.conversation.findFirst({
     where: { id: conversationId, repoId, status: "active" },
   });
-  if (!target) return ensureDefaultConversation(repoId);
+  if (!target) {return ensureDefaultConversation(repoId);}
 
   await prisma.$transaction([
     prisma.chatFeedback.deleteMany({ where: { conversationId: target.id } }),
@@ -152,7 +153,7 @@ async function touchConversation(
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
   });
-  if (!conversation) return;
+  if (!conversation) {return;}
   const data: { title?: string; messageCount?: number } = {};
   if (
     opts.userMessage &&
@@ -161,7 +162,7 @@ async function touchConversation(
       conversation.title.startsWith(NEW_TITLE_PREFIX))
   ) {
     const derived = opts.userMessage.trim().replace(/\s+/g, " ");
-    if (derived) data.title = derived.slice(0, 40);
+    if (derived) {data.title = derived.slice(0, 40);}
   }
   if (opts.increment) {
     data.messageCount = conversation.messageCount + opts.increment;

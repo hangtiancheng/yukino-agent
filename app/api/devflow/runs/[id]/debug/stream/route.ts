@@ -1,4 +1,6 @@
 import { getTranslations } from "next-intl/server";
+
+import { prisma } from "@/lib/db";
 import {
   debugRun,
   type AnalysisProvenance,
@@ -6,7 +8,6 @@ import {
 import { analysisStreamFrames, encodeSse } from "@/lib/devflow/analyze-stream";
 import { CORS_HEADERS, errorMessage, failRaw } from "@/lib/devflow/http";
 import type { CIDebug } from "@/lib/devflow/schemas";
-import { prisma } from "@/lib/db";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -37,7 +38,7 @@ export async function POST(_request: Request, context: RouteContext) {
   } catch (e) {
     return failRaw(500, errorMessage(e));
   }
-  if (!run) return failRaw(404, `Workflow run ${id} not found`);
+  if (!run) {return failRaw(404, `Workflow run ${id} not found`);}
 
   const t = await getTranslations("devflow.analyzeStream");
   const jobsCount = Array.isArray(run.jobs) ? run.jobs.length : 0;

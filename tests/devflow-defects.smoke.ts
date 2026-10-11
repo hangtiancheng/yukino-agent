@@ -11,16 +11,10 @@ import os from "node:os";
 import path from "node:path";
 
 import {
-  parseGitRemoteUrl,
-  removeRepoCheckout,
-  repoCheckoutPath,
-} from "@/lib/devflow/workspace";
-import {
   createConversation,
   listMessages,
   messagesWherePage,
 } from "@/lib/devflow/conversations";
-import { repoMilvusCleanupPrefixes } from "@/lib/devflow/sync";
 import { writeAuditLog } from "@/lib/devflow/permissions";
 import {
   AuditLogsQuerySchema,
@@ -30,6 +24,12 @@ import {
   ProjectIndexSnoozeSchema,
   RepoConnectSchema,
 } from "@/lib/devflow/schemas";
+import { repoMilvusCleanupPrefixes } from "@/lib/devflow/sync";
+import {
+  parseGitRemoteUrl,
+  removeRepoCheckout,
+  repoCheckoutPath,
+} from "@/lib/devflow/workspace";
 
 let checks = 0;
 function ok(name: string): void {

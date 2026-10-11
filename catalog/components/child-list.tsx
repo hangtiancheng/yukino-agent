@@ -9,7 +9,7 @@ export function ChildList({
   childList: unknown;
   buildChild: (id: string, basePath?: string) => ReactNode;
 }) {
-  if (!Array.isArray(childList)) return null;
+  if (!Array.isArray(childList)) {return null;}
 
   return (
     <>

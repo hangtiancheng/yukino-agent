@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useFormatter, useTranslations } from "next-intl";
 import { FileText, ListTree, Play, RefreshCw, Workflow } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
+
+import { ConfidenceBadge } from "@/components/devflow/badges";
+import DevflowMarkdown from "@/components/devflow/markdown";
+import { notify } from "@/components/devflow/notify";
+import PageHeader from "@/components/devflow/page-header";
+import { dfGet, dfPost, useDevflow } from "@/components/devflow/provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,12 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { notify } from "@/components/devflow/notify";
 import { cn } from "@/lib/utils";
-import PageHeader from "@/components/devflow/page-header";
-import DevflowMarkdown from "@/components/devflow/markdown";
-import { ConfidenceBadge } from "@/components/devflow/badges";
-import { dfGet, dfPost, useDevflow } from "@/components/devflow/provider";
 
 type EntityType = "issue" | "pull_request" | "workflow_run" | "repository";
 type TaskType = "issue_analysis" | "pr_review" | "ci_debug" | "repo_health";
@@ -74,8 +75,8 @@ interface PlanResponse {
   runId: string;
   spec: SpecView;
   generationMode: "llm" | "deterministic";
-  violations: Array<{ claimId: string; reason: string }>;
-  tasks: Array<{ taskId: string; taskType: TaskType; status: TaskStatus }>;
+  violations: { claimId: string; reason: string }[];
+  tasks: { taskId: string; taskType: TaskType; status: TaskStatus }[];
 }
 
 interface RunDetailView {
@@ -203,11 +204,11 @@ export default function DevflowWorkflowRunsPage() {
         const items = await dfGet<RunSummaryView[]>(
           `/workflow-runs?repoId=${repoId}`,
         );
-        if (!cancelled) setRuns(items);
+        if (!cancelled) {setRuns(items);}
       } catch {
-        if (!cancelled) setRuns([]);
+        if (!cancelled) {setRuns([]);}
       } finally {
-        if (!cancelled) setRunsLoading(false);
+        if (!cancelled) {setRunsLoading(false);}
       }
     })();
     return () => {
@@ -231,7 +232,7 @@ export default function DevflowWorkflowRunsPage() {
 
   const handlePlan = async () => {
     const trimmed = goal.trim();
-    if (!repoId || !trimmed || planning) return;
+    if (!repoId || !trimmed || planning) {return;}
     setPlanning(true);
     setPlan(null);
     setDetail(null);
@@ -261,7 +262,7 @@ export default function DevflowWorkflowRunsPage() {
   };
 
   const handleExecute = async () => {
-    if (!plan || executing) return;
+    if (!plan || executing) {return;}
     setExecuting(true);
     setMemo(null);
     setLiveObservation(null);
@@ -291,7 +292,7 @@ export default function DevflowWorkflowRunsPage() {
       let buffer = "";
       for (;;) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {break;}
         buffer += decoder.decode(value, { stream: true });
         const events = buffer.split("\n\n");
         buffer = events.pop() ?? "";
@@ -303,7 +304,7 @@ export default function DevflowWorkflowRunsPage() {
             .filter((l) => l.startsWith("data: "))
             .map((l) => l.slice(6))
             .join("\n");
-          if (!dataText) continue;
+          if (!dataText) {continue;}
           try {
             handleSseEvent(event, dataText);
           } catch {}
@@ -362,7 +363,7 @@ export default function DevflowWorkflowRunsPage() {
         setLiveTasks((current) => {
           const next = { ...current };
           for (const taskId of payload.replannedClaims) {
-            if (!next[taskId]) next[taskId] = { status: "pending" };
+            if (!next[taskId]) {next[taskId] = { status: "pending" };}
           }
           return next;
         });
@@ -384,8 +385,8 @@ export default function DevflowWorkflowRunsPage() {
     try {
       const result = await dfGet<RunDetailView>(`/workflow-runs/${runId}`);
       setDetail(result);
-      if (result.finalAnswer) setMemo(result.finalAnswer);
-      if (result.observation) setLiveObservation(result.observation);
+      if (result.finalAnswer) {setMemo(result.finalAnswer);}
+      if (result.observation) {setLiveObservation(result.observation);}
       const states: Record<string, LiveTaskState> = {};
       for (const task of result.tasks) {
         states[task.taskId] = {
@@ -411,21 +412,21 @@ export default function DevflowWorkflowRunsPage() {
   };
 
   const displaySpec = useMemo<SpecView | null>(() => {
-    if (plan) return plan.spec;
+    if (plan) {return plan.spec;}
     return detail?.spec ?? null;
   }, [plan, detail]);
 
   const displayGoal = displaySpec?.goal ?? detail?.goal ?? "";
 
   const taskRows = useMemo(() => {
-    const rows: Array<{
+    const rows: {
       taskId: string;
       taskType?: TaskType;
       agentName?: string;
       entityRef?: string;
       entityType?: EntityType;
       state: LiveTaskState;
-    }> = [];
+    }[] = [];
     const claimByTaskId = new Map<string, ClaimView>();
     for (const claim of displaySpec?.claims ?? []) {
       claimByTaskId.set(claim.id, claim);
@@ -436,7 +437,7 @@ export default function DevflowWorkflowRunsPage() {
     ]);
     for (const taskId of taskIds) {
       const claim = claimByTaskId.get(taskId);
-      const state = liveTasks[taskId] ?? { status: "pending" as TaskStatus };
+      const state = liveTasks[taskId] ?? { status: "pending" };
       rows.push({
         taskId,
         taskType: state.taskType ?? claim?.task_type,
@@ -464,7 +465,7 @@ export default function DevflowWorkflowRunsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setRunsReloadKey((key) => key + 1)}
+            onClick={() => { setRunsReloadKey((key) => key + 1); }}
             disabled={runsLoading}
           >
             {runsLoading ? (
@@ -494,7 +495,7 @@ export default function DevflowWorkflowRunsPage() {
                 }
                 value={goal}
                 disabled={!repoId || busy}
-                onChange={(e) => setGoal(e.target.value)}
+                onChange={(e) => { setGoal(e.target.value); }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();

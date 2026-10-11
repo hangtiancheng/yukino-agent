@@ -1,6 +1,7 @@
-import { retrieve } from "@/lib/milvus/retriever";
-import { executeOncallSql } from "./postgres";
 import { aggregateAlerts, type Alert } from "@/lib/ai/alerts";
+import { retrieve } from "@/lib/milvus/retriever";
+
+import { executeOncallSql } from "./postgres";
 
 export function getCurrentTime() {
   const now = new Date();

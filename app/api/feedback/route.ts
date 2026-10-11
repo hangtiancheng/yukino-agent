@@ -1,10 +1,11 @@
 import { getTranslations } from "next-intl/server";
-import { prisma } from "@/lib/db";
+
 import {
   FeedbackListQuerySchema,
   FeedbackUpsertSchema,
   type FeedbackView,
 } from "@/lib/ai/feedback";
+import { prisma } from "@/lib/db";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",

@@ -1,17 +1,18 @@
 "use client";
+import type { A2uiClientAction } from "@a2ui/web_core/v0_9";
+import { useTranslations } from "next-intl";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { z } from "zod/v4";
-import type { A2uiClientAction } from "@a2ui/web_core/v0_9";
+
+import { toast } from "@/components/ui/toast";
+import { runAiOpsStream } from "@/hooks/aiops-stream";
+import type { KnowledgeType } from "@/lib/ai/pipelines/knowledge-index";
 import {
   a2uiActionResponseSchema,
   chatReferenceSchema,
   chatResponseSchema,
   uploadResponseSchema,
 } from "@/lib/schemas";
-import type { KnowledgeType } from "@/lib/ai/pipelines/knowledge-index";
-import { toast } from "@/components/ui/toast";
-import { useTranslations } from "next-intl";
-import { runAiOpsStream } from "@/hooks/aiops-stream";
 
 export type Mode = "quick" | "stream";
 
@@ -127,10 +128,10 @@ function generateSessionId(): string {
 }
 
 function loadHistories(): ChatHistory[] {
-  if (typeof localStorage === "undefined") return [];
+  if (typeof localStorage === "undefined") {return [];}
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
+    if (!stored) {return [];}
     const parsed = chatHistoriesSchema.safeParse(JSON.parse(stored));
     return parsed.success ? parsed.data : [];
   } catch {
@@ -140,7 +141,7 @@ function loadHistories(): ChatHistory[] {
 
 function deriveTitle(messages: ChatMessage[], fallbackTitle: string): string {
   const firstUser = messages.find((m) => m.type === "user");
-  if (!firstUser) return fallbackTitle;
+  if (!firstUser) {return fallbackTitle;}
   const c = firstUser.content;
   return c.slice(0, 30) + (c.length > 30 ? "..." : "");
 }
@@ -163,8 +164,8 @@ export function useChat() {
   const [streamController, setStreamController] =
     useState<AbortController | null>(null);
   useEffect(() => {
-    if (!streamController) return;
-    return () => streamController.abort();
+    if (!streamController) {return;}
+    return () => { streamController.abort(); };
   }, [streamController]);
 
   const [overlay, setOverlay] = useState<OverlayState>({
@@ -188,7 +189,7 @@ export function useChat() {
 
   const upsertHistory = useCallback(
     (sid: string, msgs: ChatMessage[]) => {
-      if (msgs.length === 0) return;
+      if (msgs.length === 0) {return;}
       setHistories((prev) => {
         const title = deriveTitle(msgs, t("newChat"));
         const now = new Date().toISOString();
@@ -224,7 +225,7 @@ export function useChat() {
   const loadChatHistory = useCallback(
     (id: string) => {
       const h = histories.find((x) => x.id === id);
-      if (!h) return;
+      if (!h) {return;}
       setSessionId(h.id);
       setMessages(h.messages);
     },
@@ -244,7 +245,7 @@ export function useChat() {
 
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!text || isStreaming) return;
+      if (!text || isStreaming) {return;}
 
       let currentMsgs: ChatMessage[] = [
         ...messages,
@@ -270,7 +271,7 @@ export function useChat() {
             signal: controller.signal,
           });
           const parsed = chatResponseExtSchema.safeParse(await resp.json());
-          if (!parsed.success) throw new Error(t("errors.invalidChatResponse"));
+          if (!parsed.success) {throw new Error(t("errors.invalidChatResponse"));}
           const answer = parsed.data.data?.answer;
           const a2ui = parsed.data.data?.a2ui;
           const references = parsed.data.data?.references;
@@ -297,9 +298,9 @@ export function useChat() {
             body: JSON.stringify({ id: sessionId, question: text }),
             signal: controller.signal,
           });
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          if (!resp.ok) {throw new Error(`HTTP ${resp.status}`);}
           const reader = resp.body?.getReader();
-          if (!reader) throw new Error(t("errors.noStreamBody"));
+          if (!reader) {throw new Error(t("errors.noStreamBody"));}
           const decoder = new TextDecoder();
           let buffer = "";
           let full = "";
@@ -356,7 +357,7 @@ export function useChat() {
                   JSON.parse(payload),
                 );
                 if (!parsedTool.success)
-                  throw new Error("payload is not a tool event");
+                  {throw new Error("payload is not a tool event");}
                 const last = currentMsgs.at(-1);
                 const tools = [...(last?.toolCalls ?? [])];
                 const idx = tools.findIndex(
@@ -391,7 +392,7 @@ export function useChat() {
                   .array(chatReferenceExtSchema)
                   .safeParse(JSON.parse(payload));
                 if (!parsedRefs.success)
-                  throw new Error("payload is not a references array");
+                  {throw new Error("payload is not a references array");}
                 const last = currentMsgs.at(-1);
                 currentMsgs = [
                   ...currentMsgs.slice(0, -1),
@@ -416,7 +417,7 @@ export function useChat() {
                   .min(1)
                   .safeParse(JSON.parse(payload));
                 if (!messages.success)
-                  throw new Error("payload is not a non-empty array");
+                  {throw new Error("payload is not a non-empty array");}
                 const last = currentMsgs.at(-1);
                 currentMsgs = [
                   ...currentMsgs.slice(0, -1),
@@ -441,9 +442,9 @@ export function useChat() {
           };
 
           while (true) {
-            if (controller.signal.aborted) break;
+            if (controller.signal.aborted) {break;}
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {break;}
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split("\n");
             buffer = lines.pop() ?? "";
@@ -455,7 +456,7 @@ export function useChat() {
                 dispatchEvent();
                 continue;
               }
-              if (line.startsWith("id: ")) continue;
+              if (line.startsWith("id: ")) {continue;}
               if (line.startsWith("event: ")) {
                 currentEvent = line.slice(7);
                 continue;
@@ -469,7 +470,7 @@ export function useChat() {
           }
         }
       } catch (e) {
-        if (e instanceof DOMException && e.name === "AbortError") return;
+        if (e instanceof DOMException && e.name === "AbortError") {return;}
         const msg = e instanceof Error ? e.message : String(e);
         const errorMsg: ChatMessage = {
           type: "assistant",
@@ -510,7 +511,7 @@ export function useChat() {
       setMessages(currentMsgs);
       const updatePending = (patch: Partial<ChatMessage>) => {
         const last = currentMsgs.at(-1);
-        if (!last) return;
+        if (!last) {return;}
         currentMsgs = [...currentMsgs.slice(0, -1), { ...last, ...patch }];
         setMessages(currentMsgs);
       };
@@ -597,7 +598,7 @@ export function useChat() {
         return;
       }
       const target = messages[messageIndex];
-      if (!target?.a2ui || target.a2ui.length === 0) return;
+      if (!target?.a2ui || target.a2ui.length === 0) {return;}
       setIsStreaming(true);
       try {
         const resp = await fetch("/api/a2ui_action", {
@@ -615,7 +616,7 @@ export function useChat() {
         });
         const parsed = a2uiActionResponseSchema.safeParse(await resp.json());
         if (!parsed.success)
-          throw new Error(t("errors.invalidA2uiActionResponse"));
+          {throw new Error(t("errors.invalidA2uiActionResponse"));}
         const patch = parsed.data.data?.a2ui;
         if (parsed.data.message !== "OK" || !patch) {
           throw new Error(parsed.data.message || tCommon("unknownError"));
@@ -672,7 +673,7 @@ export function useChat() {
         fd.append("file", file);
         const resp = await fetch("/api/upload", { method: "POST", body: fd });
         const parsed = uploadResponseSchema.safeParse(await resp.json());
-        if (!parsed.success) throw new Error(t("errors.invalidUploadResponse"));
+        if (!parsed.success) {throw new Error(t("errors.invalidUploadResponse"));}
         if (parsed.data.message === "OK" && parsed.data.data !== undefined) {
           return t("uploadedToKnowledgeBase", { name: file.name });
         }
@@ -694,7 +695,7 @@ export function useChat() {
   );
 
   const addMessage = useCallback(
-    (msg: ChatMessage) => setMessages((prev) => [...prev, msg]),
+    (msg: ChatMessage) => { setMessages((prev) => [...prev, msg]); },
     [],
   );
 

@@ -1,6 +1,7 @@
-import { getTranslations } from "next-intl/server";
 import type { NextRequest } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
+
 import { prisma } from "@/lib/db";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 import { buildRecommendations } from "@/lib/devflow/recommendations";
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const t = await getTranslations("devflow.recommendations");
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
-    if (!repo) return fail(404, "repoNotFound");
+    if (!repo) {return fail(404, "repoNotFound");}
 
     const params = request.nextUrl.searchParams;
     const parsed = z

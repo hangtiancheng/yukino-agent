@@ -20,7 +20,7 @@ export async function GET(_request: Request, context: RouteContext) {
       feedback: trace.feedback ? toFeedbackView(trace.feedback) : null,
     });
   } catch (e) {
-    if (e instanceof FeedbackNotFoundError) return failRaw(404, e.message);
+    if (e instanceof FeedbackNotFoundError) {return failRaw(404, e.message);}
     return failRaw(500, errorMessage(e));
   }
 }

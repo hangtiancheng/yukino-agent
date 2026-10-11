@@ -1,5 +1,7 @@
 import { generateText, type LanguageModel, type ModelMessage } from "ai";
+
 import { providerOptions } from "@/lib/ai/models";
+
 import { extractA2ui } from "./extract";
 import { A2UI_CLOSE_TAG, A2UI_OPEN_TAG } from "./prompt";
 
@@ -27,7 +29,7 @@ export async function correctA2uiBlock(params: {
     providerOptions,
   });
   const retried = extractA2ui(result.text);
-  if (retried.messages) return retried.messages;
+  if (retried.messages) {return retried.messages;}
   console.error(
     `[a2ui] corrective retry still invalid: ${retried.error ?? "no A2UI block found"}`,
   );

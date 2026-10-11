@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+
 import { impactForFiles } from "@/lib/devflow/code-graph";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 import { getRepoOrThrow, WorkspaceError } from "@/lib/devflow/workspace";
@@ -36,7 +37,7 @@ export async function GET(request: Request, context: RouteContext) {
     await getRepoOrThrow(id);
     return ok(await impactForFiles(id, files));
   } catch (e) {
-    if (e instanceof WorkspaceError) return failRaw(e.status, e.message);
+    if (e instanceof WorkspaceError) {return failRaw(e.status, e.message);}
     return failRaw(500, errorMessage(e));
   }
 }

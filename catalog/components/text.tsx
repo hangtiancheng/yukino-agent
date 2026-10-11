@@ -1,15 +1,15 @@
-import type { CSSProperties } from "react";
 
 import { createComponentImplementation } from "@a2ui/react/v0_9";
 import { TextApi } from "@a2ui/web_core/v0_9/basic_catalog";
+import type { CSSProperties } from "react";
 
+import { useMarkdown } from "@/catalog/use-markdown";
 import {
   cn,
   weightStyle,
   MARKDOWN_VARIANT_CLASSES,
   MARKDOWN_CLASSES,
 } from "@/lib/utils";
-import { useMarkdown } from "@/catalog/use-markdown";
 
 function MarkdownText({ text, style }: { text: string; style: CSSProperties }) {
   const html = useMarkdown(text);

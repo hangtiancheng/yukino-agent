@@ -1,6 +1,17 @@
 import { createComponentImplementation } from "@a2ui/react/v0_9";
+import {
+  ActionSchema,
+  ChildListSchema,
+  ComponentIdSchema,
+  DataBindingSchema,
+  DynamicStringSchema,
+  DynamicValueSchema,
+  FunctionCallSchema,
+} from "@a2ui/web_core/v0_9";
 import { FileIcon } from "lucide-react";
+import { z } from "zod/v3";
 
+import { CatalogIcon } from "@/catalog/components/icon";
 import {
   Attachment as UIAttachment,
   AttachmentContent,
@@ -38,19 +49,10 @@ import {
   QuestionnaireSubmit,
   QuestionnaireTitle,
 } from "@/components/ui/questionnaire";
-import { CatalogIcon } from "@/catalog/components/icon";
 import { weightStyle } from "@/lib/utils";
+
 import { ICON_NAME, COMMON } from "./common";
-import { z } from "zod/v3";
-import {
-  ActionSchema,
-  ChildListSchema,
-  ComponentIdSchema,
-  DataBindingSchema,
-  DynamicStringSchema,
-  DynamicValueSchema,
-  FunctionCallSchema,
-} from "@a2ui/web_core/v0_9";
+
 
 export const AttachmentApi = {
   name: "Attachment",
@@ -314,7 +316,7 @@ export const QuestionnaireApi = {
     .strict(),
 };
 
-type QuestionDef = {
+interface QuestionDef {
   name?: unknown;
   title?: unknown;
   description?: unknown;
@@ -324,8 +326,8 @@ type QuestionDef = {
   choices?: unknown;
   value?: unknown;
   setValue?: (value: string | string[]) => void;
-};
-type ChoiceDef = { label?: unknown; value?: unknown; description?: unknown };
+}
+interface ChoiceDef { label?: unknown; value?: unknown; description?: unknown }
 
 const toChoices = (raw: unknown): ChoiceDef[] =>
   Array.isArray(raw) ? (raw as ChoiceDef[]) : [];
@@ -342,7 +344,7 @@ export const Questionnaire = createComponentImplementation(
         style={weightStyle(props.weight)}
         onSubmit={(event) => {
           event.preventDefault();
-          if (typeof props.submitAction === "function") props.submitAction();
+          if (typeof props.submitAction === "function") {props.submitAction();}
         }}
         items={items.map((item, i) => ({
           name: String(item.name ?? `question-${i}`),
@@ -405,7 +407,7 @@ export const Questionnaire = createComponentImplementation(
                         key={j}
                         value={value}
                         checked={selected.includes(value)}
-                        onChange={(e) => toggle(value, e.target.checked)}
+                        onChange={(e) => { toggle(value, e.target.checked); }}
                       >
                         {String(choice.label ?? value)}
                         {choice.description ? (

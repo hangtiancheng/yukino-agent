@@ -1,7 +1,8 @@
-import { load } from "js-yaml";
 import { tool } from "ai";
-import { prisma } from "@/lib/db";
+import { load } from "js-yaml";
+
 import { loadSkillSchema } from "@/lib/ai/tools/schemas";
+import { prisma } from "@/lib/db";
 
 export const MAX_CHAT_PROMPT_NAME_LENGTH = 160;
 export const MAX_CHAT_PROMPT_CONTENT_LENGTH = 12000;
@@ -21,7 +22,7 @@ export type SkillValidationResult =
   { ok: true; skill: SkillValidationOk } | { ok: false; error: string };
 
 export function isValidSkillName(name: string): boolean {
-  if (name === "" || name.length > MAX_SKILL_NAME_LENGTH) return false;
+  if (name === "" || name.length > MAX_SKILL_NAME_LENGTH) {return false;}
   if (name.startsWith("-") || name.endsWith("-") || name.includes("--")) {
     return false;
   }
@@ -72,7 +73,7 @@ export function validateSkillMarkdown(
   }
   const metadata = parsed as Record<string, unknown>;
   const name =
-    typeof metadata["name"] === "string" ? metadata["name"].trim() : "";
+    typeof metadata.name === "string" ? metadata.name.trim() : "";
   if (!isValidSkillName(name)) {
     return {
       ok: false,
@@ -81,8 +82,8 @@ export function validateSkillMarkdown(
     };
   }
   const description =
-    typeof metadata["description"] === "string"
-      ? metadata["description"].trim()
+    typeof metadata.description === "string"
+      ? metadata.description.trim()
       : "";
   if (description === "") {
     return {
@@ -133,7 +134,7 @@ export async function getSkillCatalogPrompt(): Promise<string> {
       where: { enabled: true },
       orderBy: { name: "asc" },
     });
-    if (skills.length === 0) return "";
+    if (skills.length === 0) {return "";}
     const catalog = skills
       .map((s) => `- **${s.name}**: ${s.description}`)
       .join("\n");
@@ -154,7 +155,7 @@ export async function getChatPromptSection(): Promise<string> {
       where: { enabled: true },
       orderBy: { updatedAt: "desc" },
     });
-    if (prompts.length === 0) return "";
+    if (prompts.length === 0) {return "";}
     const body = prompts
       .map((p) =>
         prompts.length > 1
@@ -185,7 +186,7 @@ export async function loadSkill(name: string): Promise<string> {
     });
     available = skills.map((s) => s.name);
     const hit = skills.find((s) => s.name === requested);
-    if (hit) return `Loaded skill: ${hit.name}\n\n${hit.content}`;
+    if (hit) {return `Loaded skill: ${hit.name}\n\n${hit.content}`;}
   } catch (e) {
     return `Skill '${requested}' is unavailable: the skill store could not be read (${e instanceof Error ? e.message : String(e)}).`;
   }

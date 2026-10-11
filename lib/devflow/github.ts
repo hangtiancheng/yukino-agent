@@ -1,5 +1,7 @@
 import { z } from "zod/v4";
+
 import { config } from "@/lib/config";
+
 import {
   GitHubIssueSchema,
   GitHubPullRequestFileSchema,
@@ -48,7 +50,7 @@ async function ghFetch(
   const url = new URL(`${resolveBaseUrl(ctx)}${path}`);
   if (init?.params) {
     for (const [key, value] of Object.entries(init.params)) {
-      if (value !== undefined) url.searchParams.set(key, String(value));
+      if (value !== undefined) {url.searchParams.set(key, String(value));}
     }
   }
   const headers: Record<string, string> = {
@@ -57,8 +59,8 @@ async function ghFetch(
     "User-Agent": "yukino-devflow",
   };
   const token = resolveToken(ctx);
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (init?.body) headers["Content-Type"] = "application/json";
+  if (token) {headers.Authorization = `Bearer ${token}`;}
+  if (init?.body) {headers["Content-Type"] = "application/json";}
 
   const response = await fetch(url, {
     ...init,
@@ -73,7 +75,7 @@ async function ghFetch(
     );
   }
   const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) return response.json();
+  if (contentType.includes("application/json")) {return response.json();}
   return response.text();
 }
 

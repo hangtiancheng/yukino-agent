@@ -21,10 +21,10 @@ function parseAcceptLanguage(header: string): LanguageEntry[] {
 export function negotiateLocale(
   acceptLanguage: string | null | undefined,
 ): Locale {
-  if (!acceptLanguage) return defaultLocale;
+  if (!acceptLanguage) {return defaultLocale;}
   for (const { tag } of parseAcceptLanguage(acceptLanguage)) {
-    if (tag.startsWith("zh")) return "zh-CN";
-    if (tag.startsWith("en")) return "en";
+    if (tag.startsWith("zh")) {return "zh-CN";}
+    if (tag.startsWith("en")) {return "en";}
   }
   return defaultLocale;
 }

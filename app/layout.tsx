@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+
 import "./globals.css";
-import { cn } from "@/lib/utils";
+import Dock from "@/components/dock";
 import { SentryProvider } from "@/components/sentry-provider";
 import { Toaster } from "@/components/ui/toast";
-import Dock from "@/components/dock";
+import { cn } from "@/lib/utils";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta");

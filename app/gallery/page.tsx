@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
 import { FlaskConical } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
+import { useCallback, useMemo, useState } from "react";
+
 import { A2uiView } from "@/components/a2ui-view";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { createGalleryMessages } from "./gallery-messages";
 
 export default function GalleryPage() {

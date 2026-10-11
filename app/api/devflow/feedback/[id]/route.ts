@@ -3,8 +3,8 @@ import {
   reviewFeedback,
   toFeedbackView,
 } from "@/lib/devflow/feedback";
-import { FeedbackReviewSchema } from "@/lib/devflow/schemas";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
+import { FeedbackReviewSchema } from "@/lib/devflow/schemas";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -26,7 +26,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const feedback = await reviewFeedback(id, parsed.data);
     return ok(toFeedbackView(feedback));
   } catch (e) {
-    if (e instanceof FeedbackNotFoundError) return failRaw(404, e.message);
+    if (e instanceof FeedbackNotFoundError) {return failRaw(404, e.message);}
     return failRaw(500, errorMessage(e));
   }
 }

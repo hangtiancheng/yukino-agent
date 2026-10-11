@@ -1,23 +1,24 @@
 "use client";
 
-import { useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { useChat } from "@/hooks/use-chat";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { useCallback } from "react";
+
+import ActiveAlertsPanel, {
+  type AiOpsReportPayload,
+} from "@/components/active-alerts-panel";
+import AIOpsBtn from "@/components/ai-ops-btn";
+import ChatContainer from "@/components/chat-container";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import LoadingOverlay from "@/components/loading-overlay";
+import { OncallSettings } from "@/components/oncall-settings";
+import Sidebar from "@/components/sidebar";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import Sidebar from "@/components/sidebar";
-import ChatContainer from "@/components/chat-container";
-import AIOpsBtn from "@/components/ai-ops-btn";
-import ActiveAlertsPanel, {
-  type AiOpsReportPayload,
-} from "@/components/active-alerts-panel";
-import LoadingOverlay from "@/components/loading-overlay";
-import { LanguageSwitcher } from "@/components/language-switcher";
-import { OncallSettings } from "@/components/oncall-settings";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { useChat } from "@/hooks/use-chat";
 
 export default function Home() {
   const t = useTranslations("chat");
@@ -51,7 +52,7 @@ export default function Home() {
   const handleUpload = useCallback(
     async (file: File) => {
       const msg = await uploadFile(file);
-      if (msg) addMessage({ type: "assistant", content: msg });
+      if (msg) {addMessage({ type: "assistant", content: msg });}
     },
     [uploadFile, addMessage],
   );

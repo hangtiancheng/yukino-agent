@@ -9,6 +9,7 @@ import {
   type SearchSimpleReq,
   type SearchResultData,
 } from "@zilliz/milvus2-sdk-node";
+
 import { config } from "@/lib/config";
 
 const COLLECTION = config.milvus.collection;
@@ -325,7 +326,7 @@ export async function hybridSearch(
 }
 
 export async function getByIds(ids: string[]): Promise<MilvusHit[]> {
-  if (ids.length === 0) return [];
+  if (ids.length === 0) {return [];}
   if (!(await ensureLoaded())) {
     return [];
   }
@@ -336,7 +337,7 @@ export async function getByIds(ids: string[]): Promise<MilvusHit[]> {
     timeout: TIMEOUT_MS,
   });
   checkStatus(res, "get");
-  const rows = (res.data ?? []) as unknown as Array<Record<string, unknown>>;
+  const rows = (res.data ?? []) as unknown as Record<string, unknown>[];
   return rows.map((row) => ({
     id: String(row.id ?? ""),
     score: 0,
@@ -362,7 +363,7 @@ export async function queryByFilter(
     timeout: TIMEOUT_MS,
   });
   checkStatus(res, "query");
-  const rows = (res.data ?? []) as unknown as Array<Record<string, unknown>>;
+  const rows = (res.data ?? []) as unknown as Record<string, unknown>[];
   return rows.map((row) => ({
     id: String(row.id ?? ""),
     score: 0,
@@ -382,7 +383,7 @@ export async function count(filter?: string): Promise<number> {
     timeout: TIMEOUT_MS,
   });
   checkStatus(res, "count");
-  if (!filter) return res.data;
+  if (!filter) {return res.data;}
   const queried = await connect().query({
     collection_name: COLLECTION,
     filter,

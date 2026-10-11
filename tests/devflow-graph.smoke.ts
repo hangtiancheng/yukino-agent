@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+
 import {
   EDGE_SOURCE,
   GRAPH_NODE_LIMIT,

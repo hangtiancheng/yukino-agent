@@ -1,6 +1,6 @@
+import { count, close } from "@/lib/milvus/client";
 import { indexChunks, deleteBySource } from "@/lib/milvus/indexer";
 import { retrieve, retrieveDense } from "@/lib/milvus/retriever";
-import { count, close } from "@/lib/milvus/client";
 
 async function main() {
   const n = await indexChunks([

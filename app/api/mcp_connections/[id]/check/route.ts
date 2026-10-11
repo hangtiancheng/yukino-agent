@@ -1,8 +1,9 @@
+import type { NextRequest } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { NextRequest } from "next/server";
 import { z } from "zod/v4";
-import { prisma } from "@/lib/db";
+
 import { checkMcpConnection } from "@/lib/ai/tools/query-log";
+import { prisma } from "@/lib/db";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -20,7 +21,7 @@ export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
-type Ctx = { params: Promise<{ id: string }> };
+interface Ctx { params: Promise<{ id: string }> }
 
 export async function POST(request: NextRequest, ctx: Ctx) {
   const t = await getTranslations("api.oncall");

@@ -1,8 +1,15 @@
-import { Fragment } from "react";
-
 import { createComponentImplementation } from "@a2ui/react/v0_9";
+import {
+  ChildListSchema,
+  ComponentIdSchema,
+  DynamicStringSchema,
+  DynamicValueSchema,
+} from "@a2ui/web_core/v0_9";
 import { ChevronDownIcon } from "lucide-react";
+import { Fragment } from "react";
+import { z } from "zod/v3";
 
+import { ChildList } from "@/catalog/components/child-list";
 import {
   Accordion as UIAccordion,
   AccordionContent,
@@ -37,16 +44,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { ChildList } from "@/catalog/components/child-list";
 import { weightStyle } from "@/lib/utils";
+
 import { COMMON } from "./common";
-import { z } from "zod/v3";
-import {
-  ChildListSchema,
-  ComponentIdSchema,
-  DynamicStringSchema,
-  DynamicValueSchema,
-} from "@a2ui/web_core/v0_9";
+
 
 export const AccordionApi = {
   name: "Accordion",
@@ -68,7 +69,7 @@ export const AccordionApi = {
     .strict(),
 };
 
-type AccordionItemDef = { title?: unknown; child?: unknown };
+interface AccordionItemDef { title?: unknown; child?: unknown }
 
 export const Accordion = createComponentImplementation(
   AccordionApi,
@@ -231,7 +232,7 @@ export const ResizableApi = {
     .strict(),
 };
 
-type PanelDef = { child?: unknown; defaultSize?: unknown };
+interface PanelDef { child?: unknown; defaultSize?: unknown }
 
 export const Resizable = createComponentImplementation(
   ResizableApi,
@@ -293,7 +294,7 @@ export const TableApi = {
     .strict(),
 };
 
-type ColumnDef = { key?: unknown; header?: unknown };
+interface ColumnDef { key?: unknown; header?: unknown }
 
 export const Table = createComponentImplementation(TableApi, ({ props }) => {
   const columns = (

@@ -140,7 +140,7 @@ interface SentryMetrics {
   customEventsTotal: Counter<"name" | "project_id">;
   performanceValue: Gauge<"name" | "project_id">;
   reportBatchesTotal: Counter<"outcome">;
-  reportBatchSize: Histogram<string>;
+  reportBatchSize: Histogram;
 }
 
 function createMetrics(): SentryMetrics {

@@ -1,5 +1,6 @@
-import { embed, embedMany, type EmbeddingModel } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { embed, embedMany, type EmbeddingModel } from "ai";
+
 import { config } from "@/lib/config";
 
 function createEmbeddingProvider(): EmbeddingModel {

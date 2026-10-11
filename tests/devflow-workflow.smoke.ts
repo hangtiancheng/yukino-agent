@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+
+import { llmConfigured } from "@/lib/devflow/agents/analysis";
 import {
   MAX_REPLANS,
   WorkflowObservationSchema,
@@ -19,7 +21,6 @@ import {
   type WorkflowSpec,
   type WorkflowTaskResult,
 } from "@/lib/devflow/agents/workflow";
-import { llmConfigured } from "@/lib/devflow/agents/analysis";
 
 let checks = 0;
 function check(label: string, fn: () => void | Promise<void>) {

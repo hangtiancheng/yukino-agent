@@ -1,11 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
-import { persistDiagnosticCase } from "@/lib/ai/pipelines/diagnostic-cases";
-import {
-  buildAiOpsQuery,
-  runPlanExecuteReplan,
-} from "@/lib/ai/pipelines/plan-execute-replan";
-import { EXHAUSTED_RESULT } from "@/lib/ai/pipelines/plan-execute-replan/graph";
+
 import {
   alertNameOf,
   createAiOpsRun,
@@ -13,6 +8,12 @@ import {
   normalizeAlertInput,
   pushRunEvent,
 } from "@/lib/ai/aiops-run";
+import { persistDiagnosticCase } from "@/lib/ai/pipelines/diagnostic-cases";
+import {
+  buildAiOpsQuery,
+  runPlanExecuteReplan,
+} from "@/lib/ai/pipelines/plan-execute-replan";
+import { EXHAUSTED_RESULT } from "@/lib/ai/pipelines/plan-execute-replan/graph";
 
 export const maxDuration = 600;
 
@@ -67,8 +68,7 @@ export async function POST(request: Request) {
               event.result,
               event.detail,
               alertName,
-            ).catch((e) =>
-              console.error("[ai_ops:stream] case persistence failed:", e),
+            ).catch((e) => { console.error("[ai_ops:stream] case persistence failed:", e); },
             );
             const status =
               event.result === EXHAUSTED_RESULT ? "exhausted" : "success";

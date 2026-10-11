@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import en from "@/messages/en.json";
-import zhCN from "@/messages/zh-CN.json";
+
 import { defaultLocale, isLocale, locales } from "@/lib/i18n/config";
 import { negotiateLocale } from "@/lib/i18n/negotiate";
+import en from "@/messages/en.json";
+import zhCN from "@/messages/zh-CN.json";
 
 type CatalogNode = string | { [key: string]: CatalogNode };
 
@@ -36,8 +37,8 @@ function argumentNames(message: string): string[] {
 
 const enLeaves = new Map<string, string>();
 const zhLeaves = new Map<string, string>();
-collectLeaves(en as CatalogNode, "", enLeaves);
-collectLeaves(zhCN as CatalogNode, "", zhLeaves);
+collectLeaves(en, "", enLeaves);
+collectLeaves(zhCN, "", zhLeaves);
 
 assert.deepEqual(
   [...enLeaves.keys()].sort(),

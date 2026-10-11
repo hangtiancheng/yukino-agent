@@ -1,11 +1,12 @@
 import { z } from "zod/v4";
+
+import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 import {
   getRepoOrThrow,
   requireCheckout,
   searchCode,
   WorkspaceError,
 } from "@/lib/devflow/workspace";
-import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -40,7 +41,7 @@ export async function POST(request: Request, context: RouteContext) {
     );
     return ok({ query: parsed.data.query, count: hits.length, hits });
   } catch (e) {
-    if (e instanceof WorkspaceError) return failRaw(e.status, e.message);
+    if (e instanceof WorkspaceError) {return failRaw(e.status, e.message);}
     return failRaw(500, errorMessage(e));
   }
 }

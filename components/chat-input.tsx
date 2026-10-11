@@ -1,22 +1,23 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal, Paperclip, Send } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { Mode } from "@/hooks/use-chat";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupTextarea,
-} from "@/components/ui/input-group";
+import { useEffect, useRef, useState } from "react";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from "@/components/ui/input-group";
 import { Spinner } from "@/components/ui/spinner";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import type { Mode } from "@/hooks/use-chat";
 
 interface ChatInputProps {
   isStreaming: boolean;
@@ -40,14 +41,14 @@ export default function ChatInput({
 
   useEffect(() => {
     const el = textareaRef.current;
-    if (!el) return;
+    if (!el) {return;}
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, [text]);
 
   const send = () => {
     const t = text.trim();
-    if (!t || isStreaming) return;
+    if (!t || isStreaming) {return;}
     onSend(t);
     setText("");
   };
@@ -57,7 +58,7 @@ export default function ChatInput({
       <InputGroupTextarea
         ref={textareaRef}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => { setText(e.target.value); }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -97,7 +98,7 @@ export default function ChatInput({
             value={[mode]}
             onValueChange={(v) => {
               const next = v.at(-1);
-              if (next === "quick" || next === "stream") onModeChange(next);
+              if (next === "quick" || next === "stream") {onModeChange(next);}
             }}
             aria-label={t("chatMode")}
           >
@@ -123,7 +124,7 @@ export default function ChatInput({
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) onUpload(f);
+          if (f) {onUpload(f);}
           e.target.value = "";
         }}
       />

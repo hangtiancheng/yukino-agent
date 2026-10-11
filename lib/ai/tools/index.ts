@@ -1,17 +1,19 @@
 import { tool } from "ai";
-import {
-  getCurrentTimeSchema,
-  postgresQuerySchema,
-  queryInternalDocsSchema,
-  prometheusAlertsSchema,
-} from "./schemas";
+
+import { loadSkillTool } from "@/lib/ai/prompts-skills";
+
 import {
   getCurrentTime,
   queryPrometheusAlerts,
   retrieveDocs,
   execPostgresSql,
 } from "./operations";
-import { loadSkillTool } from "@/lib/ai/prompts-skills";
+import {
+  getCurrentTimeSchema,
+  postgresQuerySchema,
+  queryInternalDocsSchema,
+  prometheusAlertsSchema,
+} from "./schemas";
 
 export const getCurrentTimeTool = tool({
   description:

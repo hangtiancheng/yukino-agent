@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+
 import { prisma } from "@/lib/db";
 
 export const GRAPH_NODE_LIMIT = 72;
@@ -163,7 +164,7 @@ export function deriveEdges(snapshot: GraphSnapshot): DerivedEdge[] {
     relation: GraphRelation,
     meta: Record<string, string | number>,
   ): void {
-    if (!fromId || !toId || (fromType === toType && fromId === toId)) return;
+    if (!fromId || !toId || (fromType === toType && fromId === toId)) {return;}
     const key = [fromType, fromId, toType, toId, relation].join("|");
     const existing = edges.get(key);
     if (existing) {
@@ -188,9 +189,9 @@ export function deriveEdges(snapshot: GraphSnapshot): DerivedEdge[] {
 
   function resolveRef(n: number): { type: string; id: string } | null {
     const issueId = issuesByNumber.get(n);
-    if (issueId) return { type: "issue", id: issueId };
+    if (issueId) {return { type: "issue", id: issueId };}
     const prId = prsByNumber.get(n);
-    if (prId) return { type: "pull_request", id: prId };
+    if (prId) {return { type: "pull_request", id: prId };}
     return null;
   }
 
@@ -203,9 +204,9 @@ export function deriveEdges(snapshot: GraphSnapshot): DerivedEdge[] {
     extraMeta?: Record<string, string | number>,
   ): void {
     for (const n of extractIssueRefs(text)) {
-      if (exclude?.has(n)) continue;
+      if (exclude?.has(n)) {continue;}
       const target = resolveRef(n);
-      if (!target) continue;
+      if (!target) {continue;}
       addEdge(fromType, fromId, target.type, target.id, relation, {
         number: n,
         ...extraMeta,
@@ -222,7 +223,7 @@ export function deriveEdges(snapshot: GraphSnapshot): DerivedEdge[] {
     );
     for (const assignee of issue.assignees) {
       const login = assignee.trim();
-      if (!login) continue;
+      if (!login) {continue;}
       const memberId = memberIdsByLogin.get(login.toLowerCase());
       addEdge(
         "issue",
@@ -305,7 +306,7 @@ function createWeeklyReportContentResolver(): NonNullable<
 > {
   let unavailable = false;
   return async (doc) => {
-    if (unavailable || doc.chunkCount <= 0) return null;
+    if (unavailable || doc.chunkCount <= 0) {return null;}
     try {
       const { getByIds } = await import("@/lib/milvus/client");
       const ids = Array.from(
@@ -313,7 +314,7 @@ function createWeeklyReportContentResolver(): NonNullable<
         (_, i) => `${doc.id}#${i}`,
       );
       const hits = await getByIds(ids);
-      if (hits.length === 0) return null;
+      if (hits.length === 0) {return null;}
       const chunkIndex = (id: string): number => {
         const at = id.lastIndexOf("#");
         const parsed = at === -1 ? NaN : Number(id.slice(at + 1));
@@ -408,8 +409,7 @@ export async function rebuildGraph(
     nodeKeys.add(nodeKey(edge.toType, edge.toId));
   }
 
-  const batches: Array<
-    Array<{
+  const batches: {
       repoId: string;
       fromType: string;
       fromId: string;
@@ -419,8 +419,7 @@ export async function rebuildGraph(
       confidence: number;
       source: string;
       meta: Record<string, string | number>;
-    }>
-  > = [];
+    }[][] = [];
   for (let i = 0; i < derived.length; i += CREATE_BATCH_SIZE) {
     batches.push(
       derived.slice(i, i + CREATE_BATCH_SIZE).map((edge) => ({
@@ -505,7 +504,7 @@ const NODE_TYPE_PRIORITY: Record<string, number> = {
 
 function splitNodeKey(key: string): { type: string; id: string } | null {
   const at = key.indexOf(":");
-  if (at <= 0) return null;
+  if (at <= 0) {return null;}
   return { type: key.slice(0, at), id: key.slice(at + 1) };
 }
 
@@ -574,7 +573,7 @@ async function buildNodeViews(keys: string[]): Promise<GraphNodeView[]> {
   const idsByType = new Map<string, string[]>();
   for (const key of keys) {
     const split = splitNodeKey(key);
-    if (!split) continue;
+    if (!split) {continue;}
     const list = idsByType.get(split.type) ?? [];
     list.push(split.id);
     idsByType.set(split.type, list);
@@ -583,7 +582,7 @@ async function buildNodeViews(keys: string[]): Promise<GraphNodeView[]> {
   const views: GraphNodeView[] = [];
   for (const key of keys) {
     const split = splitNodeKey(key);
-    if (!split) continue;
+    if (!split) {continue;}
     views.push({
       type: split.type,
       id: split.id,
@@ -630,15 +629,15 @@ export function bfsSubgraphKeys(
 ): { keys: string[]; truncated: boolean } {
   const keys: string[] = [];
   const seen = new Set<string>([centerKey]);
-  const queue: Array<[string, number]> = [[centerKey, 0]];
+  const queue: [string, number][] = [[centerKey, 0]];
   while (queue.length > 0 && keys.length < limit) {
     const head = queue.shift();
-    if (!head) break;
+    if (!head) {break;}
     const [key, distance] = head;
     keys.push(key);
-    if (distance >= depth) continue;
+    if (distance >= depth) {continue;}
     for (const next of adjacency.get(key) ?? []) {
-      if (seen.has(next)) continue;
+      if (seen.has(next)) {continue;}
       seen.add(next);
       queue.push([next, distance + 1]);
     }
@@ -697,7 +696,7 @@ export async function fetchSubgraph(
   );
   const nodes = selected.keys.map((key) => {
     const view = viewByKey.get(key);
-    if (view) return view;
+    if (view) {return view;}
     const split = splitNodeKey(key) ?? { type: key, id: key };
     return { type: split.type, id: split.id, label: split.id };
   });

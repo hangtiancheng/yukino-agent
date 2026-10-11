@@ -1,3 +1,5 @@
+import { createComponentImplementation } from "@a2ui/react/v0_9";
+import { DynamicValueSchema } from "@a2ui/web_core/v0_9";
 import {
   Area,
   AreaChart,
@@ -11,8 +13,7 @@ import {
   PieChart,
   XAxis,
 } from "recharts";
-
-import { createComponentImplementation } from "@a2ui/react/v0_9";
+import { z } from "zod/v3";
 
 import {
   type ChartConfig,
@@ -23,10 +24,9 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { weightStyle } from "@/lib/utils";
-import { COMMON } from "./common";
-import { DynamicValueSchema } from "@a2ui/web_core/v0_9";
 
-import { z } from "zod/v3";
+import { COMMON } from "./common";
+
 
 export const ChartApi = {
   name: "Chart",
@@ -65,7 +65,7 @@ export const ChartApi = {
     .strict(),
 };
 
-type SeriesDef = { key?: unknown; label?: unknown };
+interface SeriesDef { key?: unknown; label?: unknown }
 
 const PALETTE = [
   "var(--chart-2)",

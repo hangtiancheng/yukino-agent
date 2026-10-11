@@ -1,5 +1,6 @@
+import type { Prisma} from "@/generated/prisma/client";
+import { type AuditLog, type User } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
-import { Prisma, type AuditLog, type User } from "@/generated/prisma/client";
 
 export type Permission =
   | "repo:read"

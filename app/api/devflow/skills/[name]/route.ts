@@ -1,5 +1,5 @@
-import { getSkillRegistry } from "@/lib/devflow/skills";
 import { errorMessage, failRaw, ok } from "@/lib/devflow/http";
+import { getSkillRegistry } from "@/lib/devflow/skills";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -12,7 +12,7 @@ export async function GET(_request: Request, context: RouteContext) {
     const { name } = await context.params;
     const registry = await getSkillRegistry();
     const skill = registry.getSkill(name);
-    if (!skill) return failRaw(404, "Skill not found");
+    if (!skill) {return failRaw(404, "Skill not found");}
     return ok({
       manifest: skill.manifest,
       path: skill.path,

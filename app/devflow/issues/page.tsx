@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 import {
   CircleDot,
   ClipboardCheck,
@@ -11,6 +9,20 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+
+import { IssueAnalysisView } from "@/components/devflow/analysis-views";
+import { IssueStateBadge } from "@/components/devflow/badges";
+import DevflowMarkdown from "@/components/devflow/markdown";
+import { notify } from "@/components/devflow/notify";
+import PageHeader from "@/components/devflow/page-header";
+import {
+  DevflowApiError,
+  dfGet,
+  dfPost,
+  useDevflow,
+} from "@/components/devflow/provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,17 +32,6 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { notify } from "@/components/devflow/notify";
-import PageHeader from "@/components/devflow/page-header";
-import DevflowMarkdown from "@/components/devflow/markdown";
-import { IssueAnalysisView } from "@/components/devflow/analysis-views";
-import { IssueStateBadge } from "@/components/devflow/badges";
-import {
-  DevflowApiError,
-  dfGet,
-  dfPost,
-  useDevflow,
-} from "@/components/devflow/provider";
 import type {
   AnalysisRecord,
   IssueAnalysis,
@@ -76,23 +77,23 @@ export default function DevflowIssuesPage() {
       setLoading(true);
       try {
         const params = new URLSearchParams();
-        if (state !== "all") params.set("state", state);
-        if (query.trim()) params.set("q", query.trim());
+        if (state !== "all") {params.set("state", state);}
+        if (query.trim()) {params.set("q", query.trim());}
         const items = await dfGet<IssueSummary[]>(
           `/repos/${repoId}/issues?${params.toString()}`,
         );
-        if (cancelled) return;
+        if (cancelled) {return;}
         setIssues(items);
         setSelected((current) => {
-          if (current && items.some((i) => i.id === current.id)) return current;
+          if (current && items.some((i) => i.id === current.id)) {return current;}
           return items[0] ?? null;
         });
       } catch (e) {
-        if (cancelled) return;
+        if (cancelled) {return;}
         notify.error(e instanceof Error ? e.message : String(e));
         setIssues([]);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {setLoading(false);}
       }
     })();
     return () => {
@@ -101,7 +102,7 @@ export default function DevflowIssuesPage() {
   }, [repoId, state, query, reloadKey]);
 
   useEffect(() => {
-    if (!selected) return;
+    if (!selected) {return;}
     let cancelled = false;
     (async () => {
       setAnalysisLoading(true);
@@ -112,14 +113,14 @@ export default function DevflowIssuesPage() {
         const records = await dfGet<AnalysisRecord[]>(
           `/analyses?targetType=issue&targetId=${selected.id}&limit=1`,
         );
-        if (cancelled) return;
+        if (cancelled) {return;}
         setAnalysis(
           records.length > 0 ? (records[0].result as IssueAnalysis) : null,
         );
       } catch {
-        if (!cancelled) setAnalysis(null);
+        if (!cancelled) {setAnalysis(null);}
       } finally {
-        if (!cancelled) setAnalysisLoading(false);
+        if (!cancelled) {setAnalysisLoading(false);}
       }
     })();
     return () => {
@@ -128,7 +129,7 @@ export default function DevflowIssuesPage() {
   }, [selected]);
 
   const runAnalysis = async () => {
-    if (!selected) return;
+    if (!selected) {return;}
     setAnalyzing(true);
     try {
       const record = await dfPost<{ id: string; result: IssueAnalysis }>(
@@ -145,7 +146,7 @@ export default function DevflowIssuesPage() {
   };
 
   const findSimilar = async () => {
-    if (!selected || similarLoading) return;
+    if (!selected || similarLoading) {return;}
     if (similarOpen) {
       setSimilarOpen(false);
       return;
@@ -175,7 +176,7 @@ export default function DevflowIssuesPage() {
     title: string,
     content: string,
   ) => {
-    if (!selected || !repoId) return;
+    if (!selected || !repoId) {return;}
     try {
       await dfPost("/drafts", {
         repoId,
@@ -205,7 +206,7 @@ export default function DevflowIssuesPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setReloadKey((k) => k + 1)}
+            onClick={() => { setReloadKey((k) => k + 1); }}
             disabled={loading}
           >
             <RefreshCw className={loading ? "animate-spin" : ""} />
@@ -223,7 +224,7 @@ export default function DevflowIssuesPage() {
                 className="pl-8"
                 placeholder={t("searchPlaceholder")}
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => { setQuery(e.target.value); }}
               />
             </div>
             <Tabs value={state} onValueChange={setState}>
@@ -256,7 +257,7 @@ export default function DevflowIssuesPage() {
                 issues.map((issue) => (
                   <button
                     key={issue.id}
-                    onClick={() => setSelected(issue)}
+                    onClick={() => { setSelected(issue); }}
                     className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
                       selected?.id === issue.id
                         ? "border-primary/50 bg-primary/5"

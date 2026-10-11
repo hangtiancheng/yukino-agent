@@ -1,9 +1,11 @@
 import { Output, generateText } from "ai";
 import type { z } from "zod/v4";
-import { prisma } from "@/lib/db";
+
 import { thinkModel, providerOptions } from "@/lib/ai/models";
-import { observeGeneration } from "@/lib/observability";
 import { config } from "@/lib/config";
+import { prisma } from "@/lib/db";
+import { impactForFiles, type ImpactReport } from "@/lib/devflow/code-graph";
+import { searchKnowledge } from "@/lib/devflow/rag";
 import {
   CIDebugSchema,
   CONCLUSION_LABELS,
@@ -13,13 +15,13 @@ import {
   type IssueAnalysis,
   type PRReview,
 } from "@/lib/devflow/schemas";
-import { searchKnowledge } from "@/lib/devflow/rag";
 import {
   listTeamMembers,
   toTeamMemberProfile,
   type TeamMemberProfile,
 } from "@/lib/devflow/team";
-import { impactForFiles, type ImpactReport } from "@/lib/devflow/code-graph";
+import { observeGeneration } from "@/lib/observability";
+
 import {
   CI_DEBUG_PROMPT,
   ISSUE_ANALYSIS_PROMPT,
@@ -46,7 +48,7 @@ export interface OwnerValidation {
 }
 
 function clip(text: string | null | undefined, max: number): string {
-  if (!text) return "";
+  if (!text) {return "";}
   return text.length > max ? `${text.slice(0, max)}\n…[truncated]` : text;
 }
 
@@ -83,7 +85,7 @@ async function saveAnalysis(input: {
 
 function modelId(): string {
   const model = thinkModel;
-  if (typeof model === "string") return model;
+  if (typeof model === "string") {return model;}
   if ("modelId" in model && typeof model.modelId === "string") {
     return model.modelId;
   }
@@ -113,7 +115,7 @@ async function generateStructured<T>(input: {
   let firstError: unknown;
   try {
     const res = await runOnce(input.prompt);
-    if (res.output) return res.output;
+    if (res.output) {return res.output;}
     firstError = new Error("empty structured output");
   } catch (e) {
     firstError = e;
@@ -122,7 +124,7 @@ async function generateStructured<T>(input: {
   const retryPrompt = `${input.prompt}\n\nIMPORTANT: respond with ONLY a JSON object that matches the required schema. No markdown, no code fences, no commentary.`;
   try {
     const res = await runOnce(retryPrompt);
-    if (res.output) return res.output;
+    if (res.output) {return res.output;}
   } catch (e) {
     firstError = e;
   }
@@ -140,7 +142,7 @@ export interface AnalysisRecord<T> {
 }
 
 function countOccurrences(haystack: string, needle: string): number {
-  if (!needle) return 0;
+  if (!needle) {return 0;}
   return haystack.split(needle).length - 1;
 }
 
@@ -155,8 +157,8 @@ export interface IssueFacts {
 }
 
 export interface IssueEngineContext {
-  duplicateCandidates: Array<{ number: number; title: string; score: number }>;
-  knowledgeEvidence: Array<{ docName: string; snippet: string }>;
+  duplicateCandidates: { number: number; title: string; score: number }[];
+  knowledgeEvidence: { docName: string; snippet: string }[];
   teamMembers: TeamMemberProfile[];
 }
 
@@ -172,7 +174,7 @@ export function classifyIssueCategory(
   labels: string[],
 ): IssueCategory {
   const joined = `${labels.join(" ")} ${text}`;
-  const rules: Array<[IssueCategory, string[]]> = [
+  const rules: [IssueCategory, string[]][] = [
     [
       "bug",
       [
@@ -200,7 +202,7 @@ export function classifyIssueCategory(
     ["question", ["question", "how to", "why does", "咨询", "疑问"]],
   ];
   for (const [category, tokens] of rules) {
-    if (tokens.some((token) => joined.includes(token))) return category;
+    if (tokens.some((token) => joined.includes(token))) {return category;}
   }
   return "feature";
 }
@@ -221,7 +223,7 @@ export function classifyIssuePriority(
       "全量不可用",
     ].some((token) => joined.includes(token))
   )
-    return "P0";
+    {return "P0";}
   if (
     [
       "p1",
@@ -234,13 +236,13 @@ export function classifyIssuePriority(
       "blocker",
     ].some((token) => joined.includes(token))
   )
-    return "P1";
+    {return "P1";}
   if (
     ["p3", "minor", "polish", "typo", "文案", "低优"].some((token) =>
       joined.includes(token),
     )
   )
-    return "P3";
+    {return "P3";}
   return "P2";
 }
 
@@ -254,18 +256,18 @@ export function estimateIssueComplexity(
       (token) => joined.includes(token),
     )
   )
-    return "XL";
+    {return "XL";}
   if (
     ["large", "complex", "integration", "schema", "多模块"].some((token) =>
       joined.includes(token),
     )
   )
-    return "L";
+    {return "L";}
   if (
     text.length < 280 &&
     ["typo", "copy", "文案", "doc"].some((token) => joined.includes(token))
   )
-    return "S";
+    {return "S";}
   return text.length < 1400 ? "M" : "L";
 }
 
@@ -301,12 +303,12 @@ export function inferIssueArea(text: string): string {
     docs: ["readme", "doc", "文档", "说明"],
   };
   for (const [area, keywords] of Object.entries(areaKeywords)) {
-    if (keywords.some((keyword) => text.includes(keyword))) return area;
+    if (keywords.some((keyword) => text.includes(keyword))) {return area;}
   }
   return ISSUE_UNASSIGNED;
 }
 
-export function ownerDomainRules(): Array<[string, string[], string[]]> {
+export function ownerDomainRules(): [string, string[], string[]][] {
   return [
     [
       "desktop/electron",
@@ -416,7 +418,7 @@ export function matchOwnerFromTeam(
   let best: { name: string; score: number; reasons: string[] } | null = null;
   for (const member of members) {
     const name = member.name.trim();
-    if (!name) continue;
+    if (!name) {continue;}
     const profile = memberProfileText(member);
     let score = 0;
     const reasons: string[] = [];
@@ -439,7 +441,7 @@ export function matchOwnerFromTeam(
       best = { name, score, reasons };
     }
   }
-  if (!best) return null;
+  if (!best) {return null;}
   const unique = [...new Set(best.reasons.slice(0, 4))].join(", ");
   return {
     name: best.name,
@@ -480,7 +482,7 @@ export function suggestIssueOwner(
   }
   const signal = ownerSignalText(issueText, ctx);
   const teamMatch = matchOwnerFromTeam(ctx.teamMembers, signal);
-  if (teamMatch) return { owner: teamMatch.name, reason: teamMatch.reason };
+  if (teamMatch) {return { owner: teamMatch.name, reason: teamMatch.reason };}
 
   const area = inferIssueArea(signal);
   if (ctx.teamMembers.length === 0) {
@@ -511,15 +513,15 @@ export function suggestIssueOwner(
 
 export function validatedDuplicates(
   candidates: IssueEngineContext["duplicateCandidates"],
-): Array<{ number: number; title: string; score: number }> {
-  const rows: Array<{ number: number; title: string; score: number }> = [];
+): { number: number; title: string; score: number }[] {
+  const rows: { number: number; title: string; score: number }[] = [];
   for (const item of candidates.slice(0, 5)) {
     const title = String(item.title ?? "").trim();
     const score = Math.max(
       0,
       Math.min(1, Number.isFinite(item.score) ? item.score : 0),
     );
-    if (title) rows.push({ number: item.number, title, score });
+    if (title) {rows.push({ number: item.number, title, score });}
   }
   return rows;
 }
@@ -527,9 +529,9 @@ export function validatedDuplicates(
 export function lexicalDuplicateScore(a: string, b: string): number {
   const tokensA = lexicalTokens(a);
   const tokensB = lexicalTokens(b);
-  if (tokensA.size === 0 || tokensB.size === 0) return 0;
+  if (tokensA.size === 0 || tokensB.size === 0) {return 0;}
   let shared = 0;
-  for (const token of tokensA) if (tokensB.has(token)) shared += 1;
+  for (const token of tokensA) {if (tokensB.has(token)) {shared += 1;}}
   const union = tokensA.size + tokensB.size - shared;
   return union === 0 ? 0 : shared / union;
 }
@@ -538,9 +540,9 @@ function lexicalTokens(text: string): Set<string> {
   const lowered = text.toLowerCase();
   const tokens = new Set<string>();
   for (const match of lowered.match(/[a-z0-9_+#.-]{2,}/g) ?? [])
-    tokens.add(match);
+    {tokens.add(match);}
   const cjk = lowered.match(/[\u4e00-\u9fff]/g) ?? [];
-  for (let i = 0; i + 1 < cjk.length; i += 1) tokens.add(cjk[i] + cjk[i + 1]);
+  for (let i = 0; i + 1 < cjk.length; i += 1) {tokens.add(cjk[i] + cjk[i + 1]);}
   return tokens;
 }
 
@@ -564,7 +566,7 @@ export function looksLikeMultiScope(text: string): boolean {
 }
 
 export function needsClarification(text: string, category: string): boolean {
-  if (text.trim().length < 80) return true;
+  if (text.trim().length < 80) {return true;}
   if (category === "bug") {
     const hasRepro = [
       "reproduce",
@@ -607,7 +609,7 @@ export function chooseIssueConclusion(
   labels: string[],
   category: string,
   complexity: string,
-  duplicates: Array<{ score: number }>,
+  duplicates: { score: number }[],
 ): { conclusion: IssueAnalysis["conclusion"]; conclusionReason: string } {
   const state = (facts.state ?? "").toLowerCase();
   const joined = `${labels.join(" ")} ${text}`;
@@ -735,17 +737,17 @@ export function estimateIssueConfidence(
   owner: string,
 ): number {
   let score = 0.45;
-  if (body.trim().length >= 120) score += 0.12;
-  if (evidenceCount >= 3) score += 0.14;
-  if (duplicateCount > 0) score += 0.08;
-  if (owner !== ISSUE_UNASSIGNED) score += 0.08;
+  if (body.trim().length >= 120) {score += 0.12;}
+  if (evidenceCount >= 3) {score += 0.14;}
+  if (duplicateCount > 0) {score += 0.08;}
+  if (owner !== ISSUE_UNASSIGNED) {score += 0.08;}
   return Math.round(Math.max(0.35, Math.min(0.86, score)) * 100) / 100;
 }
 
 export function collectIssueEvidence(
   facts: IssueFacts,
   ctx: IssueEngineContext,
-  duplicates: Array<{ number: number; title: string; score: number }>,
+  duplicates: { number: number; title: string; score: number }[],
 ): IssueAnalysis["evidence"] {
   const evidence: IssueAnalysis["evidence"] = [
     {
@@ -766,12 +768,12 @@ export function collectIssueEvidence(
   }
   for (const item of ctx.knowledgeEvidence.slice(0, 4)) {
     const snippet = clipInline(item.snippet, 320);
-    if (!snippet) continue;
+    if (!snippet) {continue;}
     evidence.push({ source_type: "document", title: item.docName, snippet });
   }
   for (const member of ctx.teamMembers.slice(0, 3)) {
     const name = member.name.trim();
-    if (!name) continue;
+    if (!name) {continue;}
     const profile = memberProfileText(member).trim();
     evidence.push({
       source_type: "team_member",
@@ -783,7 +785,7 @@ export function collectIssueEvidence(
   const deduped: IssueAnalysis["evidence"] = [];
   for (const item of evidence) {
     const key = `${item.source_type}\u001f${item.title}\u001f${item.snippet.slice(0, 180)}`;
-    if (seen.has(key)) continue;
+    if (seen.has(key)) {continue;}
     seen.add(key);
     deduped.push(item);
   }
@@ -857,14 +859,14 @@ export function buildOwnerAllowList(input: {
     const normalized = String(value ?? "")
       .trim()
       .toLowerCase();
-    if (normalized) allowed.add(normalized);
+    if (normalized) {allowed.add(normalized);}
   }
   return allowed;
 }
 
 export function isAllowedOwner(owner: string, allowed: Set<string>): boolean {
   const normalized = owner.trim().toLowerCase();
-  if (["", "待分配", ISSUE_UNASSIGNED].includes(normalized)) return true;
+  if (["", "待分配", ISSUE_UNASSIGNED].includes(normalized)) {return true;}
   return allowed.has(normalized);
 }
 
@@ -884,7 +886,7 @@ export function mergeIssueAnalysis(
   allowedOwners: Set<string>,
 ): { result: IssueAnalysis; ownerValidation: OwnerValidation } {
   const merged: IssueAnalysis = { ...rule, ...llm };
-  if (merged.evidence.length === 0) merged.evidence = rule.evidence;
+  if (merged.evidence.length === 0) {merged.evidence = rule.evidence;}
   if (merged.duplicate_candidates.length === 0) {
     merged.duplicate_candidates = rule.duplicate_candidates;
   }
@@ -954,13 +956,13 @@ export interface PrEngineContext {
   ciSummary: {
     recentRuns: number;
     failedRuns: number;
-    failed: Array<{
+    failed: {
       name: string;
       conclusion: string | null;
       logsExcerpt: string;
-    }>;
+    }[];
   };
-  relatedIssues: Array<{ number: number; title: string; state: string }>;
+  relatedIssues: { number: number; title: string; state: string }[];
   codeReferences: number;
   knowledgeEvidence: number;
   conversationEvidence: number;
@@ -1223,12 +1225,12 @@ export function estimatePrConfidence(
   blockingIssues: string[],
 ): number {
   let score = 0.48;
-  if (hasFiles) score += 0.12;
-  if (ctx.codeReferences > 0) score += 0.08;
-  if (ctx.knowledgeEvidence > 0) score += 0.06;
-  if (ctx.conversationEvidence > 0) score += 0.05;
-  if (failedCi) score += 0.04;
-  if (blockingIssues.length > 0) score += 0.04;
+  if (hasFiles) {score += 0.12;}
+  if (ctx.codeReferences > 0) {score += 0.08;}
+  if (ctx.knowledgeEvidence > 0) {score += 0.06;}
+  if (ctx.conversationEvidence > 0) {score += 0.05;}
+  if (failedCi) {score += 0.04;}
+  if (blockingIssues.length > 0) {score += 0.04;}
   return Math.round(Math.max(0.38, Math.min(0.88, score)) * 100) / 100;
 }
 
@@ -1313,7 +1315,7 @@ export function normalizeReviewFindings(
     const severity = item.severity;
     const title = item.title.trim();
     const evidence = item.evidence.trim();
-    if (!title && !evidence) continue;
+    if (!title && !evidence) {continue;}
     normalized.push({
       severity,
       title: title || evidence.slice(0, 80),
@@ -1340,7 +1342,7 @@ export function blockingIssuesFromFindings(
       const action = finding.required_action.trim();
       const title = finding.title.trim();
       const message = title && action ? `${title}: ${action}` : title || action;
-      if (message) rows.push(message);
+      if (message) {rows.push(message);}
     }
   }
   return [...new Set(rows)];
@@ -1395,7 +1397,7 @@ export function mergePrReview(llm: PRReview, rule: PRReview): PRReview {
 export interface CiJobFact {
   name?: string;
   conclusion?: string;
-  steps?: Array<{ name?: string; conclusion?: string }>;
+  steps?: { name?: string; conclusion?: string }[];
 }
 
 export interface CiFacts {
@@ -1407,13 +1409,13 @@ export interface CiFacts {
 }
 
 export interface CiEngineContext {
-  recentPrs: Array<{ number: number; title: string; state: string }>;
+  recentPrs: { number: number; title: string; state: string }[];
   matchedPrNumber: number | null;
   codeReferences: number;
 }
 
 export function classifyCiFailure(logs: string): CIDebug["failure_type"] {
-  const orderedRules: Array<[CIDebug["failure_type"], string[]]> = [
+  const orderedRules: [CIDebug["failure_type"], string[]][] = [
     ["permission", ["permission", "denied", "forbidden", "eacces", "权限"]],
     [
       "environment",
@@ -1459,13 +1461,13 @@ export function classifyCiFailure(logs: string): CIDebug["failure_type"] {
     ],
   ];
   for (const [failureType, tokens] of orderedRules) {
-    if (tokens.some((token) => logs.includes(token))) return failureType;
+    if (tokens.some((token) => logs.includes(token))) {return failureType;}
   }
   return "unknown";
 }
 
 export function extractFirstError(logs: string): string | undefined {
-  if (!logs.trim()) return undefined;
+  if (!logs.trim()) {return undefined;}
   const lines = logs
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -1501,7 +1503,7 @@ export function extractRelatedFiles(logs: string): string[] {
     const cleaned = item
       .replace(/^["'`(){}[\]:,;]+|["'`(){}[\]:,;]+$/g, "")
       .replaceAll("\\", "/");
-    if (cleaned && !normalized.includes(cleaned)) normalized.push(cleaned);
+    if (cleaned && !normalized.includes(cleaned)) {normalized.push(cleaned);}
   }
   return normalized.slice(0, 8);
 }
@@ -1649,11 +1651,11 @@ export function estimateCiConfidence(
   ctx: CiEngineContext,
 ): number {
   let score = 0.42;
-  if (firstError) score += 0.16;
-  if (failedJobCount > 0) score += 0.12;
-  if (relatedFileCount > 0) score += 0.08;
-  if (ctx.recentPrs.length > 0) score += 0.05;
-  if (ctx.codeReferences > 0) score += 0.05;
+  if (firstError) {score += 0.16;}
+  if (failedJobCount > 0) {score += 0.12;}
+  if (relatedFileCount > 0) {score += 0.08;}
+  if (ctx.recentPrs.length > 0) {score += 0.05;}
+  if (ctx.codeReferences > 0) {score += 0.05;}
   return Math.round(Math.max(0.36, Math.min(0.86, score)) * 100) / 100;
 }
 
@@ -1758,7 +1760,7 @@ export function mergeCiDebug(llm: CIDebug, rule: CIDebug): CIDebug {
   if (merged.failure_type === "unknown" && rule.failure_type !== "unknown") {
     merged.failure_type = rule.failure_type;
   }
-  if (!merged.first_error) merged.first_error = rule.first_error;
+  if (!merged.first_error) {merged.first_error = rule.first_error;}
   return merged;
 }
 
@@ -1769,7 +1771,7 @@ export async function analyzeIssue(
     where: { id: issueId },
     include: { repo: true },
   });
-  if (!issue) throw new Error(`Issue ${issueId} not found`);
+  if (!issue) {throw new Error(`Issue ${issueId} not found`);}
 
   const siblings = await prisma.issue.findMany({
     where: { repoId: issue.repoId, id: { not: issueId } },
@@ -1791,7 +1793,7 @@ export async function analyzeIssue(
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
 
-  let knowledge: Array<{ docName: string; snippet: string }> = [];
+  let knowledge: { docName: string; snippet: string }[] = [];
   try {
     const hits = await searchKnowledge(
       issue.repoId,
@@ -1921,7 +1923,7 @@ export async function reviewPull(
     where: { id: prId },
     include: { repo: true, files: true, reviewComments: true },
   });
-  if (!pr) throw new Error(`Pull request ${prId} not found`);
+  if (!pr) {throw new Error(`Pull request ${prId} not found`);}
 
   let patchBudget = PATCH_CHARS_TOTAL;
   const files = pr.files.map((file) => {
@@ -1968,12 +1970,12 @@ export async function reviewPull(
         .filter((token) => token.length >= 3),
     ),
   ].slice(0, 4);
-  type IssueMatch = {
+  interface IssueMatch {
     number?: { in: number[] };
     title?: { contains: string; mode: "insensitive" };
-  };
+  }
   const conditions: IssueMatch[] = [];
-  if (refNumbers.length > 0) conditions.push({ number: { in: refNumbers } });
+  if (refNumbers.length > 0) {conditions.push({ number: { in: refNumbers } });}
   for (const token of branchTokens) {
     conditions.push({ title: { contains: token, mode: "insensitive" } });
   }
@@ -2101,7 +2103,7 @@ export async function reviewPull(
 }
 
 function summarizeCodeImpact(impact: ImpactReport | null) {
-  if (impact === null) return null;
+  if (impact === null) {return null;}
   const symbols = impact.symbols.slice(0, 20).map((s) => ({
     name: s.name,
     kind: s.kind,
@@ -2115,7 +2117,7 @@ function summarizeCodeImpact(impact: ImpactReport | null) {
     type: d.type,
     same_file: d.sameFile,
   }));
-  if (symbols.length === 0 && dependents.length === 0) return null;
+  if (symbols.length === 0 && dependents.length === 0) {return null;}
   return {
     symbols,
     dependents,
@@ -2124,10 +2126,10 @@ function summarizeCodeImpact(impact: ImpactReport | null) {
 }
 
 function parseCiJobs(jobs: unknown): CiJobFact[] {
-  if (!Array.isArray(jobs)) return [];
+  if (!Array.isArray(jobs)) {return [];}
   const rows: CiJobFact[] = [];
   for (const job of jobs) {
-    if (typeof job !== "object" || job === null) continue;
+    if (typeof job !== "object" || job === null) {continue;}
     const record = job as Record<string, unknown>;
     const steps = Array.isArray(record.steps)
       ? record.steps
@@ -2158,7 +2160,7 @@ export async function debugRun(
     where: { id: runId },
     include: { repo: true },
   });
-  if (!run) throw new Error(`Workflow run ${runId} not found`);
+  if (!run) {throw new Error(`Workflow run ${runId} not found`);}
 
   const recentPrRows = await prisma.pullRequest.findMany({
     where: { repoId: run.repoId },

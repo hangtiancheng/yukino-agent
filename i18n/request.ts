@@ -1,5 +1,6 @@
 import { cookies, headers } from "next/headers";
 import { getRequestConfig } from "next-intl/server";
+
 import { isLocale, LOCALE_COOKIE } from "@/lib/i18n/config";
 import { formats } from "@/lib/i18n/formats";
 import { negotiateLocale } from "@/lib/i18n/negotiate";

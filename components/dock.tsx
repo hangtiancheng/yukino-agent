@@ -1,9 +1,11 @@
 "use client";
 
-import { useRef } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useTranslations, type Messages } from "next-intl";
+import {
+  BookOpen,
+  BotMessageSquare,
+  FlaskConical,
+  FolderGit2,
+} from "lucide-react";
 import {
   motion,
   useMotionValue,
@@ -11,12 +13,11 @@ import {
   useTransform,
   type MotionValue,
 } from "motion/react";
-import {
-  BookOpen,
-  BotMessageSquare,
-  FlaskConical,
-  FolderGit2,
-} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useTranslations, type Messages } from "next-intl";
+import { useRef } from "react";
+
 import { cn } from "@/lib/utils";
 
 const BASE_SIZE = 40;
@@ -71,7 +72,7 @@ function DockItem({
 
   const distance = useTransform(mouseX, (x) => {
     const bounds = tileRef.current?.getBoundingClientRect();
-    if (!bounds) return Infinity;
+    if (!bounds) {return Infinity;}
     return x - (bounds.x + bounds.width / 2);
   });
   const size = useSpring(
@@ -128,8 +129,8 @@ export default function Dock() {
     <div className="pointer-events-none fixed inset-x-0 bottom-3 z-50 flex justify-center">
       <nav
         aria-label={t("navigation")}
-        onMouseMove={(e) => mouseX.set(e.clientX)}
-        onMouseLeave={() => mouseX.set(Infinity)}
+        onMouseMove={(e) => { mouseX.set(e.clientX); }}
+        onMouseLeave={() => { mouseX.set(Infinity); }}
         className={cn(
           "pointer-events-auto flex items-end gap-2 rounded-2xl p-2 shadow-2xl backdrop-blur-xl",
           "bg-background/70 border border-white/40 dark:border-white/10",

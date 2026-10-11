@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 import {
   FileCode2,
   GitBranch,
@@ -10,6 +8,12 @@ import {
   Search,
   Share2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+
+import { notify } from "@/components/devflow/notify";
+import PageHeader from "@/components/devflow/page-header";
+import { dfGet, dfPost, useDevflow } from "@/components/devflow/provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,9 +26,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { notify } from "@/components/devflow/notify";
-import PageHeader from "@/components/devflow/page-header";
-import { dfGet, dfPost, useDevflow } from "@/components/devflow/provider";
 import type { WorkspaceStatus } from "@/lib/devflow/types";
 
 interface SymbolRow {
@@ -143,11 +144,11 @@ export default function DevflowCodeGraphPage() {
       setImpact(null);
       try {
         const ws = await dfGet<WorkspaceStatus>(`/repos/${repoId}/workspace`);
-        if (!cancelled) setWorkspace(ws);
+        if (!cancelled) {setWorkspace(ws);}
       } catch {
-        if (!cancelled) setWorkspace(null);
+        if (!cancelled) {setWorkspace(null);}
       } finally {
-        if (!cancelled) setStatusLoading(false);
+        if (!cancelled) {setStatusLoading(false);}
       }
     })();
     return () => {
@@ -167,9 +168,9 @@ export default function DevflowCodeGraphPage() {
       setSymbolsLoading(true);
       try {
         const params = new URLSearchParams();
-        if (committed?.query) params.set("query", committed.query);
-        if (committed?.kind) params.set("kind", committed.kind);
-        if (committed?.language) params.set("language", committed.language);
+        if (committed?.query) {params.set("query", committed.query);}
+        if (committed?.kind) {params.set("kind", committed.kind);}
+        if (committed?.language) {params.set("language", committed.language);}
         params.set("limit", "100");
         const result = await dfGet<SymbolSearchResponse>(
           `/repos/${repoId}/code-graph?${params.toString()}`,
@@ -187,7 +188,7 @@ export default function DevflowCodeGraphPage() {
           notify.error(e instanceof Error ? e.message : String(e));
         }
       } finally {
-        if (!cancelled) setSymbolsLoading(false);
+        if (!cancelled) {setSymbolsLoading(false);}
       }
     })();
     return () => {
@@ -204,7 +205,7 @@ export default function DevflowCodeGraphPage() {
   };
 
   const handleRebuild = async () => {
-    if (!repoId) return;
+    if (!repoId) {return;}
     setRebuilding(true);
     try {
       const result = await dfPost<RebuildSummary>(
@@ -230,7 +231,7 @@ export default function DevflowCodeGraphPage() {
 
   const handleImpact = async () => {
     const files = impactInput.trim();
-    if (!repoId || !files) return;
+    if (!repoId || !files) {return;}
     setImpactLoading(true);
     setImpact(null);
     try {
@@ -314,27 +315,27 @@ export default function DevflowCodeGraphPage() {
           <Input
             placeholder={t("searchPlaceholder")}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleSearch();
+              if (e.key === "Enter") {handleSearch();}
             }}
             className="min-w-56 flex-1"
           />
           <Input
             placeholder={t("kindPlaceholder")}
             value={kind}
-            onChange={(e) => setKind(e.target.value)}
+            onChange={(e) => { setKind(e.target.value); }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleSearch();
+              if (e.key === "Enter") {handleSearch();}
             }}
             className="w-44"
           />
           <Input
             placeholder={t("languagePlaceholder")}
             value={language}
-            onChange={(e) => setLanguage(e.target.value)}
+            onChange={(e) => { setLanguage(e.target.value); }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleSearch();
+              if (e.key === "Enter") {handleSearch();}
             }}
             className="w-40"
           />
@@ -493,9 +494,9 @@ export default function DevflowCodeGraphPage() {
             <Input
               placeholder={t("impactPlaceholder")}
               value={impactInput}
-              onChange={(e) => setImpactInput(e.target.value)}
+              onChange={(e) => { setImpactInput(e.target.value); }}
               onKeyDown={(e) => {
-                if (e.key === "Enter") void handleImpact();
+                if (e.key === "Enter") {void handleImpact();}
               }}
               className="flex-1 font-mono text-xs"
             />

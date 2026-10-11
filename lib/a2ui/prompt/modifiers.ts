@@ -9,11 +9,11 @@ export function removeStrictValidation(schema: JsonValue): JsonValue {
     for (const [key, value] of Object.entries(schema)) {
       newSchema[key] = removeStrictValidation(value);
     }
-    if (newSchema["additionalProperties"] === false) {
-      delete newSchema["additionalProperties"];
+    if (newSchema.additionalProperties === false) {
+      delete newSchema.additionalProperties;
     }
-    if (newSchema["unevaluatedProperties"] === false) {
-      delete newSchema["unevaluatedProperties"];
+    if (newSchema.unevaluatedProperties === false) {
+      delete newSchema.unevaluatedProperties;
     }
     return newSchema;
   }

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+
 import { z } from "zod/v4";
+
 import {
   GitHubIssueSchema,
   GitHubPullRequestFileSchema,

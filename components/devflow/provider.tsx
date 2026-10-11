@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+
 import type { RepoSummary } from "@/lib/devflow/types";
 
 export class DevflowApiError extends Error {
@@ -78,8 +79,8 @@ function pickRepoId(
   current: string,
   stored: string,
 ): string {
-  if (current && items.some((r) => r.id === current)) return current;
-  if (stored && items.some((r) => r.id === stored)) return stored;
+  if (current && items.some((r) => r.id === current)) {return current;}
+  if (stored && items.some((r) => r.id === stored)) {return stored;}
   return items[0]?.id ?? "";
 }
 
@@ -126,15 +127,15 @@ export function DevflowProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const items = await dfGet<RepoSummary[]>("/repos");
-        if (cancelled) return;
+        if (cancelled) {return;}
         setRepos(items);
         setRepoIdState((current) =>
           pickRepoId(items, current, readStoredRepoId()),
         );
       } catch {
-        if (!cancelled) setRepos([]);
+        if (!cancelled) {setRepos([]);}
       } finally {
-        if (!cancelled) setReposLoading(false);
+        if (!cancelled) {setReposLoading(false);}
       }
     })();
     return () => {

@@ -1,4 +1,5 @@
 import type { A2uiMessage } from "@a2ui/web_core/v0_9";
+
 import { SHADCN_CATALOG_ID } from "@/catalog";
 
 const SURFACE_ID = "gallery-surface";

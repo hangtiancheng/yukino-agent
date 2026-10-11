@@ -1,13 +1,18 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { z } from "zod/v4";
+
 import { load as loadYaml } from "js-yaml";
+import { z } from "zod/v4";
+
+import type { ProjectIndex, Repository } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
+import { indexChunks, deleteBySourcePrefix } from "@/lib/milvus/indexer";
+
 import { chunkDocument, siblingIdsByParent } from "./chunking";
 import { chunkRowMetadata, getKnowledgeConfig } from "./rag";
-import { indexChunks, deleteBySourcePrefix } from "@/lib/milvus/indexer";
 import { scopedRetrieve } from "./search";
 import {
   repoCheckoutPath,
@@ -15,8 +20,7 @@ import {
   workspaceStatus,
   WorkspaceError,
 } from "./workspace";
-import type { ProjectIndex, Repository } from "@/generated/prisma/client";
-import { Prisma } from "@/generated/prisma/client";
+
 
 const asJson = (value: unknown): Prisma.InputJsonValue =>
   value as Prisma.InputJsonValue;
@@ -96,7 +100,7 @@ function docSource(repoId: string, rel: string): string {
 function classify(rel: string): ProjectDocCandidate | null {
   const name = path.basename(rel);
   const lower = name.toLowerCase();
-  if (SECRET_FILENAMES.has(name)) return null;
+  if (SECRET_FILENAMES.has(name)) {return null;}
   const dirParts = path.dirname(rel).split(path.sep);
   const underDocs = dirParts.some((p) => p === "docs" || p === "doc");
 
@@ -136,11 +140,11 @@ export async function discoverProjectDocs(
   const out: ProjectDocCandidate[] = [];
   let visited = 0;
   const walk = async (dir: string): Promise<void> => {
-    if (out.length >= maxFiles || visited > 5000) return;
+    if (out.length >= maxFiles || visited > 5000) {return;}
     const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
     for (const entry of entries) {
-      if (out.length >= maxFiles || visited > 5000) return;
-      if (SKIP_DIRS.has(entry.name)) continue;
+      if (out.length >= maxFiles || visited > 5000) {return;}
+      if (SKIP_DIRS.has(entry.name)) {continue;}
       const abs = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         await walk(abs);
@@ -166,19 +170,19 @@ export async function discoverProjectDocs(
 
 function detectTechStack(files: Set<string>): string[] {
   const stack: string[] = [];
-  if (files.has("package.json")) stack.push("JavaScript/TypeScript");
-  if (files.has("tsconfig.json")) stack.push("TypeScript");
+  if (files.has("package.json")) {stack.push("JavaScript/TypeScript");}
+  if (files.has("tsconfig.json")) {stack.push("TypeScript");}
   if (
     files.has("pyproject.toml") ||
     files.has("requirements.txt") ||
     files.has("setup.py")
   )
-    stack.push("Python");
-  if (files.has("go.mod")) stack.push("Go");
-  if (files.has("Cargo.toml")) stack.push("Rust");
-  if (files.has("pom.xml") || files.has("build.gradle")) stack.push("Java");
-  if (files.has("composer.json")) stack.push("PHP");
-  if (files.has("Gemfile")) stack.push("Ruby");
+    {stack.push("Python");}
+  if (files.has("go.mod")) {stack.push("Go");}
+  if (files.has("Cargo.toml")) {stack.push("Rust");}
+  if (files.has("pom.xml") || files.has("build.gradle")) {stack.push("Java");}
+  if (files.has("composer.json")) {stack.push("PHP");}
+  if (files.has("Gemfile")) {stack.push("Ruby");}
   return stack;
 }
 
@@ -241,7 +245,7 @@ export function globToRegExp(pattern: string): RegExp {
   let re = "^";
   let i = 0;
   while (i < pattern.length) {
-    const ch = pattern[i] as string;
+    const ch = pattern[i];
     if (ch === "*") {
       re += ".*";
       i += 1;
@@ -255,7 +259,7 @@ export function globToRegExp(pattern: string): RegExp {
         i += 1;
       } else {
         let inner = pattern.slice(i + 1, close);
-        if (inner.startsWith("!")) inner = `^${inner.slice(1)}`;
+        if (inner.startsWith("!")) {inner = `^${inner.slice(1)}`;}
         re += `[${inner}]`;
         i = close + 1;
       }
@@ -292,7 +296,7 @@ export function parseIndexPolicyYaml(raw: string): ProjectIndexPolicy {
       `Could not read .devflow/index.yml: ${e instanceof Error ? e.message : String(e)}`,
     );
   }
-  if (parsed === null || parsed === undefined) return { ...DEFAULT_POLICY };
+  if (parsed === null || parsed === undefined) {return { ...DEFAULT_POLICY };}
   const validated = INDEX_POLICY_SCHEMA.safeParse(parsed);
   if (!validated.success) {
     throw new Error(
@@ -329,11 +333,11 @@ export async function loadProjectIndexPolicy(
     );
     return parseIndexPolicyYaml(raw);
   } catch (e) {
-    if (e instanceof Error && e.message.startsWith("Could not read")) throw e;
+    if (e instanceof Error && e.message.startsWith("Could not read")) {throw e;}
     if ((e as NodeJS.ErrnoException).code === "ENOENT")
-      return { ...DEFAULT_POLICY };
+      {return { ...DEFAULT_POLICY };}
     if (e instanceof Error && e.message.startsWith(".devflow/index.yml"))
-      throw e;
+      {throw e;}
     return { ...DEFAULT_POLICY };
   }
 }
@@ -352,10 +356,10 @@ export function policyAllows(
   candidate: { rel: string; sourceType: string },
   policy: ProjectIndexPolicy,
 ): boolean {
-  if (matchesAny(candidate.rel, policy.exclude)) return false;
-  if (candidate.sourceType === "manifest") return policy.includeManifests;
+  if (matchesAny(candidate.rel, policy.exclude)) {return false;}
+  if (candidate.sourceType === "manifest") {return policy.includeManifests;}
   if (policy.mode === "allowlist")
-    return matchesAny(candidate.rel, policy.include);
+    {return matchesAny(candidate.rel, policy.include);}
   return true;
 }
 
@@ -365,8 +369,8 @@ async function readBounded(
 ): Promise<string | null> {
   try {
     const data = await readFile(file);
-    if (data.length === 0 || data.length > maxBytes) return null;
-    if (data.subarray(0, 4096).includes(0)) return null;
+    if (data.length === 0 || data.length > maxBytes) {return null;}
+    if (data.subarray(0, 4096).includes(0)) {return null;}
     return data.toString("utf8");
   } catch {
     return null;
@@ -431,7 +435,7 @@ function extractTitle(text: string, fallback: string): string {
     const stripped = line.trim();
     if (stripped.startsWith("# ")) {
       const title = stripped.slice(2).trim().slice(0, 500);
-      if (title !== "") return title;
+      if (title !== "") {return title;}
       return fallback;
     }
   }
@@ -464,9 +468,9 @@ export async function indexProject(repo: Repository): Promise<{
     for (const candidate of candidates) {
       const abs = path.join(synced.path, ...candidate.rel.split("/"));
       const text = await readBounded(abs, maxBytes);
-      if (text === null) continue;
+      if (text === null) {continue;}
       const chunks = chunkDocument(text, candidate.rel, 1800, 180);
-      if (chunks.length === 0) continue;
+      if (chunks.length === 0) {continue;}
       const source = docSource(repo.id, candidate.rel);
       const docTitle = extractTitle(text, candidate.rel);
       const idFor = (i: number) =>

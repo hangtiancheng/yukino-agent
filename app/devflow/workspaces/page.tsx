@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useFormatter, useTranslations } from "next-intl";
 import {
   Boxes,
   CalendarRange,
@@ -10,6 +8,18 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+
+import DevflowMarkdown from "@/components/devflow/markdown";
+import { notify } from "@/components/devflow/notify";
+import PageHeader from "@/components/devflow/page-header";
+import {
+  dfDelete,
+  dfGet,
+  dfPost,
+  useDevflow,
+} from "@/components/devflow/provider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,15 +60,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { notify } from "@/components/devflow/notify";
-import PageHeader from "@/components/devflow/page-header";
-import DevflowMarkdown from "@/components/devflow/markdown";
-import {
-  dfDelete,
-  dfGet,
-  dfPost,
-  useDevflow,
-} from "@/components/devflow/provider";
 
 interface WorkspaceRepoCount {
   repoId: string;
@@ -223,7 +224,7 @@ function CreateWorkspaceDialog({
               id="ws-name"
               placeholder={t("dialog.namePlaceholder")}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); }}
             />
           </Field>
           <Field>
@@ -237,7 +238,7 @@ function CreateWorkspaceDialog({
               id="ws-description"
               rows={2}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => { setDescription(e.target.value); }}
             />
           </Field>
           <div className="space-y-2">
@@ -255,8 +256,7 @@ function CreateWorkspaceDialog({
                   >
                     <Checkbox
                       checked={selectedRepoIds.includes(repo.id)}
-                      onCheckedChange={(checked) =>
-                        toggleRepo(repo.id, checked === true)
+                      onCheckedChange={(checked) => { toggleRepo(repo.id, checked); }
                       }
                     />
                     {repo.fullName}
@@ -270,7 +270,7 @@ function CreateWorkspaceDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => { onOpenChange(false); }}>
             {tc("cancel")}
           </Button>
           <Button onClick={() => void create()} disabled={creating}>
@@ -307,7 +307,7 @@ export default function DevflowWorkspacesPage() {
     (async () => {
       try {
         const items = await dfGet<WorkspaceListItem[]>("/workspaces");
-        if (cancelled) return;
+        if (cancelled) {return;}
         setWorkspaces(items);
         setSelectedId((current) =>
           items.some((item) => item.id === current)
@@ -315,9 +315,9 @@ export default function DevflowWorkspacesPage() {
             : (items[0]?.id ?? ""),
         );
       } catch {
-        if (!cancelled) setWorkspaces([]);
+        if (!cancelled) {setWorkspaces([]);}
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {setLoading(false);}
       }
     })();
     return () => {
@@ -335,14 +335,14 @@ export default function DevflowWorkspacesPage() {
       setDetailLoading(true);
       try {
         const data = await dfGet<WorkspaceDetail>(`/workspaces/${selectedId}`);
-        if (cancelled) return;
+        if (cancelled) {return;}
         setDetail(data);
       } catch (e) {
-        if (cancelled) return;
+        if (cancelled) {return;}
         setDetail(null);
         notify.error(e instanceof Error ? e.message : String(e));
       } finally {
-        if (!cancelled) setDetailLoading(false);
+        if (!cancelled) {setDetailLoading(false);}
       }
     })();
     return () => {
@@ -356,7 +356,7 @@ export default function DevflowWorkspacesPage() {
   };
 
   const remove = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget) {return;}
     try {
       await dfDelete(`/workspaces/${deleteTarget.id}`);
       notify.success(t("deleted", { name: deleteTarget.name }));
@@ -372,7 +372,7 @@ export default function DevflowWorkspacesPage() {
   };
 
   const generate = async () => {
-    if (!selectedId) return;
+    if (!selectedId) {return;}
     if (startDate > endDate) {
       notify.error(t("invalidRange"));
       return;
@@ -386,7 +386,7 @@ export default function DevflowWorkspacesPage() {
       );
       setReport(result);
       notify.success(t("generated"));
-      setTimeout(() => setDetailReloadKey((key) => key + 1), 3_000);
+      setTimeout(() => { setDetailReloadKey((key) => key + 1); }, 3_000);
     } catch (e) {
       notify.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -402,7 +402,7 @@ export default function DevflowWorkspacesPage() {
         title={t("title")}
         description={t("description")}
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => { setCreateOpen(true); }}>
             <Plus />
             {t("create")}
           </Button>
@@ -444,7 +444,7 @@ export default function DevflowWorkspacesPage() {
                 >
                   <button
                     type="button"
-                    onClick={() => selectWorkspace(item.id)}
+                    onClick={() => { selectWorkspace(item.id); }}
                     className="hover:bg-accent/50 w-full rounded-lg p-3 pr-9 text-left transition-colors"
                   >
                     <div className="text-foreground truncate text-sm font-medium">
@@ -468,7 +468,7 @@ export default function DevflowWorkspacesPage() {
                     size="icon"
                     variant="ghost"
                     className="text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 size-7"
-                    onClick={() => setDeleteTarget(item)}
+                    onClick={() => { setDeleteTarget(item); }}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
@@ -601,7 +601,7 @@ export default function DevflowWorkspacesPage() {
                           id="ws-start"
                           type="date"
                           value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
+                          onChange={(e) => { setStartDate(e.target.value); }}
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -610,7 +610,7 @@ export default function DevflowWorkspacesPage() {
                           id="ws-end"
                           type="date"
                           value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
+                          onChange={(e) => { setEndDate(e.target.value); }}
                         />
                       </div>
                       <Button
@@ -729,7 +729,7 @@ export default function DevflowWorkspacesPage() {
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
+          if (!open) {setDeleteTarget(null);}
         }}
       >
         <AlertDialogContent>

@@ -1,9 +1,12 @@
-import path from "node:path";
 import { stat } from "node:fs/promises";
+import path from "node:path";
+
 import { z } from "zod/v4";
-import { prisma } from "@/lib/db";
-import { config } from "@/lib/config";
+
 import type { CodeSymbol } from "@/generated/prisma/client";
+import { config } from "@/lib/config";
+import { prisma } from "@/lib/db";
+
 import {
   getRepoOrThrow,
   listFiles,
@@ -28,10 +31,10 @@ export interface ExtractedSymbol {
 }
 
 function kindFromDeclaration(declaration: string): string {
-  if (/\bclass\b/.test(declaration)) return "class";
-  if (/\binterface\b/.test(declaration)) return "interface";
-  if (/\btype\b/.test(declaration)) return "type";
-  if (/\benum\b/.test(declaration)) return "enum";
+  if (/\bclass\b/.test(declaration)) {return "class";}
+  if (/\binterface\b/.test(declaration)) {return "interface";}
+  if (/\btype\b/.test(declaration)) {return "type";}
+  if (/\benum\b/.test(declaration)) {return "enum";}
   return "function";
 }
 
@@ -134,7 +137,7 @@ function suffixOf(filePath: string): string {
 
 function languageForPath(filePath: string): string {
   const suffix = suffixOf(filePath).replace(/^\./, "");
-  if (suffix) return suffix;
+  if (suffix) {return suffix;}
   return (filePath.split(/[\\/]/).pop() ?? filePath).toLowerCase();
 }
 
@@ -177,14 +180,14 @@ export function extractSymbols(
   filePath: string,
 ): ExtractedSymbol[] {
   const patterns = patternsForSuffix(suffixOf(filePath));
-  if (patterns.length === 0) return [];
+  if (patterns.length === 0) {return [];}
   const lines = text.split("\n");
-  const starts: Array<{ line: number; name: string; kind: string }> = [];
+  const starts: { line: number; name: string; kind: string }[] = [];
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i] ?? "";
     for (const { pattern, kind, kindOf } of patterns) {
       const match = pattern.exec(line);
-      if (!match || !match[1]) continue;
+      if (!match?.[1]) {continue;}
       starts.push({
         line: i + 1,
         name: match[1],
@@ -193,7 +196,7 @@ export function extractSymbols(
       break;
     }
   }
-  if (starts.length === 0) return [];
+  if (starts.length === 0) {return [];}
   const language = languageForPath(filePath);
   return starts.map((start, index) => {
     const next = starts[index + 1];
@@ -250,9 +253,9 @@ export function extractImportTargets(text: string): ExtractedImport[] {
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i += 1) {
     const match = IMPORT_RE.exec(lines[i] ?? "");
-    if (!match) continue;
+    if (!match) {continue;}
     const target = match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5];
-    if (target) out.push({ target, line: i + 1 });
+    if (target) {out.push({ target, line: i + 1 });}
   }
   return out;
 }
@@ -262,8 +265,8 @@ function enclosingSymbol(
   line: number,
 ): string | null {
   for (const symbol of symbols) {
-    if (symbol.startLine > line) break;
-    if (symbol.startLine <= line && line <= symbol.endLine) return symbol.name;
+    if (symbol.startLine > line) {break;}
+    if (symbol.startLine <= line && line <= symbol.endLine) {return symbol.name;}
   }
   return null;
 }
@@ -278,7 +281,7 @@ export function extractCallSites(
     const line = lines[i] ?? "";
     for (const match of line.matchAll(CALL_RE)) {
       const name = match[1];
-      if (!name || CALL_NOISE.has(name)) continue;
+      if (!name || CALL_NOISE.has(name)) {continue;}
       out.push({
         name,
         line: i + 1,
@@ -312,7 +315,7 @@ export function buildRelations(
   const seen = new Set<string>();
   const push = (relation: ExtractedRelation): void => {
     const key = `${relation.type}\u001f${relation.path}\u001f${relation.sourceName}\u001f${relation.targetName}`;
-    if (seen.has(key)) return;
+    if (seen.has(key)) {return;}
     seen.add(key);
     out.push(relation);
   };
@@ -336,7 +339,7 @@ export function buildRelations(
       });
     }
     for (const call of file.calls) {
-      if (!knownSymbolNames.has(call.name)) continue;
+      if (!knownSymbolNames.has(call.name)) {continue;}
       push({
         sourceName: call.enclosing ?? file.path,
         targetName: call.name,
@@ -440,7 +443,7 @@ export async function rebuildCodeGraph(
       where: { repoId, branch, prNumber: null },
     });
     if (symbolRows.length > 0)
-      await tx.codeSymbol.createMany({ data: symbolRows });
+      {await tx.codeSymbol.createMany({ data: symbolRows });}
     if (relationRows.length > 0) {
       await tx.codeRelation.createMany({ data: relationRows });
     }
@@ -469,11 +472,11 @@ export function rankSymbolMatches<T extends { name: string; path: string }>(
   query: string,
 ): T[] {
   const q = query.trim().toLowerCase();
-  if (!q) return rows;
+  if (!q) {return rows;}
   const score = (row: T): number => {
     const name = row.name.toLowerCase();
-    if (name.startsWith(q)) return 0;
-    if (name.includes(q)) return 1;
+    if (name.startsWith(q)) {return 0;}
+    if (name.includes(q)) {return 1;}
     return 2;
   };
   return [...rows].sort(
@@ -570,8 +573,8 @@ export async function searchCodeGraph(
     const checkoutStat = await stat(checkout).catch(() => null);
     if (checkoutStat?.isDirectory()) {
       for (const symbol of symbols) {
-        if (documents.length >= limit) break;
-        if (symbol.startLine === null) continue;
+        if (documents.length >= limit) {break;}
+        if (symbol.startLine === null) {continue;}
         try {
           const excerpt = await readCodeFile(checkout, symbol.path, {
             startLine: symbol.startLine,
@@ -621,13 +624,13 @@ export interface ImpactDependent {
 export function computeImpact<TSymbol extends { path: string; name: string }>(
   files: string[],
   symbols: TSymbol[],
-  relations: Array<{
+  relations: {
     sourceName: string | null;
     targetName: string;
     type: string;
     path: string | null;
     meta?: unknown;
-  }>,
+  }[],
 ): { symbols: TSymbol[]; dependents: ImpactDependent[] } {
   const changed = new Set(files.map(normalizeFilePath));
   const changedSymbols = symbols.filter((symbol) =>
@@ -637,11 +640,11 @@ export function computeImpact<TSymbol extends { path: string; name: string }>(
   const dependents: ImpactDependent[] = [];
   const seen = new Set<string>();
   for (const relation of relations) {
-    if (relation.type === "defines") continue;
-    if (!names.has(relation.targetName)) continue;
-    if (relation.sourceName === relation.targetName) continue;
+    if (relation.type === "defines") {continue;}
+    if (!names.has(relation.targetName)) {continue;}
+    if (relation.sourceName === relation.targetName) {continue;}
     const key = `${relation.type}\u001f${relation.path ?? ""}\u001f${relation.sourceName ?? ""}\u001f${relation.targetName}`;
-    if (seen.has(key)) continue;
+    if (seen.has(key)) {continue;}
     seen.add(key);
     dependents.push({
       path: relation.path,
@@ -679,7 +682,7 @@ export async function impactForFiles(
     ...new Set(files.map(normalizeFilePath).filter(Boolean)),
   ].slice(0, IMPACT_MAX_FILES);
   if (normalized.length === 0)
-    return { files: [], symbols: [], dependents: [] };
+    {return { files: [], symbols: [], dependents: [] };}
   const symbols = await prisma.codeSymbol.findMany({
     where: { repoId, prNumber: null, path: { in: normalized } },
     orderBy: [{ path: "asc" }, { startLine: "asc" }],

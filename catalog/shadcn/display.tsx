@@ -1,11 +1,20 @@
 import { createComponentImplementation } from "@a2ui/react/v0_9";
+import type {
+  ResolvedChildRef} from "@a2ui/web_core/v0_9";
+import {
+  ComponentIdSchema,
+  DynamicNumberSchema,
+  DynamicStringSchema
+} from "@a2ui/web_core/v0_9";
+import { z } from "zod/v3";
 
-import { AspectRatio as UIAspectRatio } from "@/components/ui/aspect-ratio";
+import { CatalogIcon } from "@/catalog/components/icon";
 import {
   Alert as UIAlert,
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
+import { AspectRatio as UIAspectRatio } from "@/components/ui/aspect-ratio";
 import {
   Avatar as UIAvatar,
   AvatarFallback,
@@ -39,15 +48,9 @@ import { ScrollArea as UIScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton as UISkeleton } from "@/components/ui/skeleton";
 import { Spinner as UISpinner } from "@/components/ui/spinner";
 import { cn, weightStyle } from "@/lib/utils";
-import { CatalogIcon } from "@/catalog/components/icon";
+
 import { ICON_NAME, COMMON } from "./common";
-import { z } from "zod/v3";
-import {
-  ComponentIdSchema,
-  DynamicNumberSchema,
-  DynamicStringSchema,
-  ResolvedChildRef,
-} from "@a2ui/web_core/v0_9";
+
 
 export const AlertApi = {
   name: "Alert",

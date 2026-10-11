@@ -1,8 +1,9 @@
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
-import { prisma } from "@/lib/db";
+
 import { requireOncallAdmin } from "@/lib/ai/admin";
 import { validateChatPrompt } from "@/lib/ai/prompts-skills";
+import { prisma } from "@/lib/db";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -46,7 +47,7 @@ function adminFailure(
 export async function PATCH(request: Request, context: RouteContext) {
   const t = await getTranslations("api.oncall");
   const admin = requireOncallAdmin(request);
-  if (admin !== null) return adminFailure(admin);
+  if (admin !== null) {return adminFailure(admin);}
   const { id } = await context.params;
   const parsed = promptPatchSchema.safeParse(
     await request.json().catch(() => null),
@@ -137,7 +138,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 export async function DELETE(request: Request, context: RouteContext) {
   const t = await getTranslations("api.oncall");
   const admin = requireOncallAdmin(request);
-  if (admin !== null) return adminFailure(admin);
+  if (admin !== null) {return adminFailure(admin);}
   const { id } = await context.params;
   try {
     const existing = await prisma.chatPrompt.findUnique({ where: { id } });

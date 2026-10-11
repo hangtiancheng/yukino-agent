@@ -1,7 +1,7 @@
-import { useId } from "react";
 
 import { createComponentImplementation } from "@a2ui/react/v0_9";
 import { CheckBoxApi } from "@a2ui/web_core/v0_9/basic_catalog";
+import { useId } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -19,7 +19,7 @@ export const CheckBox = createComponentImplementation(
           <Checkbox
             id={id}
             checked={!!props.value}
-            onCheckedChange={(checked) => props.setValue(checked === true)}
+            onCheckedChange={(checked) => { props.setValue(checked); }}
             aria-invalid={hasError || undefined}
           />
           {props.label && <FieldLabel htmlFor={id}>{props.label}</FieldLabel>}

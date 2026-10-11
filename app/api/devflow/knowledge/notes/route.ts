@@ -1,7 +1,8 @@
 import { z } from "zod/v4";
+
 import { prisma } from "@/lib/db";
-import { addMemoryNote } from "@/lib/devflow/rag";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
+import { addMemoryNote } from "@/lib/devflow/rag";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
     const repo = await prisma.repository.findUnique({
       where: { id: parsed.data.repoId },
     });
-    if (!repo) return fail(404, "repoNotFound");
+    if (!repo) {return fail(404, "repoNotFound");}
     const result = await addMemoryNote(parsed.data);
     return ok(result, result.status === "skipped" ? 200 : 201);
   } catch (e) {

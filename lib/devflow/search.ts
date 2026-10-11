@@ -1,9 +1,10 @@
+import { rerankEnabled, tryRerank } from "@/lib/ai/rerank";
 import {
   retrieveRaw,
   type RetrievedDoc,
   type RetrievalMethod,
 } from "@/lib/milvus/retriever";
-import { rerankEnabled, tryRerank } from "@/lib/ai/rerank";
+
 import {
   dedupeNearDuplicates,
   limitPerParent,
@@ -44,7 +45,7 @@ export async function scopedRetrieve(
       Math.min(topK, pool.length),
     );
     if (items && items.length > 0) {
-      ranked = items.map((r) => ({ ...pool[r.index]!, score: r.score }));
+      ranked = items.map((r) => ({ ...pool[r.index], score: r.score }));
     }
   }
   if (ranked.length === 0) {
@@ -52,7 +53,7 @@ export async function scopedRetrieve(
     ranked = heuristic.ranked;
     for (const doc of ranked) {
       const reason = heuristic.reasons.get(doc.id);
-      if (reason) reasons.set(doc.id, reason);
+      if (reason) {reasons.set(doc.id, reason);}
     }
   }
 

@@ -14,7 +14,7 @@ export function summarizeAuditText(value: unknown): string {
     }
   }
   const normalized = text.split(/\s+/).join(" ").trim();
-  if (normalized.length <= AUDIT_TEXT_CHARS) return normalized;
+  if (normalized.length <= AUDIT_TEXT_CHARS) {return normalized;}
   return `${normalized.slice(0, AUDIT_TEXT_CHARS - 3)}...`;
 }
 

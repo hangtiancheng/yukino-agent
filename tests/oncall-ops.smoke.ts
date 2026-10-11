@@ -12,12 +12,12 @@ import {
   type AlertSourceConfig,
 } from "@/lib/ai/alerts";
 import { buildAiOpsQuery } from "@/lib/ai/pipelines/plan-execute-replan";
+import { findUnknownToolReferences } from "@/lib/ai/pipelines/plan-execute-replan/executor";
 import {
   AIOPS_REPORT_REQUIRED_MARKERS,
   cleanMarkdownReport,
   fallbackReportContent,
 } from "@/lib/ai/pipelines/plan-execute-replan/graph";
-import { findUnknownToolReferences } from "@/lib/ai/pipelines/plan-execute-replan/executor";
 import {
   isValidSkillName,
   validateChatPrompt,
@@ -65,7 +65,7 @@ const alertmanagerPayload = [
 {
   const alerts = parseAlertmanagerAlerts(alertmanagerPayload, "am-main");
   assert.equal(alerts.length, 1, "only the active alert survives the filter");
-  const a = alerts[0] as Alert;
+  const a = alerts[0];
   assert.equal(a.alert_name, "HighErrorRate");
   assert.equal(a.service, "checkout");
   assert.equal(a.severity, "critical");
@@ -75,7 +75,7 @@ const alertmanagerPayload = [
   assert.equal(a.source, "am-main");
   assert.equal(a.description, "checkout error ratio above 5%");
   assert.equal(a.context_url, "https://dash.example/high-error-rate");
-  assert.equal(a.annotations["value"], undefined);
+  assert.equal(a.annotations.value, undefined);
 }
 
 {
@@ -204,7 +204,7 @@ const alertmanagerPayload = [
   );
   const amSeen = seen.find((s) => s.url.includes("alertmanager"));
   assert.equal(
-    amSeen?.headers?.["Authorization"],
+    amSeen?.headers?.Authorization,
     `Basic ${Buffer.from("user:pass").toString("base64")}`,
     "basic auth header (alerts.py:189-193)",
   );
@@ -381,8 +381,8 @@ const alertmanagerPayload = [
   const failures: string[] = [];
   const expectFail = (content: string, fileName?: string, why = "?") => {
     const r = validateSkillMarkdown(content, fileName);
-    if (r.ok) failures.push(why);
-    else assert.ok(r.error.length > 0, why);
+    if (r.ok) {failures.push(why);}
+    else {assert.ok(r.error.length > 0, why);}
   };
   expectFail("no frontmatter here", undefined, "missing frontmatter");
   expectFail("---\nname: ok-name\n---\nbody", undefined, "missing description");

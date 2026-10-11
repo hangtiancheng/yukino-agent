@@ -1,3 +1,5 @@
+import { embedTexts } from "@/lib/ai/embedder";
+
 import {
   upsert,
   deleteByExpr,
@@ -5,7 +7,6 @@ import {
   MAX_CONTENT_LENGTH,
   type MilvusRow,
 } from "./client";
-import { embedTexts } from "@/lib/ai/embedder";
 
 export interface IndexChunk {
   id: string;
@@ -15,7 +16,7 @@ export interface IndexChunk {
 }
 
 export async function indexChunks(chunks: IndexChunk[]): Promise<number> {
-  if (chunks.length === 0) return 0;
+  if (chunks.length === 0) {return 0;}
   const vectors = await embedTexts(chunks.map((c) => c.embedText ?? c.content));
 
   const rows: MilvusRow[] = chunks.map((chunk, i) => ({

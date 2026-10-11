@@ -1,8 +1,9 @@
 import { createHmac, timingSafeEqual } from "crypto";
+
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
-import { syncRepository } from "@/lib/devflow/sync";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
+import { syncRepository } from "@/lib/devflow/sync";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -17,13 +18,13 @@ const SYNC_EVENTS = new Set([
 
 function verifySignature(body: Buffer, signature: string | null): boolean {
   const secret = config.github.webhookSecret;
-  if (!secret) return true;
-  if (!signature || !signature.startsWith("sha256=")) return false;
+  if (!secret) {return true;}
+  if (!signature?.startsWith("sha256=")) {return false;}
   const expected = createHmac("sha256", secret).update(body).digest("hex");
   const actual = signature.slice("sha256=".length);
   const expectedBuf = Buffer.from(expected, "utf8");
   const actualBuf = Buffer.from(actual, "utf8");
-  if (expectedBuf.length !== actualBuf.length) return false;
+  if (expectedBuf.length !== actualBuf.length) {return false;}
   return timingSafeEqual(expectedBuf, actualBuf);
 }
 
@@ -64,11 +65,10 @@ export async function POST(request: Request) {
     const event = request.headers.get("x-github-event");
     if (event && SYNC_EVENTS.has(event)) {
       const limit = config.devflow.autoSync.limit;
-      void syncRepository(repo.id, { limit }).catch((e) =>
-        console.warn(
+      void syncRepository(repo.id, { limit }).catch((e) => { console.warn(
           `[devflow:webhook] sync failed for ${fullName}:`,
           e instanceof Error ? e.message : String(e),
-        ),
+        ); },
       );
       return ok({
         accepted: true,

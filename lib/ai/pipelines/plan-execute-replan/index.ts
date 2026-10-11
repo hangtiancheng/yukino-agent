@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
+
 import { logEnd, logStart } from "@/lib/ai/callbacks";
 import { aiOpsCallbacks, withAiOpsTrace } from "@/lib/observability";
+
 import { PlanExecuteEventSchema, type PlanExecuteEvent } from "./events";
 import { opsGraph, RECURSION_LIMIT } from "./graph";
 
@@ -109,7 +111,7 @@ export async function* runPlanExecuteReplan(
     );
     for (;;) {
       const next = await withAiOpsTrace(sessionId, () => stream.next());
-      if (next.done) break;
+      if (next.done) {break;}
       const parsed = PlanExecuteEventSchema.safeParse(next.value);
       if (parsed.success) {
         yield parsed.data;

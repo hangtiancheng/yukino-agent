@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+
 import {
   getSkillRegistry,
   resetSkillRegistry,
@@ -30,15 +31,15 @@ async function main() {
 
   const triage = registry.getSkill("issue-triage");
   assert.ok(triage, "issue-triage found");
-  assert.equal(triage!.manifest.title, "Issue Triage");
-  assert.equal(triage!.manifest.safetyLevel, "read_only");
-  assert.ok(triage!.manifest.tools.includes("get_issue"), "tools parsed");
-  assert.ok(triage!.manifest.triggers.includes("issue"), "triggers parsed");
+  assert.equal(triage.manifest.title, "Issue Triage");
+  assert.equal(triage.manifest.safetyLevel, "read_only");
+  assert.ok(triage.manifest.tools.includes("get_issue"), "tools parsed");
+  assert.ok(triage.manifest.triggers.includes("issue"), "triggers parsed");
   assert.ok(
-    triage!.manifest.workflowSteps.includes("classify_impact_and_type"),
+    triage.manifest.workflowSteps.includes("classify_impact_and_type"),
     "workflow_steps parsed",
   );
-  assert.ok(triage!.instructions.includes("Issue Triage"), "body kept");
+  assert.ok(triage.instructions.includes("Issue Triage"), "body kept");
 
   assert.ok(registry.getSkill("PR-REVIEW"), "case-insensitive lookup");
   assert.equal(
@@ -53,7 +54,7 @@ async function main() {
     autoCi.some((a) => a.skillName === "ci-debug"),
     "ci-debug activated by trigger",
   );
-  assert.equal(autoCi[0]!.activationMode, "automatic");
+  assert.equal(autoCi[0].activationMode, "automatic");
 
   const autoReport = await registry.activate("帮我生成本周周报");
   assert.ok(
@@ -63,8 +64,8 @@ async function main() {
 
   const explicit = await registry.activate("anything", "pr-review");
   assert.equal(explicit.length, 1, "explicit single activation");
-  assert.equal(explicit[0]!.skillName, "pr-review");
-  assert.equal(explicit[0]!.activationMode, "explicit");
+  assert.equal(explicit[0].skillName, "pr-review");
+  assert.equal(explicit[0].activationMode, "explicit");
 
   await assert.rejects(
     () => registry.activate("x", "does-not-exist"),
@@ -95,7 +96,7 @@ async function main() {
   );
 
   assert.match(
-    autoCi[0]!.instructionDigest,
+    autoCi[0].instructionDigest,
     /^[0-9a-f]{16}$/,
     "digest is 16 hex chars",
   );

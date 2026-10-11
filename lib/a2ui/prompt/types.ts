@@ -1,9 +1,7 @@
 export type JsonValue =
   string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
-export interface JsonObject {
-  [key: string]: JsonValue;
-}
+export type JsonObject = Record<string, JsonValue>;
 
 export function isJsonObject(
   value: JsonValue | undefined,

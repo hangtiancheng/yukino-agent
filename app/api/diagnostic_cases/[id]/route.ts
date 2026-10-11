@@ -1,8 +1,10 @@
-import path from "node:path";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { getTranslations } from "next-intl/server";
-import { prisma } from "@/lib/db";
+
 import { config } from "@/lib/config";
+import { prisma } from "@/lib/db";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",

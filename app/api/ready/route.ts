@@ -1,8 +1,9 @@
 import { getTranslations } from "next-intl/server";
-import { prisma } from "@/lib/db";
-import { config } from "@/lib/config";
-import { count as milvusCount } from "@/lib/milvus/client";
+
 import { probeAlertSources } from "@/lib/ai/alerts";
+import { config } from "@/lib/config";
+import { prisma } from "@/lib/db";
+import { count as milvusCount } from "@/lib/milvus/client";
 
 type BaseCheckName =
   | "database"
@@ -24,7 +25,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     promise,
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`probe timed out after ${ms}ms`)), ms),
+      setTimeout(() => { reject(new Error(`probe timed out after ${ms}ms`)); }, ms),
     ),
   ]);
 }

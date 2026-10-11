@@ -1,4 +1,6 @@
 import { getTranslations } from "next-intl/server";
+
+import { prisma } from "@/lib/db";
 import {
   reviewPull,
   type AnalysisProvenance,
@@ -6,7 +8,6 @@ import {
 import { analysisStreamFrames, encodeSse } from "@/lib/devflow/analyze-stream";
 import { CORS_HEADERS, errorMessage, failRaw } from "@/lib/devflow/http";
 import type { PRReview } from "@/lib/devflow/schemas";
-import { prisma } from "@/lib/db";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -35,7 +36,7 @@ export async function POST(_request: Request, context: RouteContext) {
   } catch (e) {
     return failRaw(500, errorMessage(e));
   }
-  if (!pr) return failRaw(404, `Pull request ${id} not found`);
+  if (!pr) {return failRaw(404, `Pull request ${id} not found`);}
 
   const t = await getTranslations("devflow.analyzeStream");
   const encoder = new TextEncoder();

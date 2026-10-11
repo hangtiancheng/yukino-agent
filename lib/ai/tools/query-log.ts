@@ -3,6 +3,7 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { tool, jsonSchema, type Tool } from "ai";
 import { z } from "zod/v4";
+
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
 
@@ -94,7 +95,7 @@ function withTimeout<T>(
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(
-      () => reject(new Error(`${label} timed out after ${ms}ms`)),
+      () => { reject(new Error(`${label} timed out after ${ms}ms`)); },
       ms,
     );
     promise.then(
@@ -158,7 +159,7 @@ async function getToolsForConnection(
 ): Promise<ConnectionCacheEntry> {
   const sig = signature(conn);
   const cached = cache.get(conn.id);
-  if (cached && cached.signature === sig) return cached;
+  if (cached && cached.signature === sig) {return cached;}
 
   const previous = liveClients.get(conn.id);
   if (previous) {

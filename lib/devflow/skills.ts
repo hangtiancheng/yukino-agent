@@ -1,6 +1,7 @@
+import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { createHash } from "node:crypto";
+
 import { load } from "js-yaml";
 
 export interface SkillManifest {
@@ -37,12 +38,12 @@ export interface SkillActivation {
   activationReason: string;
   instructions: string;
   instructionDigest: string;
-  resources: Array<{
+  resources: {
     path: string;
     content: string;
     size: number;
     digest: string;
-  }>;
+  }[];
 }
 
 export class SkillRegistryError extends Error {}
@@ -65,8 +66,8 @@ const TEXT_SUFFIXES = new Set([
 ]);
 
 function asStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map((v) => String(v));
-  if (typeof value === "string" && value.trim() !== "") return [value.trim()];
+  if (Array.isArray(value)) {return value.map((v) => String(v));}
+  if (typeof value === "string" && value.trim() !== "") {return [value.trim()];}
   return [];
 }
 
@@ -110,28 +111,28 @@ function parseManifest(
   data: Record<string, unknown>,
   file: string,
 ): SkillManifest {
-  const name = asString(data["name"], "");
+  const name = asString(data.name, "");
   if (name === "")
-    throw new SkillRegistryError(`${file} frontmatter is missing 'name'`);
+    {throw new SkillRegistryError(`${file} frontmatter is missing 'name'`);}
   return {
     name,
-    title: asString(data["title"], name),
-    version: asString(data["version"], "0.0.0"),
-    description: asString(data["description"], ""),
-    category: asString(data["category"], "general"),
-    entrypoint: asString(data["entrypoint"], ""),
-    tools: asStringArray(data["tools"]),
-    inputModes: asStringArray(data["input_modes"] ?? data["inputModes"]),
-    triggers: asStringArray(data["triggers"]),
+    title: asString(data.title, name),
+    version: asString(data.version, "0.0.0"),
+    description: asString(data.description, ""),
+    category: asString(data.category, "general"),
+    entrypoint: asString(data.entrypoint, ""),
+    tools: asStringArray(data.tools),
+    inputModes: asStringArray(data.input_modes ?? data.inputModes),
+    triggers: asStringArray(data.triggers),
     workflowSteps: asStringArray(
-      data["workflow_steps"] ?? data["workflowSteps"],
+      data.workflow_steps ?? data.workflowSteps,
     ),
     outputContract: asString(
-      data["output_contract"] ?? data["outputContract"],
+      data.output_contract ?? data.outputContract,
       "freeform",
     ),
     safetyLevel: asString(
-      data["safety_level"] ?? data["safetyLevel"],
+      data.safety_level ?? data.safetyLevel,
       "read_only",
     ),
   };
@@ -152,7 +153,7 @@ function activationScore(message: string, skill: SkillDefinition): number {
   let score = 0;
   for (const raw of skill.manifest.triggers) {
     const trigger = raw.trim().toLowerCase();
-    if (trigger === "") continue;
+    if (trigger === "") {continue;}
     let matched: boolean;
     if (/^[a-z0-9_+#.-]+$/.test(trigger)) {
       const escaped = trigger.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -162,7 +163,7 @@ function activationScore(message: string, skill: SkillDefinition): number {
     } else {
       matched = lowered.includes(trigger);
     }
-    if (matched) score += Math.max(1, Math.min(trigger.length, 8));
+    if (matched) {score += Math.max(1, Math.min(trigger.length, 8));}
   }
   return score;
 }
@@ -196,7 +197,7 @@ export class SkillRegistry {
   }
 
   promptContext(): string {
-    if (this.skills.length === 0) return "No DevFlow skills are registered.";
+    if (this.skills.length === 0) {return "No DevFlow skills are registered.";}
     return this.skills
       .map((s) => {
         const steps =
@@ -252,13 +253,13 @@ export class SkillRegistry {
     if (requestedName && requestedName.trim() !== "") {
       const skill = this.byNameOrTitle(requestedName);
       if (!skill)
-        throw new SkillRegistryError(
+        {throw new SkillRegistryError(
           `Requested skill not found: ${requestedName}`,
-        );
+        );}
       return [skill];
     }
     const lowered = message.toLowerCase();
-    if (!lowered.includes("skill") && !message.includes("技能")) return [];
+    if (!lowered.includes("skill") && !message.includes("技能")) {return [];}
     const selected = this.skills.filter(
       (s) =>
         lowered.includes(s.manifest.name.toLowerCase()) ||
@@ -305,7 +306,7 @@ export class SkillRegistry {
   private async loadReferencedResources(
     skill: SkillDefinition,
   ): Promise<
-    Array<{ path: string; content: string; size: number; digest: string }>
+    { path: string; content: string; size: number; digest: string }[]
   > {
     const refs = Array.from(
       new Set(
@@ -323,12 +324,12 @@ export class SkillRegistry {
       );
     }
     const skillRoot = path.resolve(path.dirname(skill.path));
-    const resources: Array<{
+    const resources: {
       path: string;
       content: string;
       size: number;
       digest: string;
-    }> = [];
+    }[] = [];
     for (const relative of refs) {
       const resolved = path.resolve(skillRoot, relative);
       if (
@@ -373,7 +374,7 @@ export class SkillRegistry {
     activations: SkillActivation[],
     maxChars = 24_000,
   ): string {
-    if (activations.length === 0) return "";
+    if (activations.length === 0) {return "";}
     const blocks = activations.map((a) => {
       const tools = a.tools.length > 0 ? a.tools.join(", ") : "none";
       const resourceSections = a.resources
@@ -402,7 +403,7 @@ export class SkillRegistry {
 let cachedRegistry: SkillRegistry | null = null;
 
 export async function getSkillRegistry(): Promise<SkillRegistry> {
-  if (cachedRegistry) return cachedRegistry;
+  if (cachedRegistry) {return cachedRegistry;}
   let entries: string[] = [];
   try {
     entries = await readdir(SKILLS_DIR);
@@ -415,7 +416,7 @@ export async function getSkillRegistry(): Promise<SkillRegistry> {
     const file = path.join(SKILLS_DIR, entry, "SKILL.md");
     try {
       const s = await stat(file);
-      if (!s.isFile()) continue;
+      if (!s.isFile()) {continue;}
       skills.push(await loadSkill(file));
     } catch {}
   }

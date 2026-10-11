@@ -6,6 +6,7 @@ import {
   type LangfuseGeneration,
 } from "@langfuse/tracing";
 import { NodeSDK } from "@opentelemetry/sdk-node";
+
 import { config } from "@/lib/config";
 
 const AI_OPS_TAGS = ["ai-ops"];

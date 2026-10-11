@@ -1,11 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
-import { persistDiagnosticCase } from "@/lib/ai/pipelines/diagnostic-cases";
-import {
-  buildAiOpsQuery,
-  runPlanExecuteReplan,
-} from "@/lib/ai/pipelines/plan-execute-replan";
-import { EXHAUSTED_RESULT } from "@/lib/ai/pipelines/plan-execute-replan/graph";
+
 import {
   alertNameOf,
   createAiOpsRun,
@@ -13,6 +8,12 @@ import {
   normalizeAlertInput,
   pushRunEvent,
 } from "@/lib/ai/aiops-run";
+import { persistDiagnosticCase } from "@/lib/ai/pipelines/diagnostic-cases";
+import {
+  buildAiOpsQuery,
+  runPlanExecuteReplan,
+} from "@/lib/ai/pipelines/plan-execute-replan";
+import { EXHAUSTED_RESULT } from "@/lib/ai/pipelines/plan-execute-replan/graph";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -57,8 +58,7 @@ export async function POST(request: Request) {
       pushRunEvent(events, event);
       if (event.type === "done") {
         void persistDiagnosticCase(event.result, event.detail, alertName).catch(
-          (e) =>
-            console.error("[ai_ops] diagnostic case persistence failed:", e),
+          (e) => { console.error("[ai_ops] diagnostic case persistence failed:", e); },
         );
         const status =
           event.result === EXHAUSTED_RESULT ? "exhausted" : "success";

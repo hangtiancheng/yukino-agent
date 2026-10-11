@@ -1,13 +1,15 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+
 import { getTranslations } from "next-intl/server";
-import { config } from "@/lib/config";
+
 import {
   buildKnowledgeIndex,
   isKnowledgeType,
   type KnowledgeType,
 } from "@/lib/ai/pipelines/knowledge-index";
+import { config } from "@/lib/config";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",

@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+
 import { loadFile } from "@/lib/ai/loader";
 import { config } from "@/lib/config";
 import {
@@ -29,12 +31,12 @@ export function parseFrontmatterKnowledgeType(
 ): KnowledgeType | undefined {
   const match =
     /^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(content);
-  if (!match) return undefined;
+  if (!match) {return undefined;}
   for (const line of match[1].split(/\r?\n/)) {
     const kv = /^\s*knowledgeType\s*:\s*(.+?)\s*$/.exec(line);
-    if (!kv) continue;
+    if (!kv) {continue;}
     const value = kv[1].replaceAll(/^["']|["']$/g, "");
-    if (isKnowledgeType(value)) return value;
+    if (isKnowledgeType(value)) {return value;}
   }
   return undefined;
 }
@@ -44,10 +46,10 @@ export function classifyKnowledgeType(
   content: string,
 ): KnowledgeType {
   const explicit = parseFrontmatterKnowledgeType(content);
-  if (explicit) return explicit;
+  if (explicit) {return explicit;}
   const name = fileName.toLowerCase();
-  if (name.startsWith("aiops-case-")) return "diagnostic-case";
-  if (name.includes("sop")) return "sop";
+  if (name.startsWith("aiops-case-")) {return "diagnostic-case";}
+  if (name.includes("sop")) {return "sop";}
   if (/standard operating procedure/i.test(content.slice(0, 2000))) {
     return "sop";
   }
@@ -141,7 +143,7 @@ export async function previewChunks(
   limit = 12,
 ): Promise<{
   total: number;
-  chunks: Array<{ content: string; title: string }>;
+  chunks: { content: string; title: string }[];
 }> {
   const ext = path.extname(filePath).toLowerCase();
   let content: string;

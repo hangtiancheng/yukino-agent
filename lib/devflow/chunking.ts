@@ -31,7 +31,7 @@ interface Block {
   endLine: number | null;
   kind: string;
   sectionPath: string[];
-  sectionInstance: Array<[string, number]>;
+  sectionInstance: [string, number][];
   page: number | null;
   metadata: Record<string, unknown>;
 }
@@ -42,7 +42,7 @@ function block(
   endLine: number | null,
   kind = "paragraph",
   sectionPath: string[] = [],
-  sectionInstance: Array<[string, number]> = [],
+  sectionInstance: [string, number][] = [],
   page: number | null = null,
   metadata: Record<string, unknown> = {},
 ): Block {
@@ -59,7 +59,7 @@ function block(
 }
 
 function validateLimits(maxChars: number, overlap: number): void {
-  if (maxChars <= 0) throw new Error("max_chars must be greater than zero");
+  if (maxChars <= 0) {throw new Error("max_chars must be greater than zero");}
   if (overlap < 0 || overlap >= maxChars) {
     throw new Error("overlap must be between zero and max_chars");
   }
@@ -79,17 +79,17 @@ function lineForOffset(
   offset: number,
   firstLine: number | null,
 ): number | null {
-  if (firstLine === null) return null;
+  if (firstLine === null) {return null;}
   let count = 0;
   const end = Math.max(0, Math.min(offset, text.length));
   for (let i = 0; i < end; i++) {
-    if (text.charCodeAt(i) === 10) count++;
+    if (text.charCodeAt(i) === 10) {count++;}
   }
   return firstLine + count;
 }
 
 function splitLongText(b: Block, maxChars: number): Block[] {
-  if (b.text.length <= maxChars) return [b];
+  if (b.text.length <= maxChars) {return [b];}
 
   let units = b.text
     .split(/(?<=[。！？!?])|(?<=[.!?])\s+|\n+/)
@@ -105,7 +105,7 @@ function splitLongText(b: Block, maxChars: number): Block[] {
   let current = "";
   for (let unit of units) {
     unit = unit.trim();
-    if (unit === "") continue;
+    if (unit === "") {continue;}
     if (unit.length > maxChars) {
       if (current) {
         pieces.push(current);
@@ -124,13 +124,13 @@ function splitLongText(b: Block, maxChars: number): Block[] {
       current = candidate;
     }
   }
-  if (current) pieces.push(current);
+  if (current) {pieces.push(current);}
 
   const output: Block[] = [];
   let cursor = 0;
   for (const piece of pieces) {
     let offset = b.text.indexOf(piece, cursor);
-    if (offset < 0) offset = cursor;
+    if (offset < 0) {offset = cursor;}
     const endOffset = Math.min(b.text.length, offset + piece.length);
     output.push(
       block(
@@ -150,9 +150,9 @@ function splitLongText(b: Block, maxChars: number): Block[] {
 }
 
 function splitLongCodeFence(b: Block, maxChars: number): Block[] {
-  if (b.text.length <= maxChars) return [b];
+  if (b.text.length <= maxChars) {return [b];}
   const lines = b.text.split("\n");
-  if (lines.length === 0) return [];
+  if (lines.length === 0) {return [];}
   if (maxChars <= 8) {
     return splitLongText(
       block(
@@ -228,7 +228,7 @@ function splitLongCodeFence(b: Block, maxChars: number): Block[] {
   let currentStart = firstBodyLine;
 
   const flush = (endLine: number | null): void => {
-    if (current.length === 0) return;
+    if (current.length === 0) {return;}
     const bodyText = current.join("\n");
     output.push(
       makeFenceBlock(
@@ -242,7 +242,7 @@ function splitLongCodeFence(b: Block, maxChars: number): Block[] {
   };
 
   for (let bodyIndex = 0; bodyIndex < body.length; bodyIndex++) {
-    const line = body[bodyIndex] as string;
+    const line = body[bodyIndex];
     const index = firstBodyLine !== null ? firstBodyLine + bodyIndex : null;
     if (line.length > bodyLimit) {
       flush(index !== null ? index - 1 : null);
@@ -260,31 +260,31 @@ function splitLongCodeFence(b: Block, maxChars: number): Block[] {
       flush(index !== null ? index - 1 : null);
       currentStart = index;
     }
-    if (current.length === 0) currentStart = index;
+    if (current.length === 0) {currentStart = index;}
     current.push(line);
     currentSize += lineSize;
   }
   let lastBodyLine: number | null = null;
-  if (b.endLine !== null) lastBodyLine = b.endLine - (hasCloser ? 1 : 0);
+  if (b.endLine !== null) {lastBodyLine = b.endLine - (hasCloser ? 1 : 0);}
   flush(lastBodyLine);
   return output;
 }
 
 function expandBlock(b: Block, maxChars: number): Block[] {
-  if (b.kind === "code_fence") return splitLongCodeFence(b, maxChars);
+  if (b.kind === "code_fence") {return splitLongCodeFence(b, maxChars);}
   return splitLongText(b, maxChars);
 }
 
 function overlapBlocks(blocks: Block[], overlap: number): Block[] {
-  if (overlap <= 0 || blocks.length === 0) return [];
+  if (overlap <= 0 || blocks.length === 0) {return [];}
   const selected: Block[] = [];
   let remaining = overlap;
   for (let i = blocks.length - 1; i >= 0; i--) {
-    const b = blocks[i] as Block;
-    if (!b.text || b.kind === "code_fence") continue;
+    const b = blocks[i];
+    if (!b.text || b.kind === "code_fence") {continue;}
     const separator = selected.length > 0 ? 2 : 0;
     const allowance = remaining - separator;
-    if (allowance <= 0) break;
+    if (allowance <= 0) {break;}
     if (b.text.length <= allowance) {
       selected.push(b);
       remaining -= b.text.length + separator;
@@ -302,10 +302,10 @@ function overlapBlocks(blocks: Block[], overlap: number): Block[] {
     if (sentenceBoundaries.length > 0) {
       const last = sentenceBoundaries[
         sentenceBoundaries.length - 1
-      ] as RegExpExecArray;
+      ];
       fragmentOffset = lookbackStart + last.index + last[0].length;
     } else if (wordBoundaries.length > 0) {
-      const last = wordBoundaries[wordBoundaries.length - 1] as RegExpExecArray;
+      const last = wordBoundaries[wordBoundaries.length - 1];
       fragmentOffset = lookbackStart + last.index + last[0].length;
     } else {
       const boundaryWindow = b.text.slice(
@@ -343,10 +343,10 @@ function sectionPrefix(
   const parts = path.map(
     (title, index) => `${"#".repeat(Math.min(index + 1, 6))} ${title}`,
   );
-  if (page !== null) parts.push(`Page ${page}`);
+  if (page !== null) {parts.push(`Page ${page}`);}
   const value = parts.join("\n");
-  if (limit === undefined || value.length <= limit) return value;
-  if (limit <= 3) return value.slice(0, limit);
+  if (limit === undefined || value.length <= limit) {return value;}
+  if (limit <= 3) {return value.slice(0, limit);}
   return `${value.slice(0, limit - 3).trimEnd()}...`;
 }
 
@@ -356,7 +356,7 @@ function prefixForChunk(
   maxChars: number,
   hasBody: boolean,
 ): string {
-  if (path.length === 0 && page === null) return "";
+  if (path.length === 0 && page === null) {return "";}
   let limit: number;
   if (!hasBody) {
     limit = maxChars;
@@ -385,7 +385,7 @@ function emitChunk(
     maxChars: number;
   },
 ): Chunk {
-  const first = blocks[0] as Block;
+  const first = blocks[0];
   const body = joinBlockText(blocks);
   const prefix = prefixForChunk(
     first.sectionPath,
@@ -408,13 +408,13 @@ function emitChunk(
     ? "markdown_code"
     : opts.chunkType;
   const metadata: Record<string, unknown> = {};
-  for (const b of blocks) Object.assign(metadata, b.metadata);
+  for (const b of blocks) {Object.assign(metadata, b.metadata);}
   const startLines = blocks
     .filter((b) => b.startLine !== null)
-    .map((b) => b.startLine as number);
+    .map((b) => b.startLine!);
   const endLines = blocks
     .filter((b) => b.endLine !== null)
-    .map((b) => b.endLine as number);
+    .map((b) => b.endLine!);
   return {
     content,
     chunk_id: stableId("chunk", parentId, opts.childIndex, content),
@@ -424,7 +424,7 @@ function emitChunk(
     section_path: first.sectionPath,
     section_title:
       first.sectionPath.length > 0
-        ? (first.sectionPath[first.sectionPath.length - 1] as string)
+        ? (first.sectionPath[first.sectionPath.length - 1])
         : null,
     page: first.page,
     start_line: startLines.length > 0 ? Math.min(...startLines) : null,
@@ -448,7 +448,7 @@ function packBlocks(
   const childCounts = new Map<string, number>();
 
   const flush = (): void => {
-    if (current.length === 0 || currentKey === null) return;
+    if (current.length === 0 || currentKey === null) {return;}
     const childIndex = childCounts.get(currentKey) ?? 0;
     chunks.push(
       emitChunk(current, {
@@ -500,7 +500,7 @@ function packBlocks(
             nextBody.length + prefix.length + (prefix ? 2 : 0) <=
             opts.maxChars
           )
-            break;
+            {break;}
           current.shift();
         }
       }
@@ -523,18 +523,18 @@ function plainBlocks(text: string): Block[] {
   const flush = (endLine: number): void => {
     const content = current.join("\n").trim();
     if (content)
-      blocks.push(block(content, startLine, Math.max(startLine, endLine)));
+      {blocks.push(block(content, startLine, Math.max(startLine, endLine)));}
     current = [];
   };
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i] as string;
+    const line = lines[i];
     const lineNumber = i + 1;
     if (line.trim() === "") {
       flush(lineNumber - 1);
       continue;
     }
-    if (current.length === 0) startLine = lineNumber;
+    if (current.length === 0) {startLine = lineNumber;}
     current.push(line);
   }
   flush(lines.length);
@@ -604,7 +604,7 @@ function plainChunks(
         );
       }
     }
-    if (end >= textLength) break;
+    if (end >= textLength) {break;}
     cursor = Math.max(cursor + 1, end - overlap);
   }
   return chunks;
@@ -613,7 +613,7 @@ function plainChunks(
 function markdownBlocks(text: string): Block[] {
   const lines = text.split("\n");
   const blocks: Block[] = [];
-  const headings: Array<{ level: number; title: string; occurrence: number }> =
+  const headings: { level: number; title: string; occurrence: number }[] =
     [];
   const headingOccurrences = new Map<string, number>();
   let currentPage: number | null = null;
@@ -625,7 +625,7 @@ function markdownBlocks(text: string): Block[] {
   const pageRe = /^<!--\s*page\s*:\s*(\d+)\s*-->$/i;
 
   const sectionPath = (): string[] => headings.map((h) => h.title);
-  const sectionInstance = (): Array<[string, number]> =>
+  const sectionInstance = (): [string, number][] =>
     headings.map((h) => [h.title, h.occurrence]);
 
   const flush = (endLine: number): void => {
@@ -647,7 +647,7 @@ function markdownBlocks(text: string): Block[] {
   };
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i] as string;
+    const line = lines[i];
     const lineNumber = i + 1;
     const stripped = line.trim();
     if (fenceMarker !== null) {
@@ -663,15 +663,15 @@ function markdownBlocks(text: string): Block[] {
     const pageMatch = pageRe.exec(stripped);
     if (pageMatch) {
       flush(lineNumber - 1);
-      currentPage = Number.parseInt(pageMatch[1] as string, 10);
+      currentPage = Number.parseInt(pageMatch[1], 10);
       continue;
     }
 
     const headingMatch = headingRe.exec(line);
     if (headingMatch) {
       flush(lineNumber - 1);
-      const level = (headingMatch[1] as string).length;
-      const title = (headingMatch[2] as string).trim();
+      const level = (headingMatch[1]).length;
+      const title = (headingMatch[2]).trim();
       while (
         headings.length > 0 &&
         (headings[headings.length - 1] as { level: number }).level >= level
@@ -713,7 +713,7 @@ function markdownBlocks(text: string): Block[] {
       flush(lineNumber - 1);
       continue;
     }
-    if (current.length === 0) currentStart = lineNumber;
+    if (current.length === 0) {currentStart = lineNumber;}
     current.push(line);
   }
   flush(lines.length);
@@ -747,7 +747,7 @@ function jsonBlocks(text: string, maxChars: number): Block[] {
   }
 
   const blocks: Block[] = [];
-  let items: Array<[string, unknown]>;
+  let items: [string, unknown][];
   if (Array.isArray(value)) {
     items = value.map((item, index) => [`$[${index}]`, item]);
   } else if (value !== null && typeof value === "object") {
@@ -790,7 +790,7 @@ export function parseCsvRows(text: string): string[][] {
     row = [];
   };
   while (i < text.length) {
-    const c = text[i] as string;
+    const c = text[i];
     if (inQuotes) {
       if (c === '"') {
         if (text[i + 1] === '"') {
@@ -823,21 +823,21 @@ export function parseCsvRows(text: string): string[][] {
     }
     if (c === "\r") {
       pushRow();
-      if (text[i + 1] === "\n") i += 2;
-      else i += 1;
+      if (text[i + 1] === "\n") {i += 2;}
+      else {i += 1;}
       continue;
     }
     field += c;
     i += 1;
   }
-  if (field !== "" || row.length > 0) pushRow();
+  if (field !== "" || row.length > 0) {pushRow();}
   return rows.filter((r) => !(r.length === 1 && r[0] === ""));
 }
 
 export function renderCsvRow(row: string[]): string {
   return row
     .map((value) => {
-      if (/[",\n\r]/.test(value)) return `"${value.replaceAll('"', '""')}"`;
+      if (/[",\n\r]/.test(value)) {return `"${value.replaceAll('"', '""')}"`;}
       return value;
     })
     .join(",");
@@ -860,10 +860,10 @@ function csvChunks(
       chunkType: "text",
     });
   }
-  if (rows.length === 0) return [];
+  if (rows.length === 0) {return [];}
 
   const render = (row: string[]): string => renderCsvRow(row);
-  const header = render(rows[0] as string[]);
+  const header = render(rows[0]);
   const chunks: Chunk[] = [];
   const parentId = stableId("parent", sourcePath, "csv");
 
@@ -912,7 +912,7 @@ function csvChunks(
     for (let index = 0; index < header.length; index += maxChars) {
       headerParts.push(header.slice(index, index + maxChars));
     }
-    if (headerParts.length === 0) headerParts.push("");
+    if (headerParts.length === 0) {headerParts.push("");}
     headerParts.forEach((part, partIndex) => {
       appendChunk(part, {
         rowStart: 1,
@@ -952,12 +952,12 @@ function csvChunks(
   const records: Record_[] = [];
   for (let i = 0; i < bodyRows.length; i++) {
     const rowNumber = i + 2;
-    const rendered = render(bodyRows[i] as string[]);
+    const rendered = render(bodyRows[i]);
     const parts: string[] = [];
     for (let index = 0; index < rendered.length; index += rowBudget) {
       parts.push(rendered.slice(index, index + rowBudget));
     }
-    if (parts.length === 0) parts.push("");
+    if (parts.length === 0) {parts.push("");}
     parts.forEach((part, partIndex) => {
       records.push({
         part,
@@ -975,12 +975,12 @@ function csvChunks(
     let index = start;
     while (index < records.length) {
       const candidateRows = selected.map((item) => item.part);
-      candidateRows.push((records[index] as Record_).part);
+      candidateRows.push((records[index]).part);
       const candidate = headerPrefix
         ? [headerPrefix, ...candidateRows].join("\n")
         : candidateRows.join("\n");
-      if (selected.length > 0 && candidate.length > maxChars) break;
-      selected.push(records[index] as Record_);
+      if (selected.length > 0 && candidate.length > maxChars) {break;}
+      selected.push(records[index]);
       index += 1;
     }
     const selectedText = selected.map((item) => item.part);
@@ -989,7 +989,7 @@ function csvChunks(
       : selectedText.join("\n");
     const rowStart = Math.min(...selected.map((item) => item.rowNumber));
     const rowEnd = Math.max(...selected.map((item) => item.rowNumber));
-    const first = selected[0] as Record_;
+    const first = selected[0];
     appendChunk(content, {
       rowStart,
       rowEnd,
@@ -997,7 +997,7 @@ function csvChunks(
       rowParts: selected.length === 1 ? first.rowParts : null,
       preciseLines: selected.every((item) => item.precise),
     });
-    if (index >= records.length) break;
+    if (index >= records.length) {break;}
     if (overlap <= 0) {
       start = index;
       continue;
@@ -1005,12 +1005,12 @@ function csvChunks(
     let size = 0;
     let overlapRecords = 0;
     for (let i = selected.length - 1; i >= 0; i--) {
-      const record = selected[i] as Record_;
+      const record = selected[i];
       const recordSize = record.part.length;
-      if (overlapRecords > 0 && size + recordSize > overlap) break;
+      if (overlapRecords > 0 && size + recordSize > overlap) {break;}
       size += recordSize;
       overlapRecords += 1;
-      if (size >= overlap) break;
+      if (size >= overlap) {break;}
     }
     start = Math.max(start + 1, index - overlapRecords);
   }
@@ -1033,13 +1033,13 @@ export function chunkDocument(
   overlap = 160,
 ): Chunk[] {
   validateLimits(maxChars, overlap);
-  if (!text) return [];
+  if (!text) {return [];}
   const normalized = normalizeText(text);
-  if (normalized.trim() === "") return [];
+  if (normalized.trim() === "") {return [];}
 
   const suffix = suffixOf(sourcePath);
   if (suffix === ".csv")
-    return csvChunks(normalized, sourcePath, maxChars, overlap);
+    {return csvChunks(normalized, sourcePath, maxChars, overlap);}
   let blocks: Block[];
   let chunkType: string;
   if (MARKDOWN_SUFFIXES.has(suffix)) {
@@ -1081,12 +1081,12 @@ function lineWindows(
   endLine: number,
   maxChars: number,
   overlapLines = 6,
-): Array<{ content: string; start: number; end: number }> {
-  const output: Array<{ content: string; start: number; end: number }> = [];
+): { content: string; start: number; end: number }[] {
+  const output: { content: string; start: number; end: number }[] = [];
   let cursor = Math.max(0, startLine - 1);
   const stop = Math.min(lines.length, endLine);
   while (cursor < stop) {
-    const cursorLine = lines[cursor] as string;
+    const cursorLine = lines[cursor];
     if (cursorLine.length > maxChars) {
       for (let offset = 0; offset < cursorLine.length; offset += maxChars) {
         output.push({
@@ -1101,8 +1101,8 @@ function lineWindows(
     let size = 0;
     let end = cursor;
     while (end < stop) {
-      const lineSize = (lines[end] as string).length + (end > cursor ? 1 : 0);
-      if (end > cursor && size + lineSize > maxChars) break;
+      const lineSize = (lines[end]).length + (end > cursor ? 1 : 0);
+      if (end > cursor && size + lineSize > maxChars) {break;}
       size += lineSize;
       end += 1;
     }
@@ -1111,9 +1111,9 @@ function lineWindows(
         .slice(cursor, end)
         .join("\n")
         .replace(/^[\n]+|[\n]+$/g, "");
-      if (content) output.push({ content, start: cursor + 1, end });
+      if (content) {output.push({ content, start: cursor + 1, end });}
     }
-    if (end >= stop) break;
+    if (end >= stop) {break;}
     cursor = Math.max(cursor + 1, end - overlapLines);
   }
   return output;
@@ -1212,7 +1212,7 @@ function genericSymbol(
 ): { name: string; kind: string } | null {
   for (const { pattern, kind } of patternsForSuffix(suffix)) {
     const match = pattern.exec(line);
-    if (match) return { name: match[1] as string, kind };
+    if (match) {return { name: match[1], kind };}
   }
   return null;
 }
@@ -1220,25 +1220,25 @@ function genericSymbol(
 function genericRegions(
   text: string,
   suffix: string,
-): Array<{ start: number; end: number; symbol: string; kind: string }> {
+): { start: number; end: number; symbol: string; kind: string }[] {
   const lines = text.split("\n");
-  const starts: Array<{ line: number; name: string; kind: string }> = [];
+  const starts: { line: number; name: string; kind: string }[] = [];
   for (let i = 0; i < lines.length; i++) {
-    const symbol = genericSymbol(lines[i] as string, suffix);
+    const symbol = genericSymbol(lines[i], suffix);
     if (symbol)
-      starts.push({ line: i + 1, name: symbol.name, kind: symbol.kind });
+      {starts.push({ line: i + 1, name: symbol.name, kind: symbol.kind });}
   }
   if (starts.length === 0) {
     return lines.length > 0
       ? [{ start: 1, end: lines.length, symbol: "module", kind: "module" }]
       : [];
   }
-  const regions: Array<{
+  const regions: {
     start: number;
     end: number;
     symbol: string;
     kind: string;
-  }> = [];
+  }[] = [];
   if ((starts[0] as { line: number }).line > 1) {
     regions.push({
       start: 1,
@@ -1248,11 +1248,7 @@ function genericRegions(
     });
   }
   for (let i = 0; i < starts.length; i++) {
-    const { line, name, kind } = starts[i] as {
-      line: number;
-      name: string;
-      kind: string;
-    };
+    const { line, name, kind } = starts[i];
     const next = starts[i + 1];
     regions.push({
       start: line,
@@ -1266,7 +1262,7 @@ function genericRegions(
 
 function languageForPath(path: string): string {
   const suffix = suffixOf(path).replace(/^\./, "");
-  if (suffix) return suffix;
+  if (suffix) {return suffix;}
   return (path.split(/[\\/]/).pop() ?? path).toLowerCase();
 }
 
@@ -1275,9 +1271,9 @@ export function chunkCodeText(
   path: string,
   maxChars = 2200,
 ): Chunk[] {
-  if (maxChars <= 0) throw new Error("max_chars must be greater than zero");
+  if (maxChars <= 0) {throw new Error("max_chars must be greater than zero");}
   const normalized = normalizeText(text);
-  if (normalized.trim() === "") return [];
+  if (normalized.trim() === "") {return [];}
   const suffix = suffixOf(path);
   const language = languageForPath(path);
 
@@ -1310,9 +1306,9 @@ export function chunkCodeText(
   const lines = normalized.split("\n");
   let regions = genericRegions(normalized, suffix);
   if (regions.length === 0)
-    regions = [
+    {regions = [
       { start: 1, end: lines.length, symbol: "module", kind: "module" },
-    ];
+    ];}
 
   const chunks: Chunk[] = [];
   const symbolOccurrences = new Map<string, number>();
@@ -1326,12 +1322,8 @@ export function chunkCodeText(
         content,
         start: partStart,
         end: partEnd,
-      } = windows[partIndex] as {
-        content: string;
-        start: number;
-        end: number;
-      };
-      if (!content.trim()) continue;
+      } = windows[partIndex];
+      if (!content.trim()) {continue;}
       const chunkId = stableId("code", parentId, partIndex, content);
       const partSuffix = partIndex > 0 ? ` (part ${partIndex + 1})` : "";
       chunks.push({
@@ -1357,20 +1349,20 @@ export function chunkCodeText(
 }
 
 export function chunkPrFiles(
-  files: Array<{ filename?: string; patch?: string | null }>,
+  files: { filename?: string; patch?: string | null }[],
   maxChars = 1800,
-): Array<{
+): {
   filename: string;
   chunk_index: number;
   chunk_id: string;
   content: string;
-}> {
-  const chunks: Array<{
+}[] {
+  const chunks: {
     filename: string;
     chunk_index: number;
     chunk_id: string;
     content: string;
-  }> = [];
+  }[] = [];
   for (const file of files) {
     const patch = file.patch ?? "";
     const filename = file.filename || "patch.diff";
@@ -1391,19 +1383,19 @@ export function siblingIdsByParent(
   chunks: Chunk[],
   idFor: (runningIndex: number) => string,
 ): string[][] {
-  const groups = new Map<string, Array<{ running: number; child: number }>>();
+  const groups = new Map<string, { running: number; child: number }[]>();
   chunks.forEach((chunk, running) => {
     const list = groups.get(chunk.parent_id) ?? [];
     list.push({ running, child: chunk.child_index });
     groups.set(chunk.parent_id, list);
   });
-  for (const list of groups.values()) list.sort((a, b) => a.child - b.child);
+  for (const list of groups.values()) {list.sort((a, b) => a.child - b.child);}
 
   return chunks.map((chunk, running) => {
     const list = groups.get(chunk.parent_id) ?? [];
     const pos = list.findIndex((entry) => entry.running === running);
     const ownId = idFor(running);
-    if (pos < 0 || list.length <= 1) return ["", ownId, ""];
+    if (pos < 0 || list.length <= 1) {return ["", ownId, ""];}
     const prev =
       pos > 0 ? idFor((list[pos - 1] as { running: number }).running) : "";
     const next =

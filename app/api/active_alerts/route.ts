@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+
 import { aggregateAlerts } from "@/lib/ai/alerts";
 
 const CORS_HEADERS = {

@@ -1,7 +1,9 @@
 import { generateText, isStepCount, type ModelMessage } from "ai";
+
 import { quickModel, providerOptions } from "@/lib/ai/models";
 import { builtinTools } from "@/lib/ai/tools";
 import { getLogMcpTools } from "@/lib/ai/tools/query-log";
+
 import { correctA2uiBlock } from "./correct";
 import { extractA2ui } from "./extract";
 import {
@@ -24,7 +26,7 @@ function filterInPlaceMessages(
   surfaceId: string,
 ): unknown[] {
   return messages.filter((message) => {
-    if (!isRecord(message)) return false;
+    if (!isRecord(message)) {return false;}
     const payload = message.updateComponents ?? message.updateDataModel;
     return isRecord(payload) && payload.surfaceId === surfaceId;
   });

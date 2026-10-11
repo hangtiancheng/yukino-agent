@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
+
 import { prisma } from "@/lib/db";
 
 const CORS_HEADERS = {

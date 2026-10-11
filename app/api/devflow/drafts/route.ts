@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
-import { DraftCreateSchema } from "@/lib/devflow/schemas";
-import { ensureDemoUser, writeAuditLog } from "@/lib/devflow/permissions";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
+import { ensureDemoUser, writeAuditLog } from "@/lib/devflow/permissions";
+import { DraftCreateSchema } from "@/lib/devflow/schemas";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     const repo = await prisma.repository.findUnique({
       where: { id: input.repoId },
     });
-    if (!repo) return fail(404, "repoNotFound");
+    if (!repo) {return fail(404, "repoNotFound");}
 
     const draft = await prisma.actionDraft.create({
       data: {
@@ -82,11 +82,10 @@ export async function POST(request: Request) {
         title: input.title,
         riskLevel: input.riskLevel,
       },
-    }).catch((e) =>
-      console.warn(
+    }).catch((e) => { console.warn(
         "[devflow:audit] failed to record draft creation:",
         e instanceof Error ? e.message : String(e),
-      ),
+      ); },
     );
     return ok({ id: draft.id, status: draft.status }, 201);
   } catch (e) {

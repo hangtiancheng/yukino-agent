@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { z } from "zod/v4";
+
 import { chat } from "@/lib/ai/pipelines/chat";
 
 const chatRequestSchema = z.object({

@@ -1,11 +1,12 @@
+import type { NextRequest } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { NextRequest } from "next/server";
-import { prisma } from "@/lib/db";
+
 import { requireOncallAdmin } from "@/lib/ai/admin";
 import {
   mcpConnectionInputSchema,
   invalidateMcpConnections,
 } from "@/lib/ai/tools/query-log";
+import { prisma } from "@/lib/db";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -33,18 +34,18 @@ export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
-type Ctx = { params: Promise<{ id: string }> };
+interface Ctx { params: Promise<{ id: string }> }
 
 export async function PATCH(request: NextRequest, ctx: Ctx) {
   const admin = requireOncallAdmin(request);
   if (admin)
-    return admin === "not_configured"
+    {return admin === "not_configured"
       ? fail(403, "adminNotConfigured")
-      : fail(401, "adminUnauthorized");
+      : fail(401, "adminUnauthorized");}
 
   const { id } = await ctx.params;
   const row = await prisma.mcpConnection.findUnique({ where: { id } });
-  if (!row) return fail(404, "mcpConnectionNotFound");
+  if (!row) {return fail(404, "mcpConnectionNotFound");}
 
   let body: unknown;
   try {
@@ -53,7 +54,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     return fail(400, "invalidJsonBody");
   }
   const parsed = mcpConnectionInputSchema.partial().safeParse(body);
-  if (!parsed.success) return fail(400, "invalidMcpConnection");
+  if (!parsed.success) {return fail(400, "invalidMcpConnection");}
 
   const updated = await prisma.mcpConnection.update({
     where: { id },
@@ -81,13 +82,13 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
 export async function DELETE(request: NextRequest, ctx: Ctx) {
   const admin = requireOncallAdmin(request);
   if (admin)
-    return admin === "not_configured"
+    {return admin === "not_configured"
       ? fail(403, "adminNotConfigured")
-      : fail(401, "adminUnauthorized");
+      : fail(401, "adminUnauthorized");}
 
   const { id } = await ctx.params;
   const row = await prisma.mcpConnection.findUnique({ where: { id } });
-  if (!row) return fail(404, "mcpConnectionNotFound");
+  if (!row) {return fail(404, "mcpConnectionNotFound");}
   await prisma.mcpConnection.delete({ where: { id } });
   await invalidateMcpConnections();
   return Response.json(

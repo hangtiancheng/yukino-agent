@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/db";
-import { DraftActionSchema } from "@/lib/devflow/schemas";
 import { executeDraft, rejectDraft } from "@/lib/devflow/drafts";
+import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 import {
   PermissionError,
   requirePermission,
   writeAuditLog,
 } from "@/lib/devflow/permissions";
-import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
+import { DraftActionSchema } from "@/lib/devflow/schemas";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -57,11 +57,10 @@ export async function PATCH(request: Request, context: RouteContext) {
         executionResult: draft.executionResult ?? null,
         errorMessage: draft.errorMessage ?? null,
       },
-    }).catch((e) =>
-      console.warn(
+    }).catch((e) => { console.warn(
         "[devflow:audit] failed to record draft action:",
         e instanceof Error ? e.message : String(e),
-      ),
+      ); },
     );
     return ok({
       id: draft.id,

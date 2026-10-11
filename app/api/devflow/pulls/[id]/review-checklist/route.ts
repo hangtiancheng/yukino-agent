@@ -15,7 +15,7 @@ export async function POST(_request: Request, context: RouteContext) {
       where: { id },
       include: { files: true, reviewComments: true },
     });
-    if (!pr) return fail(404, "prNotFound");
+    if (!pr) {return fail(404, "prNotFound");}
 
     const runs = await prisma.workflowRun.findMany({
       where: pr.headBranch

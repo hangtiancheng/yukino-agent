@@ -57,8 +57,8 @@ You can call these functions inside attribute expressions \`{...}\` using named 
 \`\`\`[CATALOG_INSTRUCTIONS_BLOCK]`;
 
 function schemaAllowsDatabinding(propSchema: JsonValue | undefined): boolean {
-  if (!isJsonObject(propSchema)) return false;
-  const ref = propSchema["$ref"];
+  if (!isJsonObject(propSchema)) {return false;}
+  const ref = propSchema.$ref;
   if (typeof ref === "string") {
     if (
       ref.includes("DataBinding") ||
@@ -69,30 +69,30 @@ function schemaAllowsDatabinding(propSchema: JsonValue | undefined): boolean {
     }
   }
   if (
-    propSchema["type"] === "object" &&
-    isJsonObject(propSchema["properties"]) &&
-    "path" in propSchema["properties"]
+    propSchema.type === "object" &&
+    isJsonObject(propSchema.properties) &&
+    "path" in propSchema.properties
   ) {
     return true;
   }
   const subs = [
-    ...(Array.isArray(propSchema["oneOf"]) ? propSchema["oneOf"] : []),
-    ...(Array.isArray(propSchema["anyOf"]) ? propSchema["anyOf"] : []),
-    ...(Array.isArray(propSchema["allOf"]) ? propSchema["allOf"] : []),
+    ...(Array.isArray(propSchema.oneOf) ? propSchema.oneOf : []),
+    ...(Array.isArray(propSchema.anyOf) ? propSchema.anyOf : []),
+    ...(Array.isArray(propSchema.allOf) ? propSchema.allOf : []),
   ];
   return subs.some((sub) => schemaAllowsDatabinding(sub));
 }
 
 function isAction(propSchema: JsonValue | null | undefined): boolean {
-  if (!isJsonObject(propSchema)) return false;
-  const ref = propSchema["$ref"];
-  if (typeof ref === "string") return ref.includes("Action");
+  if (!isJsonObject(propSchema)) {return false;}
+  const ref = propSchema.$ref;
+  if (typeof ref === "string") {return ref.includes("Action");}
   const subs = [
-    ...(Array.isArray(propSchema["oneOf"]) ? propSchema["oneOf"] : []),
-    ...(Array.isArray(propSchema["anyOf"]) ? propSchema["anyOf"] : []),
-    ...(Array.isArray(propSchema["allOf"]) ? propSchema["allOf"] : []),
+    ...(Array.isArray(propSchema.oneOf) ? propSchema.oneOf : []),
+    ...(Array.isArray(propSchema.anyOf) ? propSchema.anyOf : []),
+    ...(Array.isArray(propSchema.allOf) ? propSchema.allOf : []),
   ];
-  if (subs.length > 0) return subs.some((sub) => isAction(sub));
+  if (subs.length > 0) {return subs.some((sub) => isAction(sub));}
   return false;
 }
 
@@ -109,8 +109,8 @@ export class ElementalPromptGenerator implements PromptGenerator {
     this.catalog = catalog;
     this.helper = new CatalogSchemaHelper(catalog.catalogSchema);
     this.catalogId =
-      typeof catalog.catalogSchema["catalogId"] === "string"
-        ? catalog.catalogSchema["catalogId"]
+      typeof catalog.catalogSchema.catalogId === "string"
+        ? catalog.catalogSchema.catalogId
         : "";
   }
 
@@ -119,14 +119,14 @@ export class ElementalPromptGenerator implements PromptGenerator {
     propName: string,
     propSchema: JsonValue | null | undefined,
   ): string {
-    if (propName === "checks") return "FunctionCall[]";
+    if (propName === "checks") {return "FunctionCall[]";}
 
-    if (!isJsonObject(propSchema)) return "any";
+    if (!isJsonObject(propSchema)) {return "any";}
 
     const allowsDb = schemaAllowsDatabinding(propSchema);
     let baseType = "any";
 
-    const ref = propSchema["$ref"];
+    const ref = propSchema.$ref;
     if (typeof ref === "string") {
       if (ref.includes("ComponentId")) {
         baseType = "A2UIElement";
@@ -153,23 +153,23 @@ export class ElementalPromptGenerator implements PromptGenerator {
         }
       }
     } else if (
-      propSchema["type"] === "object" &&
-      isJsonObject(propSchema["properties"]) &&
-      "path" in propSchema["properties"]
+      propSchema.type === "object" &&
+      isJsonObject(propSchema.properties) &&
+      "path" in propSchema.properties
     ) {
       baseType = "DataBinding";
     } else if (
-      Array.isArray(propSchema["oneOf"]) ||
-      Array.isArray(propSchema["anyOf"])
+      Array.isArray(propSchema.oneOf) ||
+      Array.isArray(propSchema.anyOf)
     ) {
       const subs = [
-        ...(Array.isArray(propSchema["oneOf"]) ? propSchema["oneOf"] : []),
-        ...(Array.isArray(propSchema["anyOf"]) ? propSchema["anyOf"] : []),
+        ...(Array.isArray(propSchema.oneOf) ? propSchema.oneOf : []),
+        ...(Array.isArray(propSchema.anyOf) ? propSchema.anyOf : []),
       ];
       let types: string[] = [];
       for (const sub of subs) {
         const t = this.mapSchemaToTsType(componentName, propName, sub);
-        if (t !== "any") types.push(t);
+        if (t !== "any") {types.push(t);}
       }
       if (types.length > 0) {
         types = [...new Set(types)];
@@ -180,10 +180,10 @@ export class ElementalPromptGenerator implements PromptGenerator {
       } else {
         baseType = "any";
       }
-    } else if (Array.isArray(propSchema["enum"])) {
-      baseType = propSchema["enum"].map((v) => `'${String(v)}'`).join(" | ");
+    } else if (Array.isArray(propSchema.enum)) {
+      baseType = propSchema.enum.map((v) => `'${String(v)}'`).join(" | ");
     } else if ("type" in propSchema) {
-      const t = propSchema["type"];
+      const t = propSchema.type;
       if (t === "string") {
         baseType = "string";
       } else if (t === "number" || t === "integer") {
@@ -191,17 +191,17 @@ export class ElementalPromptGenerator implements PromptGenerator {
       } else if (t === "boolean") {
         baseType = "boolean";
       } else if (t === "array") {
-        const itemsSchema = propSchema["items"];
+        const itemsSchema = propSchema.items;
         if (itemsSchema !== undefined) {
           if (
             isJsonObject(itemsSchema) &&
-            itemsSchema["type"] === "object" &&
-            isJsonObject(itemsSchema["properties"])
+            itemsSchema.type === "object" &&
+            isJsonObject(itemsSchema.properties)
           ) {
-            const required = Array.isArray(itemsSchema["required"])
-              ? itemsSchema["required"]
+            const required = Array.isArray(itemsSchema.required)
+              ? itemsSchema.required
               : [];
-            const subProps = Object.entries(itemsSchema["properties"]).map(
+            const subProps = Object.entries(itemsSchema.properties).map(
               ([subKey, subValue]) => {
                 const subType = this.mapSchemaToTsType(
                   componentName,
@@ -227,11 +227,11 @@ export class ElementalPromptGenerator implements PromptGenerator {
           baseType = "any[]";
         }
       } else if (t === "object") {
-        if (isJsonObject(propSchema["properties"])) {
-          const required = Array.isArray(propSchema["required"])
-            ? propSchema["required"]
+        if (isJsonObject(propSchema.properties)) {
+          const required = Array.isArray(propSchema.required)
+            ? propSchema.required
             : [];
-          const subProps = Object.entries(propSchema["properties"]).map(
+          const subProps = Object.entries(propSchema.properties).map(
             ([subKey, subValue]) => {
               const subType = this.mapSchemaToTsType(
                 componentName,
@@ -269,7 +269,7 @@ export class ElementalPromptGenerator implements PromptGenerator {
   }
 
   private toComments(description: string | null, indent = ""): string[] {
-    if (!description) return [];
+    if (!description) {return [];}
     return description
       .trim()
       .split("\n")
@@ -310,8 +310,8 @@ export class ElementalPromptGenerator implements PromptGenerator {
         const optSign = isReq ? "" : "?";
 
         const propDesc =
-          propSchema && typeof propSchema["description"] === "string"
-            ? propSchema["description"]
+          propSchema && typeof propSchema.description === "string"
+            ? propSchema.description
             : null;
         interfaceLines.push(...this.toComments(propDesc, "  "));
         interfaceLines.push(`  ${tsPropName}${optSign}: ${tsType};`);
@@ -332,22 +332,22 @@ export class ElementalPromptGenerator implements PromptGenerator {
 
       const funcSchema: JsonObject = this.helper.functions[name] ?? {};
       const returnType =
-        typeof funcSchema["returnType"] === "string"
-          ? funcSchema["returnType"]
+        typeof funcSchema.returnType === "string"
+          ? funcSchema.returnType
           : "any";
       const funcDesc =
-        typeof funcSchema["description"] === "string"
-          ? funcSchema["description"]
+        typeof funcSchema.description === "string"
+          ? funcSchema.description
           : null;
 
-      const properties = isJsonObject(funcSchema["properties"])
-        ? funcSchema["properties"]
+      const properties = isJsonObject(funcSchema.properties)
+        ? funcSchema.properties
         : {};
-      const argsObj = isJsonObject(properties["args"])
-        ? properties["args"]
+      const argsObj = isJsonObject(properties.args)
+        ? properties.args
         : {};
-      const argsProperties = isJsonObject(argsObj["properties"])
-        ? argsObj["properties"]
+      const argsProperties = isJsonObject(argsObj.properties)
+        ? argsObj.properties
         : {};
 
       const argDecls = props.map((p) => {
@@ -368,14 +368,14 @@ export class ElementalPromptGenerator implements PromptGenerator {
   }
 
   catalogDescription(includeSchema = true): string {
-    if (!includeSchema) return "";
+    if (!includeSchema) {return "";}
 
     const compDecls = this.generateComponentDeclarations();
     const funcDecls = this.generateFunctionDeclarations();
 
     let catalogInstructions =
-      typeof this.helper.catalog["instructions"] === "string"
-        ? this.helper.catalog["instructions"]
+      typeof this.helper.catalog.instructions === "string"
+        ? this.helper.catalog.instructions
         : "";
     if (catalogInstructions) {
       catalogInstructions = catalogInstructions.replace(
@@ -411,8 +411,8 @@ export class ElementalPromptGenerator implements PromptGenerator {
       );
       this.helper = new CatalogSchemaHelper(this.catalog.catalogSchema);
       this.catalogId =
-        typeof this.catalog.catalogSchema["catalogId"] === "string"
-          ? this.catalog.catalogSchema["catalogId"]
+        typeof this.catalog.catalogSchema.catalogId === "string"
+          ? this.catalog.catalogSchema.catalogId
           : this.catalogId;
     }
 

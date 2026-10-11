@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+
 import { config } from "@/lib/config";
 
 export interface RerankItem {
@@ -70,7 +71,7 @@ export async function rerankDocuments(
   topN: number,
 ): Promise<RerankItem[]> {
   const normalizedQuery = query.trim();
-  if (normalizedQuery === "" || documents.length === 0) return [];
+  if (normalizedQuery === "" || documents.length === 0) {return [];}
   if (topN < 1 || topN > documents.length) {
     throw new RerankError("Rerank request is invalid.");
   }
@@ -108,7 +109,7 @@ export async function rerankDocuments(
       }
       return parseRerankResults(await response.json(), documents.length, topN);
     } catch (e) {
-      if (e instanceof RerankError) throw e;
+      if (e instanceof RerankError) {throw e;}
       if (attempt < maxRetries) {
         await sleep(250 * 2 ** attempt);
         continue;
@@ -123,7 +124,7 @@ export async function tryRerank(
   documents: string[],
   topN: number,
 ): Promise<RerankItem[] | null> {
-  if (!rerankEnabled()) return null;
+  if (!rerankEnabled()) {return null;}
   try {
     return await rerankDocuments(query, documents, topN);
   } catch (e) {

@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+
 import { prisma } from "@/lib/db";
 import {
   countContentByType,
@@ -14,9 +15,9 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const repoId = url.searchParams.get("repoId");
-    if (!repoId) return fail(400, "repoIdQueryRequired");
+    if (!repoId) {return fail(400, "repoIdQueryRequired");}
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-    if (!repo) return fail(404, "repoNotFound");
+    if (!repo) {return fail(404, "repoNotFound");}
     const started = Date.now();
     const chunksByType = await countContentByType(repoId);
     return ok({
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     }
     const { repoId } = parsed.data;
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-    if (!repo) return fail(404, "repoNotFound");
+    if (!repo) {return fail(404, "repoNotFound");}
     const result = await indexRepositoryContent(repoId);
     return ok(result);
   } catch (e) {

@@ -1,6 +1,4 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "motion/react";
 import { renderMarkdown } from "@a2ui/markdown-it";
 import {
   A2uiSurface,
@@ -14,6 +12,8 @@ import {
   MessageProcessor,
   type SurfaceModel,
 } from "@a2ui/web_core/v0_9";
+import { motion } from "motion/react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { shadcnCatalog } from "@/catalog";
 

@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
 import { clsx, type ClassValue } from "clsx";
+import type { CSSProperties } from "react";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
@@ -64,6 +64,6 @@ export function alignClass(align?: string) {
 }
 
 export function weightStyle(weight?: number): CSSProperties {
-  if (typeof weight !== "number") return {};
+  if (typeof weight !== "number") {return {};}
   return { flex: `${weight}`, minWidth: 0, minHeight: 0 };
 }

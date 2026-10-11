@@ -1,21 +1,22 @@
 import assert from "node:assert/strict";
-import { sanitizeCiLog } from "@/lib/devflow/sanitize";
+
+import {
+  FeedbackListQuerySchema,
+  FeedbackUpsertSchema,
+} from "@/lib/ai/feedback";
+import { parseRerankResults } from "@/lib/ai/rerank";
+import { evidenceCitations } from "@/lib/devflow/agents/chat";
+import {
+  MemorySearchQuerySchema,
+  RecallEventListQuerySchema,
+} from "@/lib/devflow/memory";
 import {
   applyScoreThreshold,
   evaluateAnswerGate,
   KB_CONFIG_FALLBACK,
   strongQuerySignals,
 } from "@/lib/devflow/rag";
-import { parseRerankResults } from "@/lib/ai/rerank";
-import { evidenceCitations } from "@/lib/devflow/agents/chat";
-import {
-  FeedbackListQuerySchema,
-  FeedbackUpsertSchema,
-} from "@/lib/ai/feedback";
-import {
-  MemorySearchQuerySchema,
-  RecallEventListQuerySchema,
-} from "@/lib/devflow/memory";
+import { sanitizeCiLog } from "@/lib/devflow/sanitize";
 
 function checkSanitize() {
   const raw = [
@@ -54,8 +55,8 @@ function checkSanitize() {
     sanitized.includes("::add-mask::[REDACTED]"),
     "add-mask line redacted",
   );
-  assert.ok(/API_KEY=\[REDACTED\]/.test(sanitized), "key=value redacted");
-  assert.ok(/db_password: \[REDACTED\]/.test(sanitized), "key: value redacted");
+  assert.ok(sanitized.includes('API_KEY=[REDACTED]'), "key=value redacted");
+  assert.ok(sanitized.includes('db_password: [REDACTED]'), "key: value redacted");
   assert.ok(sanitized.includes("plain text stays intact"), "normal text kept");
   assert.ok(!sanitized.includes("hunter2"), "secret value gone");
   assert.ok(!sanitized.includes("MIIEowIBAAKCAQEA7crypted"), "key body gone");

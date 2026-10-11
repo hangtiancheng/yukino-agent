@@ -1,4 +1,4 @@
-const REDACTION_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
+const REDACTION_PATTERNS: readonly (readonly [RegExp, string])[] = [
   [
     /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/gi,
     "[REDACTED_PRIVATE_KEY]",

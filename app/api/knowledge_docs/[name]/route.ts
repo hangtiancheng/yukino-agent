@@ -1,14 +1,16 @@
 import { unlink } from "node:fs/promises";
 import path from "node:path";
+
 import { getTranslations } from "next-intl/server";
-import { config } from "@/lib/config";
+
 import { requireOncallAdmin } from "@/lib/ai/admin";
-import { quote } from "@/lib/milvus/client";
-import { deleteByExpr } from "@/lib/milvus/client";
 import {
   buildKnowledgeIndex,
   previewChunks,
 } from "@/lib/ai/pipelines/knowledge-index";
+import { config } from "@/lib/config";
+import { quote } from "@/lib/milvus/client";
+import { deleteByExpr } from "@/lib/milvus/client";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -20,14 +22,14 @@ export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
-type Ctx = { params: Promise<{ name: string }> };
+interface Ctx { params: Promise<{ name: string }> }
 
 function resolveDoc(name: string): string | null {
   const dir = path.resolve(config.fileDir);
   const base = path.basename(name.replaceAll("\\", "/"));
-  if (base === "" || base !== name) return null;
+  if (base === "" || base !== name) {return null;}
   const full = path.resolve(dir, base);
-  if (!full.startsWith(dir + path.sep)) return null;
+  if (!full.startsWith(dir + path.sep)) {return null;}
   return full;
 }
 
@@ -42,7 +44,7 @@ export async function GET(_request: Request, ctx: Ctx) {
   const t = await getTranslations("api.oncall");
   const { name } = await ctx.params;
   const full = resolveDoc(name);
-  if (full === null) return fail(400, t("invalidRequest"));
+  if (full === null) {return fail(400, t("invalidRequest"));}
   try {
     const preview = await previewChunks(full);
     return Response.json(
@@ -67,7 +69,7 @@ export async function POST(request: Request, ctx: Ctx) {
   }
   const { name } = await ctx.params;
   const full = resolveDoc(name);
-  if (full === null) return fail(400, t("invalidRequest"));
+  if (full === null) {return fail(400, t("invalidRequest"));}
   try {
     const chunks = await buildKnowledgeIndex(full);
     return Response.json(
@@ -95,7 +97,7 @@ export async function DELETE(request: Request, ctx: Ctx) {
   }
   const { name } = await ctx.params;
   const full = resolveDoc(name);
-  if (full === null) return fail(400, t("invalidRequest"));
+  if (full === null) {return fail(400, t("invalidRequest"));}
   try {
     await unlink(full);
   } catch {

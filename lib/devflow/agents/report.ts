@@ -1,8 +1,10 @@
 import { generateText } from "ai";
-import { prisma } from "@/lib/db";
+
 import { thinkModel, providerOptions } from "@/lib/ai/models";
-import { observeGeneration } from "@/lib/observability";
+import { prisma } from "@/lib/db";
 import { addKnowledgeDocument } from "@/lib/devflow/rag";
+import { observeGeneration } from "@/lib/observability";
+
 import { llmConfigured, type GenerationMode } from "./analysis";
 import { WEEKLY_REPORT_PROMPT } from "./prompts";
 
@@ -48,10 +50,10 @@ export interface WeeklyReportTemplateInput {
   sampleTruncated: boolean;
   mergedPrNumbers: number[];
   closedIssueNumbers: number[];
-  openPrs: Array<{ number: number; title: string }>;
-  prsForAttention: Array<{ number: number; title: string }>;
-  failedRuns: Array<{ name: string; conclusion: string | null }>;
-  repeatFailWorkflows: Array<{ name: string; count: number }>;
+  openPrs: { number: number; title: string }[];
+  prsForAttention: { number: number; title: string }[];
+  failedRuns: { name: string; conclusion: string | null }[];
+  repeatFailWorkflows: { name: string; count: number }[];
 }
 
 export function deterministicWeeklyReport(
@@ -118,7 +120,7 @@ export async function generateWeeklyReport(
   const repo = await prisma.repository.findUnique({
     where: { id: input.repoId },
   });
-  if (!repo) throw new Error(`Repository ${input.repoId} not found`);
+  if (!repo) {throw new Error(`Repository ${input.repoId} not found`);}
 
   const { start, end } = rangeBounds(input.startDate, input.endDate);
 

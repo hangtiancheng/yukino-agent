@@ -1,4 +1,12 @@
 import { createComponentImplementation } from "@a2ui/react/v0_9";
+import {
+  ActionSchema,
+  ComponentIdSchema,
+  DynamicBooleanSchema,
+  DynamicStringSchema,
+  DynamicValueSchema,
+} from "@a2ui/web_core/v0_9";
+import { z } from "zod/v3";
 
 import { Calendar as UICalendar } from "@/components/ui/calendar";
 import {
@@ -49,17 +57,10 @@ import {
 import { Switch as UISwitch } from "@/components/ui/switch";
 import { Toggle as UIToggle } from "@/components/ui/toggle";
 import { weightStyle } from "@/lib/utils";
-import { COMMON } from "./common";
-import {
-  ActionSchema,
-  ComponentIdSchema,
-  DynamicBooleanSchema,
-  DynamicStringSchema,
-  DynamicValueSchema,
-} from "@a2ui/web_core/v0_9";
-import { z } from "zod/v3";
 
-type OptionDef = { label?: unknown; value?: unknown };
+import { COMMON } from "./common";
+
+interface OptionDef { label?: unknown; value?: unknown }
 
 const OPTIONS = DynamicValueSchema.describe(
   "The selectable options: an array of {label, value} string-pair objects, or a data model binding to such an array.",
@@ -70,7 +71,7 @@ const toOptions = (raw: unknown): { label: string; value: string }[] => {
   const result: { label: string; value: string }[] = [];
   for (const o of Array.isArray(raw) ? (raw as OptionDef[]) : []) {
     const value = String(o.value ?? "");
-    if (seen.has(value)) continue;
+    if (seen.has(value)) {continue;}
     seen.add(value);
     result.push({ label: String(o.label ?? ""), value });
   }
@@ -145,7 +146,7 @@ export const Combobox = createComponentImplementation(
           items={options}
           value={selected}
           onValueChange={(item) => {
-            if (item) props.setValue(item.value);
+            if (item) {props.setValue(item.value);}
           }}
         >
           <ComboboxInput placeholder={props.placeholder} />
@@ -194,8 +195,8 @@ export const CommandApi = {
     .strict(),
 };
 
-type CommandGroupDef = { heading?: unknown; items?: unknown };
-type CommandItemDef = { label?: unknown; action?: unknown };
+interface CommandGroupDef { heading?: unknown; items?: unknown }
+interface CommandItemDef { label?: unknown; action?: unknown }
 
 export const Command = createComponentImplementation(
   CommandApi,
@@ -321,7 +322,7 @@ export const InputGroup = createComponentImplementation(
       <InputGroupInput
         value={props.value || ""}
         placeholder={props.placeholder}
-        onChange={(e) => props.setValue(e.target.value)}
+        onChange={(e) => { props.setValue(e.target.value); }}
       />
       {(props.suffixText || props.buttonLabel) && (
         <InputGroupAddon align="inline-end">
@@ -369,7 +370,7 @@ export const InputOtp = createComponentImplementation(
         <InputOTP
           maxLength={length}
           value={props.value || ""}
-          onChange={(value) => props.setValue(value)}
+          onChange={(value) => { props.setValue(value); }}
         >
           <InputOTPGroup>
             {Array.from({ length }, (_, i) => (
@@ -403,7 +404,7 @@ export const NativeSelect = createComponentImplementation(
       {props.label && <FieldLabel>{props.label}</FieldLabel>}
       <UINativeSelect
         value={props.value || ""}
-        onChange={(e) => props.setValue(e.target.value)}
+        onChange={(e) => { props.setValue(e.target.value); }}
       >
         <NativeSelectOption value="" disabled>
           Select an option
@@ -448,7 +449,7 @@ export const Select = createComponentImplementation(SelectApi, ({ props }) => {
           props.value != null && props.value !== "" ? String(props.value) : null
         }
         onValueChange={(value) => {
-          if (typeof value === "string") props.setValue(value);
+          if (typeof value === "string") {props.setValue(value);}
         }}
       >
         <SelectTrigger className="w-full">
@@ -485,7 +486,7 @@ export const Switch = createComponentImplementation(SwitchApi, ({ props }) => (
   <UIField orientation="horizontal" style={weightStyle(props.weight)}>
     <UISwitch
       checked={!!props.value}
-      onCheckedChange={(checked) => props.setValue(checked === true)}
+      onCheckedChange={(checked) => { props.setValue(checked); }}
     />
     {props.label && <FieldLabel>{props.label}</FieldLabel>}
   </UIField>
@@ -514,7 +515,7 @@ export const Toggle = createComponentImplementation(ToggleApi, ({ props }) => (
     variant={props.variant === "outline" ? "outline" : "default"}
     size={props.size ?? "default"}
     pressed={!!props.value}
-    onPressedChange={(pressed) => props.setValue(pressed === true)}
+    onPressedChange={(pressed) => { props.setValue(pressed); }}
     style={weightStyle(props.weight)}
   >
     {props.text}

@@ -1,7 +1,4 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import { useFormatter, useTranslations } from "next-intl";
-import { motion } from "motion/react";
 import {
   BellRing,
   Clock,
@@ -10,11 +7,15 @@ import {
   Stethoscope,
   X,
 } from "lucide-react";
+import { motion } from "motion/react";
+import { useFormatter, useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
 import { z } from "zod/v4";
-import { runAiOpsStream } from "@/hooks/aiops-stream";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+
 import MdRender from "@/components/md-render";
+import { Button } from "@/components/ui/button";
+import { runAiOpsStream } from "@/hooks/aiops-stream";
+import { cn } from "@/lib/utils";
 
 const alertSchema = z.object({
   alert_name: z.string(),
@@ -223,14 +224,14 @@ export default function ActiveAlertsPanel({
   const [expandedCaseId, setExpandedCaseId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {return;}
     let cancelled = false;
     void (async () => {
       setAlertsLoading(true);
       try {
         const resp = await fetch("/api/active_alerts");
         const parsed = activeAlertsResponseSchema.safeParse(await resp.json());
-        if (cancelled) return;
+        if (cancelled) {return;}
         if (parsed.success && parsed.data.data != null) {
           setAlerts(parsed.data.data.items);
           setSourceErrors(parsed.data.data.sourceErrors);
@@ -241,12 +242,12 @@ export default function ActiveAlertsPanel({
           setAlertsError(true);
         }
       } catch {
-        if (cancelled) return;
+        if (cancelled) {return;}
         setAlerts([]);
         setSourceErrors([]);
         setAlertsError(true);
       } finally {
-        if (!cancelled) setAlertsLoading(false);
+        if (!cancelled) {setAlertsLoading(false);}
       }
     })();
     return () => {
@@ -255,19 +256,19 @@ export default function ActiveAlertsPanel({
   }, [open, reloadKey]);
 
   useEffect(() => {
-    if (!open || tab !== "runs") return;
+    if (!open || tab !== "runs") {return;}
     let cancelled = false;
     void (async () => {
       setRunsLoading(true);
       try {
         const resp = await fetch("/api/ai_ops/runs");
         const parsed = runsResponseSchema.safeParse(await resp.json());
-        if (cancelled) return;
+        if (cancelled) {return;}
         setRuns(parsed.success ? (parsed.data.data?.items ?? []) : []);
       } catch {
-        if (!cancelled) setRuns([]);
+        if (!cancelled) {setRuns([]);}
       } finally {
-        if (!cancelled) setRunsLoading(false);
+        if (!cancelled) {setRunsLoading(false);}
       }
     })();
     return () => {
@@ -276,19 +277,19 @@ export default function ActiveAlertsPanel({
   }, [open, tab, reloadKey]);
 
   useEffect(() => {
-    if (!open || tab !== "cases") return;
+    if (!open || tab !== "cases") {return;}
     let cancelled = false;
     void (async () => {
       setCasesLoading(true);
       try {
         const resp = await fetch("/api/diagnostic_cases");
         const parsed = casesResponseSchema.safeParse(await resp.json());
-        if (cancelled) return;
+        if (cancelled) {return;}
         setCases(parsed.success ? (parsed.data.data?.items ?? []) : []);
       } catch {
-        if (!cancelled) setCases([]);
+        if (!cancelled) {setCases([]);}
       } finally {
-        if (!cancelled) setCasesLoading(false);
+        if (!cancelled) {setCasesLoading(false);}
       }
     })();
     return () => {
@@ -321,7 +322,7 @@ export default function ActiveAlertsPanel({
 
   const diagnose = useCallback(
     async (alert: AlertItem) => {
-      if (disabled || diagnosing !== null) return;
+      if (disabled || diagnosing !== null) {return;}
       setDiagnosing(alert.alert_name);
       setDiagnoseProgress([]);
       const progress: string[] = [];
@@ -396,7 +397,7 @@ export default function ActiveAlertsPanel({
                   size="icon"
                   variant="ghost"
                   className="size-7"
-                  onClick={() => setReloadKey((k) => k + 1)}
+                  onClick={() => { setReloadKey((k) => k + 1); }}
                   title={t("refresh")}
                 >
                   <RefreshCw className="size-3.5" />
@@ -405,7 +406,7 @@ export default function ActiveAlertsPanel({
                   size="icon"
                   variant="ghost"
                   className="size-7"
-                  onClick={() => setOpen(false)}
+                  onClick={() => { setOpen(false); }}
                   title={t("close")}
                 >
                   <X className="size-3.5" />
@@ -419,7 +420,7 @@ export default function ActiveAlertsPanel({
                   size="sm"
                   variant={tab === key ? "secondary" : "ghost"}
                   className="h-7 px-2 text-xs"
-                  onClick={() => setTab(key)}
+                  onClick={() => { setTab(key); }}
                 >
                   {key === "alerts"
                     ? t("alertsTab")
@@ -624,10 +625,9 @@ export default function ActiveAlertsPanel({
                     <button
                       type="button"
                       className="flex w-full items-start justify-between gap-2 text-left"
-                      onClick={() =>
-                        setExpandedCaseId(
+                      onClick={() => { setExpandedCaseId(
                           expandedCaseId === item.id ? null : item.id,
-                        )
+                        ); }
                       }
                     >
                       <div className="min-w-0">
@@ -664,7 +664,7 @@ export default function ActiveAlertsPanel({
         size="icon"
         variant={open ? "default" : "secondary"}
         className="pointer-events-auto relative size-11 rounded-full shadow-lg"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { setOpen((v) => !v); }}
         title={t("title")}
         aria-expanded={open}
       >

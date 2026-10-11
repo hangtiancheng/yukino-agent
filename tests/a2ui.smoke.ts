@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+
 import {
   createA2uiStreamFilter,
   extractA2ui,
@@ -29,7 +30,7 @@ function checkPromptExamples() {
   let found = 0;
   for (;;) {
     const start = A2UI_PROMPT_SECTION.indexOf(A2UI_OPEN_TAG, cursor);
-    if (start === -1) break;
+    if (start === -1) {break;}
     const end = A2UI_PROMPT_SECTION.indexOf(
       A2UI_CLOSE_TAG,
       start + A2UI_OPEN_TAG.length,

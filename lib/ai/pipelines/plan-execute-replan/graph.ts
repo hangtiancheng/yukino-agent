@@ -13,8 +13,7 @@ import {
   type Tool,
 } from "ai";
 import { z } from "zod/v4";
-import { observeGeneration } from "@/lib/observability";
-import { providerOptions, quickModel, thinkModel } from "@/lib/ai/models";
+
 import { correctA2uiBlock } from "@/lib/ai/a2ui/correct";
 import { extractA2ui } from "@/lib/ai/a2ui/extract";
 import {
@@ -22,11 +21,14 @@ import {
   A2UI_OPEN_TAG,
   A2UI_PROMPT_SECTION,
 } from "@/lib/ai/a2ui/prompt";
+import { providerOptions, quickModel, thinkModel } from "@/lib/ai/models";
+import { recordToolAudit } from "@/lib/ai/tool-audit";
 import { builtinTools } from "@/lib/ai/tools";
 import { getLogMcpTools } from "@/lib/ai/tools/query-log";
-import { recordToolAudit } from "@/lib/ai/tool-audit";
-import { executeStep, findUnknownToolReferences } from "./executor";
+import { observeGeneration } from "@/lib/observability";
+
 import type { PlanExecuteEvent } from "./events";
+import { executeStep, findUnknownToolReferences } from "./executor";
 
 export const MAX_ITERATIONS = 20;
 
@@ -86,7 +88,7 @@ function usageDetails(usage: LanguageModelUsage) {
 }
 
 function modelIdOf(model: LanguageModel): string | undefined {
-  if (typeof model === "string") return model;
+  if (typeof model === "string") {return model;}
   if ("modelId" in model && typeof model.modelId === "string") {
     return model.modelId;
   }
@@ -228,7 +230,7 @@ const REPORT_FENCE_PATTERN =
 export function cleanMarkdownReport(content: string): string | null {
   let report = content.trim();
   const fenced = REPORT_FENCE_PATTERN.exec(report);
-  if (fenced !== null) report = fenced[1].trim();
+  if (fenced !== null) {report = fenced[1].trim();}
   if (report === "" || report.startsWith("{") || report.startsWith("[")) {
     return null;
   }
@@ -424,8 +426,8 @@ ${result}`;
       return res;
     });
     const extracted = extractA2ui(gen.text);
-    if (extracted.messages) return extracted.messages;
-    if (!extracted.error) return undefined;
+    if (extracted.messages) {return extracted.messages;}
+    if (!extracted.error) {return undefined;}
     return await correctA2uiBlock({
       model: thinkModel,
       system,
@@ -452,10 +454,10 @@ async function uiify(state: OpsGraphState): Promise<OpsGraphUpdate> {
     report = cleanMarkdownReport(retryText);
   }
   if (report === null)
-    report = fallbackReportContent({
+    {report = fallbackReportContent({
       alert: state.alert,
       detail: state.detail,
-    });
+    });}
   const a2ui = await uiifyReport(report);
   writeEvent({
     type: "done",
@@ -486,7 +488,7 @@ function afterExecutor(state: OpsGraphState): "executor" | "replanner" {
 function afterReplanner(
   state: OpsGraphState,
 ): "executor" | "uiify" | "exhausted" {
-  if (state.done) return "uiify";
+  if (state.done) {return "uiify";}
   if (state.iteration >= MAX_ITERATIONS || state.plan.length === 0) {
     return "exhausted";
   }

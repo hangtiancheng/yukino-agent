@@ -1,11 +1,12 @@
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
+
 import { syncRepository } from "./sync";
 
-type AutoSyncHandle = {
+interface AutoSyncHandle {
   timer: ReturnType<typeof setTimeout> | null;
   stopped: boolean;
-};
+}
 
 const globalForAutoSync = globalThis as unknown as {
   devflowAutoSync?: AutoSyncHandle;
@@ -32,9 +33,9 @@ async function runOnce(limit: number): Promise<void> {
 
 export function startAutoSyncLoop(): void {
   const { enabled, intervalSeconds, limit } = config.devflow.autoSync;
-  if (!enabled) return;
+  if (!enabled) {return;}
 
-  if (globalForAutoSync.devflowAutoSync) return;
+  if (globalForAutoSync.devflowAutoSync) {return;}
 
   const handle: AutoSyncHandle = { timer: null, stopped: false };
   globalForAutoSync.devflowAutoSync = handle;
@@ -44,7 +45,7 @@ export function startAutoSyncLoop(): void {
 
   const schedule = (delayMs: number) => {
     handle.timer = setTimeout(async () => {
-      if (handle.stopped) return;
+      if (handle.stopped) {return;}
       try {
         await runOnce(limit);
       } catch (e) {
@@ -63,8 +64,8 @@ export function startAutoSyncLoop(): void {
 
 export function stopAutoSyncLoop(): void {
   const handle = globalForAutoSync.devflowAutoSync;
-  if (!handle) return;
+  if (!handle) {return;}
   handle.stopped = true;
-  if (handle.timer) clearTimeout(handle.timer);
+  if (handle.timer) {clearTimeout(handle.timer);}
   globalForAutoSync.devflowAutoSync = undefined;
 }

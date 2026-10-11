@@ -1,6 +1,11 @@
-import { useState } from "react";
-
 import { createComponentImplementation } from "@a2ui/react/v0_9";
+import {
+  ActionSchema,
+  ComponentIdSchema,
+  DynamicStringSchema,
+} from "@a2ui/web_core/v0_9";
+import { useState } from "react";
+import { z } from "zod/v3";
 
 import {
   AlertDialog as UIAlertDialog,
@@ -58,19 +63,14 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
 import { MENU_ENTRY, COMMON } from "./common";
-import { z } from "zod/v3";
-import {
-  ActionSchema,
-  ComponentIdSchema,
-  DynamicStringSchema,
-} from "@a2ui/web_core/v0_9";
-type MenuEntryDef = {
+interface MenuEntryDef {
   label?: unknown;
   action?: unknown;
   variant?: unknown;
   disabled?: unknown;
-};
+}
 
 const TRIGGER = <span className="inline-block" />;
 
@@ -124,7 +124,7 @@ export const AlertDialog = createComponentImplementation(
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (typeof props.action === "function") props.action();
+                if (typeof props.action === "function") {props.action();}
                 setOpen(false);
               }}
             >

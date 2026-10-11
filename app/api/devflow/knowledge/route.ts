@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/db";
+import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 import {
   addKnowledgeDocument,
   extractText,
   getKnowledgeConfig,
   listKnowledgeDocuments,
 } from "@/lib/devflow/rag";
-import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const repoId = url.searchParams.get("repoId");
-    if (!repoId) return fail(400, "repoIdQueryRequired");
+    if (!repoId) {return fail(400, "repoIdQueryRequired");}
     const docs = await listKnowledgeDocuments(repoId);
     return ok(
       docs.map((doc) => ({
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       return fail(413, "fileTooLarge");
     }
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-    if (!repo) return fail(404, "repoNotFound");
+    if (!repo) {return fail(404, "repoNotFound");}
 
     const buffer = Buffer.from(await file.arrayBuffer());
     let content: string;

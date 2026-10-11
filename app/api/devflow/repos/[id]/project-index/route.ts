@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/db";
+import { errorMessage, failRaw, ok } from "@/lib/devflow/http";
 import {
   getProjectIndexState,
   indexProject,
 } from "@/lib/devflow/project-index";
 import { ProjectIndexSnoozeSchema } from "@/lib/devflow/schemas";
 import { getRepoOrThrow, WorkspaceError } from "@/lib/devflow/workspace";
-import { errorMessage, failRaw, ok } from "@/lib/devflow/http";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -39,7 +39,7 @@ export async function GET(_request: Request, context: RouteContext) {
       checkoutCloned: state.checkoutCloned,
     });
   } catch (e) {
-    if (e instanceof WorkspaceError) return failRaw(e.status, e.message);
+    if (e instanceof WorkspaceError) {return failRaw(e.status, e.message);}
     return failRaw(500, errorMessage(e));
   }
 }
@@ -66,7 +66,7 @@ export async function POST(request: Request, context: RouteContext) {
     const result = await indexProject(repo);
     return ok(result);
   } catch (e) {
-    if (e instanceof WorkspaceError) return failRaw(e.status, e.message);
+    if (e instanceof WorkspaceError) {return failRaw(e.status, e.message);}
     return failRaw(500, errorMessage(e));
   }
 }

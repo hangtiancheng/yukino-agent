@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+
 import { z } from "zod/v4";
-import type { RetrievedDoc } from "@/lib/milvus/retriever";
+
 import {
   CI_LOG_CHUNK_CHARS,
   CI_LOG_MAX_CHUNKS,
@@ -25,6 +26,7 @@ import {
   answerTerms,
   buildExtractiveAnswer,
 } from "@/lib/devflow/rag";
+import type { RetrievedDoc } from "@/lib/milvus/retriever";
 
 function checkSourcePolicy() {
   assert.equal(retrievalMode("issue"), "rag");
@@ -455,26 +457,26 @@ function checkBuildExtractiveAnswer() {
   assert.ok(selected.length >= 2);
   assert.ok(
     selected.some(
-      (s) => s.citation === 1 && /oversized batch/.test(s.sentence),
+      (s) => s.citation === 1 && s.sentence.includes('oversized batch'),
     ),
     "best-overlap sentence surfaced with its citation",
   );
   assert.ok(
     selected.some(
-      (s) => s.citation === 2 && /restart the proxy/.test(s.sentence),
+      (s) => s.citation === 2 && s.sentence.includes('restart the proxy'),
     ),
     "faq sentence surfaced",
   );
   assert.ok(
-    !selected.some((s) => /EMBED_BATCH_SIZE/.test(s.sentence)),
+    !selected.some((s) => s.sentence.includes('EMBED_BATCH_SIZE')),
     "second sentence from an already-cited source dropped",
   );
   assert.ok(
-    !selected.some((s) => /cafeteria/.test(s.sentence)),
+    !selected.some((s) => s.sentence.includes('cafeteria')),
     "low-overlap sentence dropped",
   );
   const proxyQuotes = selected.filter((s) =>
-    /restart the proxy/.test(s.sentence),
+    s.sentence.includes('restart the proxy'),
   );
   assert.equal(proxyQuotes.length, 1);
   assert.ok(!selected.some((s) => s.sentence.startsWith("#")));

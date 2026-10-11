@@ -1,7 +1,7 @@
-import { useId } from "react";
 
 import { createComponentImplementation } from "@a2ui/react/v0_9";
 import { TextFieldApi } from "@a2ui/web_core/v0_9/basic_catalog";
+import { useId } from "react";
 
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ export const TextField = createComponentImplementation(
           <Textarea
             id={id}
             value={props.value || ""}
-            onChange={(e) => props.setValue(e.target.value)}
+            onChange={(e) => { props.setValue(e.target.value); }}
             aria-invalid={hasError || undefined}
           />
         ) : (
@@ -35,7 +35,7 @@ export const TextField = createComponentImplementation(
             id={id}
             type={type}
             value={props.value || ""}
-            onChange={(e) => props.setValue(e.target.value)}
+            onChange={(e) => { props.setValue(e.target.value); }}
             aria-invalid={hasError || undefined}
           />
         )}

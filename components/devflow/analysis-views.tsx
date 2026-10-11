@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -11,9 +10,13 @@ import {
   UserRound,
   Wrench,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import type { CIDebug, IssueAnalysis, PRReview } from "@/lib/devflow/types";
+
 import {
   CiConclusionBadge,
   ConfidenceBadge,
@@ -22,7 +25,6 @@ import {
   PriorityBadge,
   SeverityBadge,
 } from "./badges";
-import type { CIDebug, IssueAnalysis, PRReview } from "@/lib/devflow/types";
 
 type GenerationMode = "llm" | "deterministic";
 

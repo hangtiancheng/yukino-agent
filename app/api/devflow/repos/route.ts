@@ -1,15 +1,16 @@
 import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { homedir } from "node:os";
 import { realpath, stat } from "node:fs/promises";
+import { homedir } from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
+
 import { prisma } from "@/lib/db";
 import { encryptToken } from "@/lib/devflow/crypto";
-import { fetchRepoMeta, syncRepository } from "@/lib/devflow/sync";
-import { RepoConnectSchema } from "@/lib/devflow/schemas";
-import { parseGitRemoteUrl } from "@/lib/devflow/workspace";
-import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 import { GitHubApiError } from "@/lib/devflow/github";
+import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
+import { RepoConnectSchema } from "@/lib/devflow/schemas";
+import { fetchRepoMeta, syncRepository } from "@/lib/devflow/sync";
+import { parseGitRemoteUrl } from "@/lib/devflow/workspace";
 
 export { OPTIONS } from "@/lib/devflow/http";
 
@@ -36,8 +37,8 @@ async function gitTextAt(args: string[], cwd: string): Promise<string> {
 
 function resolveUserPath(raw: string): string {
   const cleaned = raw.trim().replace(/^['"]|['"]$/g, "");
-  if (!cleaned) throw new Error("Path cannot be empty");
-  if (cleaned === "~") return homedir();
+  if (!cleaned) {throw new Error("Path cannot be empty");}
+  if (cleaned === "~") {return homedir();}
   const expanded = cleaned.startsWith("~/")
     ? path.join(homedir(), cleaned.slice(2))
     : cleaned;
@@ -130,7 +131,7 @@ export async function POST(request: Request) {
         return failRaw(400, errorMessage(e));
       }
       const s = await stat(abs).catch(() => null);
-      if (!s || !s.isDirectory()) {
+      if (!s?.isDirectory()) {
         return failRaw(
           400,
           `Local repository path does not exist or is not a directory: ${abs}`,
@@ -169,7 +170,7 @@ export async function POST(request: Request) {
         repo = path.basename(localPath);
       }
       const host = remoteInfo?.host ?? null;
-      if (host && !GITHUB_HOSTS.has(host)) provider = "github_compatible";
+      if (host && !GITHUB_HOSTS.has(host)) {provider = "github_compatible";}
       if (provider === "github_compatible") {
         apiBaseUrl = apiBaseUrl ?? (host ? `https://${host}/api/v3` : null);
       } else {
@@ -187,7 +188,7 @@ export async function POST(request: Request) {
           token: token ?? null,
           baseUrl: provider === "github_compatible" ? apiBaseUrl : null,
         });
-        if (!meta.defaultBranch) meta.defaultBranch = currentBranch;
+        if (!meta.defaultBranch) {meta.defaultBranch = currentBranch;}
       } catch {
         meta = {
           githubId: null,

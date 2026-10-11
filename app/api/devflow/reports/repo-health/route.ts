@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+
 import { prisma } from "@/lib/db";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     const repo = await prisma.repository.findUnique({
       where: { id: parsed.data.repoId },
     });
-    if (!repo) return fail(404, "repoNotFound");
+    if (!repo) {return fail(404, "repoNotFound");}
     const [openIssues, openPrs, failedCi, mergedPrs7d] = await Promise.all([
       prisma.issue.count({ where: { repoId: repo.id, state: "open" } }),
       prisma.pullRequest.count({ where: { repoId: repo.id, state: "open" } }),
@@ -33,11 +34,11 @@ export async function POST(request: Request) {
     ]);
     const risks: string[] = [];
     if (failedCi > 0)
-      risks.push("Failed CI runs present — investigate before merging.");
+      {risks.push("Failed CI runs present — investigate before merging.");}
     if (openPrs > 10)
-      risks.push(
+      {risks.push(
         "Large open-PR backlog — review throughput may be a bottleneck.",
-      );
+      );}
     return ok({
       repoId: repo.id,
       summary:

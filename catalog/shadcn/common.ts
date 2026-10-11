@@ -1,10 +1,10 @@
-import { z } from "zod/v3";
-
 import {
   AccessibilityAttributesSchema,
   ActionSchema,
   DynamicStringSchema,
 } from "@a2ui/web_core/v0_9";
+import { z } from "zod/v3";
+
 
 import { ICON_MAP } from "@/catalog/components/icon";
 

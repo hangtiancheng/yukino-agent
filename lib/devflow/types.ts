@@ -52,12 +52,12 @@ export interface PullSummary {
   mergedAt: string | null;
   githubCreatedAt: string | null;
   githubUpdatedAt: string | null;
-  files: Array<{
+  files: {
     filename: string;
     status: string;
     additions: number;
     deletions: number;
-  }>;
+  }[];
   reviewCommentCount: number;
   latestAnalysis: { id: string; createdAt: string } | null;
 }
@@ -71,19 +71,19 @@ export interface RunSummary {
   conclusion: string | null;
   htmlUrl: string | null;
   hasLogs: boolean;
-  jobs: Array<{
+  jobs: {
     id?: number;
     name?: string;
     status?: string;
     conclusion?: string;
     html_url?: string;
-    steps?: Array<{
+    steps?: {
       name?: string;
       status?: string;
       conclusion?: string;
       number?: number;
-    }>;
-  }> | null;
+    }[];
+  }[] | null;
   githubCreatedAt: string | null;
   latestAnalysis: { id: string; createdAt: string } | null;
 }
@@ -112,12 +112,12 @@ export interface IssueAnalysis {
   complexity: "S" | "M" | "L" | "XL";
   suggested_owner: string;
   owner_reason: string;
-  duplicate_candidates: Array<{
+  duplicate_candidates: {
     number: number;
     title: string;
     reason: string;
-  }>;
-  evidence: Array<{ source_type: string; title: string; snippet: string }>;
+  }[];
+  evidence: { source_type: string; title: string; snippet: string }[];
   checklist: string[];
   drafts: {
     clarification_comment?: string;
@@ -237,7 +237,7 @@ export interface ChatMessageView {
   conversationId: string;
   role: string;
   content: string;
-  toolCalls: Array<{ name: string; input?: unknown }>;
+  toolCalls: { name: string; input?: unknown }[];
   meta: Record<string, unknown>;
   createdAt: string;
   feedback: { rating: string; reviewStatus: string } | null;
@@ -302,7 +302,7 @@ export interface FeedbackTrace {
       id: string;
       role: string;
       content: string;
-      toolCalls: Array<{ name: string; input?: unknown }>;
+      toolCalls: { name: string; input?: unknown }[];
       createdAt: string;
     } | null;
   };
@@ -348,7 +348,7 @@ export interface ProjectIndexState {
     techStack?: string[];
     topDirs?: string[];
     sourceTypeCoverage?: Record<string, number>;
-    docs?: Array<{ path: string; tier: string; sourceType: string }>;
+    docs?: { path: string; tier: string; sourceType: string }[];
   } | null;
   errorMessage: string | null;
   lastIndexedAt: string | null;
@@ -369,25 +369,25 @@ export interface DevflowStats {
   knowledgeDocs: number;
   pendingDrafts: number;
   analyses: number;
-  recentIssues: Array<{
+  recentIssues: {
     id: string;
     number: number;
     title: string;
     state: string;
     repoId: string;
-  }>;
-  recentPrs: Array<{
+  }[];
+  recentPrs: {
     id: string;
     number: number;
     title: string;
     state: string;
     repoId: string;
-  }>;
-  recentFailedRuns: Array<{
+  }[];
+  recentFailedRuns: {
     id: string;
     name: string;
     headBranch: string | null;
     repoId: string;
     githubCreatedAt: string | null;
-  }>;
+  }[];
 }

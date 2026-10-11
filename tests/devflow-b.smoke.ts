@@ -1,5 +1,5 @@
-import { discoverProjectDocs, buildSummary } from "@/lib/devflow/project-index";
 import { chunkDocument } from "@/lib/devflow/chunking";
+import { discoverProjectDocs, buildSummary } from "@/lib/devflow/project-index";
 
 async function main() {
   const checkout =
@@ -10,7 +10,7 @@ async function main() {
   const docs = await discoverProjectDocs(checkout, 500);
   console.log("discovered docs:", docs.length);
   const byType: Record<string, number> = {};
-  for (const d of docs) byType[d.sourceType] = (byType[d.sourceType] ?? 0) + 1;
+  for (const d of docs) {byType[d.sourceType] = (byType[d.sourceType] ?? 0) + 1;}
   console.log("by sourceType:", JSON.stringify(byType));
   console.log(
     "first 10:",

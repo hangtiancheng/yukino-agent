@@ -1,4 +1,11 @@
 import assert from "node:assert/strict";
+
+import {
+  MAX_CITATIONS,
+  dedupeCitations,
+  knowledgeCitations,
+  projectDocCitations,
+} from "@/lib/devflow/agents/chat";
 import {
   MEMORY_CONTEXT_LIMITS,
   MEMORY_LIST_LIMITS,
@@ -17,12 +24,6 @@ import {
   uniquePreserveOrder,
   type MemorySnapshot,
 } from "@/lib/devflow/memory";
-import {
-  MAX_CITATIONS,
-  dedupeCitations,
-  knowledgeCitations,
-  projectDocCitations,
-} from "@/lib/devflow/agents/chat";
 
 {
   assert.equal(clipToTokenBudget("", 100), "");
@@ -172,7 +173,7 @@ import {
     assert.ok(start >= 0, `${label} section must render`);
     let lines = 0;
     for (let i = start + 1; i < renderedLines.length; i += 1) {
-      if (!renderedLines[i].startsWith("- ")) break;
+      if (!renderedLines[i].startsWith("- ")) {break;}
       lines += 1;
     }
     assert.equal(lines, limit, `${label} must be capped at ${limit}`);

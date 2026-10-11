@@ -1,18 +1,24 @@
 "use client";
-import { memo, useState } from "react";
+import type { A2uiClientAction } from "@a2ui/web_core/v0_9";
+import { ChevronDown, FileText, Sparkles, Wrench } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import type {
-  ChatMessage,
-  ChatReference,
-  ChatToolCall,
-} from "@/hooks/use-chat";
-import type { KnowledgeType } from "@/lib/ai/pipelines/knowledge-index";
-import type { A2uiClientAction } from "@a2ui/web_core/v0_9";
+import { memo, useState } from "react";
+
 import { A2uiView } from "@/components/a2ui-view";
-import FeedbackControl from "./feedback-control";
-import MdRender from "./md-render";
-import { ChevronDown, FileText, Sparkles, Wrench } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Bubble, BubbleContent } from "@/components/ui/bubble";
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Message,
+  MessageAvatar,
+  MessageContent,
+} from "@/components/ui/message";
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -21,21 +27,17 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
-import {
-  Message,
-  MessageAvatar,
-  MessageContent,
-} from "@/components/ui/message";
-import { Bubble, BubbleContent } from "@/components/ui/bubble";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import type {
+  ChatMessage,
+  ChatReference,
+  ChatToolCall,
+} from "@/hooks/use-chat";
+import type { KnowledgeType } from "@/lib/ai/pipelines/knowledge-index";
 import { cn } from "@/lib/utils";
+
+import FeedbackControl from "./feedback-control";
+import MdRender from "./md-render";
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -166,7 +168,7 @@ function referenceStageTrace(
   labels: { vector: string; bm25: string; rerank: string },
 ): string {
   const stages = ref.stages;
-  if (!stages) return "";
+  if (!stages) {return "";}
   const parts: string[] = [];
   if (stages.vectorRank !== undefined) {
     parts.push(
@@ -350,7 +352,7 @@ const MessageItem = memo(function MessageItem({
         {message.a2ui && message.a2ui.length > 0 && (
           <A2uiView
             messages={message.a2ui}
-            onRawAction={(action) => onA2uiAction(index, action)}
+            onRawAction={(action) => { onA2uiAction(index, action); }}
           />
         )}
         {!streaming && !message.pending && sessionId !== "" && (

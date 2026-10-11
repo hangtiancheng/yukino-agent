@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+
 import { prisma } from "@/lib/db";
 
 export const TeamMemberCreateSchema = z.object({
@@ -107,7 +108,7 @@ export async function createTeamMember(
   const existing = await prisma.teamMember.findUnique({
     where: { repoId_githubLogin: { repoId, githubLogin: input.githubLogin } },
   });
-  if (existing) return { ok: false, error: "duplicate" };
+  if (existing) {return { ok: false, error: "duplicate" };}
   const member = await prisma.teamMember.create({
     data: {
       repoId,

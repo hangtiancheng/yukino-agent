@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+
+import {
+  analysisStreamFrames,
+  encodeSse,
+  type AnalyzeStreamHooks,
+  type SseFrame,
+} from "@/lib/devflow/analyze-stream";
 import {
   buildRelations,
   computeImpact,
@@ -63,12 +70,6 @@ def sync_repository_code_analysis(repo_id):
     purge_legacy_code_documents(repo_id)
     _sync_code_graph(repo_id)
 `;
-import {
-  analysisStreamFrames,
-  encodeSse,
-  type AnalyzeStreamHooks,
-  type SseFrame,
-} from "@/lib/devflow/analyze-stream";
 
 let checks = 0;
 function check(label: string, fn: () => void) {
@@ -399,7 +400,7 @@ const realFileChecks = async (): Promise<void> => {
     const symbol = symbols[i];
     assert.ok(symbol.startLine >= 1 && symbol.startLine <= symbol.endLine);
     assert.ok(symbol.endLine <= totalLines);
-    if (i > 0) assert.ok(symbol.startLine > (symbols[i - 1]?.startLine ?? 0));
+    if (i > 0) {assert.ok(symbol.startLine > (symbols[i - 1]?.startLine ?? 0));}
   }
   checks += 1;
   console.log(
@@ -454,7 +455,7 @@ async function collect(
   hooks: AnalyzeStreamHooks<{ generationMode?: string }>,
 ): Promise<SseFrame[]> {
   const frames: SseFrame[] = [];
-  for await (const frame of analysisStreamFrames(hooks)) frames.push(frame);
+  for await (const frame of analysisStreamFrames(hooks)) {frames.push(frame);}
   return frames;
 }
 

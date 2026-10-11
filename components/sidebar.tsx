@@ -1,7 +1,4 @@
 "use client";
-import Link from "next/link";
-import { AnimatePresence, motion } from "motion/react";
-import { useTranslations } from "next-intl";
 import {
   FolderGit2,
   MessageSquare,
@@ -9,7 +6,10 @@ import {
   Snowflake,
   Trash2,
 } from "lucide-react";
-import type { ChatHistory } from "@/hooks/use-chat";
+import { AnimatePresence, motion } from "motion/react";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+
 import {
   Sidebar as SidebarPrimitive,
   SidebarContent,
@@ -23,6 +23,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import type { ChatHistory } from "@/hooks/use-chat";
 
 interface SidebarProps {
   histories: ChatHistory[];
@@ -94,7 +95,7 @@ export default function Sidebar({
                   >
                     <SidebarMenuButton
                       isActive={h.id === activeId}
-                      onClick={() => onLoad(h.id)}
+                      onClick={() => { onLoad(h.id); }}
                       tooltip={h.title}
                     >
                       <MessageSquare />
@@ -102,7 +103,7 @@ export default function Sidebar({
                     </SidebarMenuButton>
                     <SidebarMenuAction
                       showOnHover
-                      onClick={() => onDelete(h.id)}
+                      onClick={() => { onDelete(h.id); }}
                       aria-label={t("delete")}
                       className="hover:text-destructive"
                     >

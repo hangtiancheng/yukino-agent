@@ -73,8 +73,8 @@ The host compiler will compile your A2UI Express output into the correct JSON en
 function schemaAllowsDatabinding(
   propSchema: JsonValue | null | undefined,
 ): boolean {
-  if (!isJsonObject(propSchema)) return false;
-  const ref = propSchema["$ref"];
+  if (!isJsonObject(propSchema)) {return false;}
+  const ref = propSchema.$ref;
   if (typeof ref === "string") {
     if (
       ref.includes("DataBinding") ||
@@ -85,9 +85,9 @@ function schemaAllowsDatabinding(
     }
   }
   const subs = [
-    ...(Array.isArray(propSchema["oneOf"]) ? propSchema["oneOf"] : []),
-    ...(Array.isArray(propSchema["anyOf"]) ? propSchema["anyOf"] : []),
-    ...(Array.isArray(propSchema["allOf"]) ? propSchema["allOf"] : []),
+    ...(Array.isArray(propSchema.oneOf) ? propSchema.oneOf : []),
+    ...(Array.isArray(propSchema.anyOf) ? propSchema.anyOf : []),
+    ...(Array.isArray(propSchema.allOf) ? propSchema.allOf : []),
   ];
   return subs.some((sub) => schemaAllowsDatabinding(sub));
 }
@@ -95,8 +95,8 @@ function schemaAllowsDatabinding(
 function subKeyLines(properties: JsonObject): string[] {
   return Object.entries(properties).map(([subKey, subValue]) => {
     const desc =
-      isJsonObject(subValue) && typeof subValue["description"] === "string"
-        ? subValue["description"]
+      isJsonObject(subValue) && typeof subValue.description === "string"
+        ? subValue.description
         : "";
     return `    * ${subKey}${desc ? ` - ${desc}` : ""}`;
   });
@@ -126,7 +126,7 @@ export class ExpressPromptGenerator implements PromptGenerator {
 
         let argLabel = `${p}${optSuffix}`;
 
-        const ref = propSchema?.["$ref"];
+        const ref = propSchema?.$ref;
         const isComponentId =
           typeof ref === "string" && ref.includes("ComponentId");
 
@@ -139,14 +139,14 @@ export class ExpressPromptGenerator implements PromptGenerator {
         orderedArgs.push(argLabel);
 
         const propDesc =
-          propSchema && typeof propSchema["description"] === "string"
-            ? propSchema["description"]
+          propSchema && typeof propSchema.description === "string"
+            ? propSchema.description
             : null;
         const enumVals = findSchemaEnum(propSchema ?? undefined);
 
         if (propDesc || enumVals) {
           const lineParts: string[] = [];
-          if (propDesc) lineParts.push(propDesc);
+          if (propDesc) {lineParts.push(propDesc);}
           if (enumVals) {
             const enumValsStr = enumVals
               .map((v) => `'${String(v)}'`)
@@ -158,10 +158,10 @@ export class ExpressPromptGenerator implements PromptGenerator {
 
         if (propSchema) {
           if (
-            propSchema["type"] === "object" &&
-            isJsonObject(propSchema["properties"])
+            propSchema.type === "object" &&
+            isJsonObject(propSchema.properties)
           ) {
-            const subKeys = subKeyLines(propSchema["properties"]);
+            const subKeys = subKeyLines(propSchema.properties);
             const last = propDetails[propDetails.length - 1];
             if (last !== undefined && last.startsWith(`  - ${p}:`)) {
               propDetails[propDetails.length - 1] =
@@ -172,16 +172,16 @@ export class ExpressPromptGenerator implements PromptGenerator {
               );
             }
           } else if (
-            propSchema["type"] === "array" &&
-            propSchema["items"] !== undefined
+            propSchema.type === "array" &&
+            propSchema.items !== undefined
           ) {
-            const itemsSchema = propSchema["items"];
+            const itemsSchema = propSchema.items;
             if (
               isJsonObject(itemsSchema) &&
-              itemsSchema["type"] === "object" &&
-              isJsonObject(itemsSchema["properties"])
+              itemsSchema.type === "object" &&
+              isJsonObject(itemsSchema.properties)
             ) {
-              const subKeys = subKeyLines(itemsSchema["properties"]);
+              const subKeys = subKeyLines(itemsSchema.properties);
               const last = propDetails[propDetails.length - 1];
               if (last !== undefined && last.startsWith(`  - ${p}:`)) {
                 propDetails[propDetails.length - 1] =
@@ -220,14 +220,14 @@ export class ExpressPromptGenerator implements PromptGenerator {
       const propDetails: string[] = [];
 
       const funcSchema: JsonObject = this.helper.functions[name] ?? {};
-      const properties = isJsonObject(funcSchema["properties"])
-        ? funcSchema["properties"]
+      const properties = isJsonObject(funcSchema.properties)
+        ? funcSchema.properties
         : {};
-      const argsObj = isJsonObject(properties["args"])
-        ? properties["args"]
+      const argsObj = isJsonObject(properties.args)
+        ? properties.args
         : {};
-      const argsProperties = isJsonObject(argsObj["properties"])
-        ? argsObj["properties"]
+      const argsProperties = isJsonObject(argsObj.properties)
+        ? argsObj.properties
         : {};
 
       for (const p of props) {
@@ -237,8 +237,8 @@ export class ExpressPromptGenerator implements PromptGenerator {
         const propSchema = argsProperties[p];
         const propDesc =
           isJsonObject(propSchema) &&
-          typeof propSchema["description"] === "string"
-            ? propSchema["description"]
+          typeof propSchema.description === "string"
+            ? propSchema.description
             : null;
         if (propDesc) {
           propDetails.push(`  - ${p}: ${propDesc}`);
@@ -259,13 +259,13 @@ export class ExpressPromptGenerator implements PromptGenerator {
   }
 
   catalogDescription(includeSchema = true): string {
-    if (!includeSchema) return "";
+    if (!includeSchema) {return "";}
 
     const compSigs = this.generateComponentSignatures();
     const funcSigs = this.generateFunctionSignatures();
     const catalogInstructions =
-      typeof this.helper.catalog["instructions"] === "string"
-        ? this.helper.catalog["instructions"]
+      typeof this.helper.catalog.instructions === "string"
+        ? this.helper.catalog.instructions
         : "";
 
     const catalogInstructionsBlock = catalogInstructions

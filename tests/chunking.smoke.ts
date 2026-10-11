@@ -1,17 +1,18 @@
 import assert from "node:assert/strict";
+
 import {
   chunkDocument,
   chunkCodeText,
   chunkPrFiles,
   siblingIdsByParent,
 } from "@/lib/devflow/chunking";
+import { evaluateAnswerGate } from "@/lib/devflow/rag";
 import {
   dedupeNearDuplicates,
   limitPerParent,
   heuristicRerank,
   tokenize,
 } from "@/lib/devflow/retrieval-post";
-import { evaluateAnswerGate } from "@/lib/devflow/rag";
 import type { RetrievedDoc } from "@/lib/milvus/retriever";
 
 function doc(
@@ -36,7 +37,7 @@ function checkPlain() {
     chunks.every((c) => c.content.length <= 190),
     "plain: size cap",
   );
-  assert.ok(chunks[0]!.content.includes("\n\n"), "plain: paragraphs kept");
+  assert.ok(chunks[0].content.includes("\n\n"), "plain: paragraphs kept");
 
   assert.throws(
     () => chunkDocument("content", "a.txt", 100, 100),
@@ -75,17 +76,17 @@ def rotate_token(token: str) -> str:
   const code = chunks.find((c) => c.chunk_type === "markdown_code");
   assert.ok(code, "markdown: code chunk typed");
   assert.equal(
-    (code!.content.match(/```/g) ?? []).length,
+    (code.content.match(/```/g) ?? []).length,
     2,
     "markdown: fences balanced",
   );
   assert.equal(
-    code!.section_title,
+    code.section_title,
     "Refresh tokens",
     "markdown: section title",
   );
   assert.ok(
-    (code!.start_line ?? 0) <= (code!.end_line ?? 0),
+    (code.start_line ?? 0) <= (code.end_line ?? 0),
     "markdown: line range",
   );
 
@@ -93,7 +94,7 @@ def rotate_token(token: str) -> str:
     "# A\n\nalpha bravo charlie delta echo foxtrot\n\nsecond evidence";
   const overlapChunks = chunkDocument(overlapText, "overlap.md", 55, 20);
   assert.equal(overlapChunks.length, 2, "markdown: overlap chunk count");
-  const overlapBody = overlapChunks[1]!.content.split("\n\n")[1] ?? "";
+  const overlapBody = overlapChunks[1].content.split("\n\n")[1] ?? "";
   const firstWord = overlapBody.trim().split(/\s+/)[0] ?? "";
   assert.ok(
     firstWord === "charlie" || firstWord === "delta",
@@ -159,9 +160,9 @@ class TokenService:
   );
   const fn = pyChunks.find((c) => c.symbol === "load_settings");
   assert.ok(fn, "py code: function found");
-  assert.equal(fn!.start_line, 3, "py code: start line");
+  assert.equal(fn.start_line, 3, "py code: start line");
   assert.ok(
-    String(fn!.header).startsWith("File: app/token_service.py"),
+    String(fn.header).startsWith("File: app/token_service.py"),
     "py code: header",
   );
 
@@ -204,7 +205,7 @@ function checkCsv() {
   const quoted = 'a,b\n1,"two\nlines"\n';
   const quotedChunks = chunkDocument(quoted, "q.csv", 200, 0);
   assert.ok(
-    quotedChunks[0]!.content.includes("two\nlines"),
+    quotedChunks[0].content.includes("two\nlines"),
     "csv: quoted newline kept",
   );
   console.log("csv chunking OK");
@@ -214,7 +215,7 @@ function checkJson() {
   const small = JSON.stringify({ alpha: 1 });
   const smallChunks = chunkDocument(small, "small.json", 200, 0);
   assert.equal(smallChunks.length, 1, "json: small doc single chunk");
-  assert.equal(smallChunks[0]!.chunk_type, "json_value", "json: type");
+  assert.equal(smallChunks[0].chunk_type, "json_value", "json: type");
 
   const big = JSON.stringify({
     alpha: "A".repeat(500),
@@ -256,7 +257,7 @@ ${"para three. ".repeat(30)}
   const ids = siblingIdsByParent(chunks, (i) => `doc#${i}`);
   assert.equal(ids.length, chunks.length, "siblings: aligned");
   chunks.forEach((_, i) => {
-    assert.equal(ids[i]![1], `doc#${i}`, `siblings: own id at slot 1 for ${i}`);
+    assert.equal(ids[i][1], `doc#${i}`, `siblings: own id at slot 1 for ${i}`);
   });
   console.log("sibling ids OK");
 }
@@ -335,7 +336,7 @@ function checkHeuristicRerank() {
   ];
   const { ranked, reasons } = heuristicRerank("postgres_query roles", pool, 2);
   assert.equal(
-    ranked[0]!.id,
+    ranked[0].id,
     "high",
     "heuristic: query-relevant doc ranks first",
   );
@@ -488,7 +489,7 @@ function main() {
   checkHeuristicRerank();
   checkAnswerGateConflict();
   checkTokenize();
-  void checkIndexPolicy().then(() => console.log("CHUNKING SMOKE OK"));
+  void checkIndexPolicy().then(() => { console.log("CHUNKING SMOKE OK"); });
 }
 
 main();
