@@ -48,19 +48,21 @@ export function startAutoSyncLoop(): void {
   );
 
   const schedule = (delayMs: number) => {
-    handle.timer = setTimeout(async () => {
-      if (handle.stopped) {
-        return;
-      }
-      try {
-        await runOnce(limit);
-      } catch (e) {
-        console.warn(
-          "[devflow:auto-sync] tick failed:",
-          e instanceof Error ? e.message : String(e),
-        );
-      }
-      schedule(Math.max(intervalSeconds, MIN_INTERVAL_SECONDS) * 1000);
+    handle.timer = setTimeout(() => {
+      void (async () => {
+        if (handle.stopped) {
+          return;
+        }
+        try {
+          await runOnce(limit);
+        } catch (e) {
+          console.warn(
+            "[devflow:auto-sync] tick failed:",
+            e instanceof Error ? e.message : String(e),
+          );
+        }
+        schedule(Math.max(intervalSeconds, MIN_INTERVAL_SECONDS) * 1000);
+      })();
     }, delayMs);
     handle.timer.unref?.();
   };

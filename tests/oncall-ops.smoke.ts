@@ -147,7 +147,12 @@ const alertmanagerPayload = [
   };
   const seen: { url: string; headers?: Record<string, string> }[] = [];
   const stub: typeof globalThis.fetch = async (input, init) => {
-    const url = String(input);
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
     const headers =
       typeof init?.headers === "object" && init.headers !== null
         ? (init.headers as Record<string, string>)

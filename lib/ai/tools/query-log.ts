@@ -6,6 +6,7 @@ import { z } from "zod/v4";
 
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
+import { asString } from "@/lib/text";
 
 const CONNECT_TIMEOUT_MS = 15_000;
 
@@ -104,7 +105,11 @@ function withTimeout<T>(
       },
       (err: unknown) => {
         clearTimeout(timer);
-        reject(err);
+        reject(
+          err instanceof Error
+            ? err
+            : new Error(asString(err, "unknown error")),
+        );
       },
     );
   });

@@ -29,6 +29,7 @@ import { builtinTools } from "@/lib/ai/tools";
 import { getLogMcpTools } from "@/lib/ai/tools/query-log";
 import { getSimpleMemory, summarySection } from "@/lib/memory";
 import { retrieve, type RetrievedDoc } from "@/lib/milvus/retriever";
+import { asString } from "@/lib/text";
 
 const LOG_TOPIC_REGION = process.env.LOG_TOPIC_REGION ?? "";
 const LOG_TOPIC_ID = process.env.LOG_TOPIC_ID ?? "";
@@ -495,7 +496,7 @@ export async function* chatStream(
 
   const progress: ChatStreamProgress = { text: "" };
   try {
-    yield* processChatStreamParts(result.fullStream, {
+    yield* processChatStreamParts(result.stream, {
       onToolEvent,
       handleInvalidBlock,
       progress,
@@ -503,7 +504,7 @@ export async function* chatStream(
     if (streamError !== undefined) {
       throw streamError instanceof Error
         ? streamError
-        : new Error(String(streamError));
+        : new Error(asString(streamError));
     }
   } finally {
     if (progress.text) {

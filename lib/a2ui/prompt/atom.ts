@@ -1,3 +1,5 @@
+import { enumLabel } from "@/lib/text";
+
 import { CatalogSchemaHelper, findSchemaEnum } from "./schema-helper";
 import type {
   A2uiCatalogSchemas,
@@ -130,7 +132,7 @@ export class AtomPromptGenerator implements PromptGenerator {
           }
           if (enumVals) {
             const enumValsStr = enumVals
-              .map((v) => `'${String(v)}'`)
+              .map((v) => `'${enumLabel(v)}'`)
               .join(", ");
             lineParts.push(`Must be one of: ${enumValsStr}`);
           }
@@ -178,7 +180,7 @@ export class AtomPromptGenerator implements PromptGenerator {
           }
           if (enumVals) {
             const enumValsStr = enumVals
-              .map((v) => `'${String(v)}'`)
+              .map((v) => `'${enumLabel(v)}'`)
               .join(", ");
             lineParts.push(`Must be one of: ${enumValsStr}`);
           }

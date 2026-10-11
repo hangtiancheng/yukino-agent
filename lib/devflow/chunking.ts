@@ -357,7 +357,6 @@ function overlapBlocks(blocks: Block[], overlap: number): Block[] {
         { ...b.metadata, overlap_fragment: true },
       ),
     );
-    remaining = 0;
     break;
   }
   return selected.reverse();
@@ -447,12 +446,12 @@ function emitChunk(
   for (const b of blocks) {
     Object.assign(metadata, b.metadata);
   }
-  const startLines = blocks
-    .filter((b) => b.startLine !== null)
-    .map((b) => b.startLine!);
-  const endLines = blocks
-    .filter((b) => b.endLine !== null)
-    .map((b) => b.endLine!);
+  const startLines = blocks.flatMap((b) =>
+    b.startLine !== null ? [b.startLine] : [],
+  );
+  const endLines = blocks.flatMap((b) =>
+    b.endLine !== null ? [b.endLine] : [],
+  );
   return {
     content,
     chunk_id: stableId("chunk", parentId, opts.childIndex, content),
@@ -502,7 +501,7 @@ function packBlocks(
   };
 
   for (const rawBlock of blocks) {
-    let key = `${JSON.stringify(rawBlock.sectionInstance)}|${rawBlock.page}`;
+    let key: string;
     const blockPrefix = prefixForChunk(
       rawBlock.sectionPath,
       rawBlock.page,
@@ -962,7 +961,7 @@ function csvChunks(
     }
   };
 
-  let headerPrefix = "";
+  let headerPrefix: string;
   if (header !== "" && header.length + 1 >= maxChars) {
     const headerParts: string[] = [];
     for (let index = 0; index < header.length; index += maxChars) {

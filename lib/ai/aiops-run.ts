@@ -1,5 +1,6 @@
 import type { PlanExecuteEvent } from "@/lib/ai/pipelines/plan-execute-replan/events";
 import { prisma } from "@/lib/db";
+import { toInputJson } from "@/lib/json";
 
 export interface AiOpsRunFinalize {
   status: string;
@@ -108,10 +109,10 @@ export function finalizeAiOpsRun(
         ...(update.report !== undefined ? { report: update.report } : {}),
         ...(update.detail !== undefined ? { detail: update.detail } : {}),
         ...(update.events !== undefined
-          ? { events: JSON.parse(JSON.stringify(update.events)) }
+          ? { events: toInputJson(update.events) }
           : {}),
         ...(update.a2uiJson !== undefined
-          ? { a2ui: JSON.parse(JSON.stringify(update.a2uiJson)) }
+          ? { a2ui: toInputJson(update.a2uiJson) }
           : {}),
         ...(update.error !== undefined ? { error: update.error } : {}),
         endedAt: new Date(),

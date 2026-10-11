@@ -10,6 +10,7 @@ import {
   reviewPull,
 } from "@/lib/devflow/agents/analysis";
 import { AI_META_RULES } from "@/lib/devflow/agents/prompts";
+import { toInputJson } from "@/lib/json";
 import { observeGeneration } from "@/lib/observability";
 
 export const TASK_TIMEOUT_MS = 90_000;
@@ -587,11 +588,10 @@ function finding(input: {
 }
 
 export function observeWorkflow(
-  spec: WorkflowSpec,
+  _spec: WorkflowSpec,
   results: WorkflowTaskResult[],
 ): WorkflowObservation {
   const findings: WorkflowFinding[] = [];
-  spec;
 
   for (const result of results) {
     if (result.status === "failed") {
@@ -720,9 +720,9 @@ export function observeWorkflow(
     }
   }
 
-  const confidences = results
-    .filter((r) => r.status === "success" && r.confidence !== null)
-    .map((r) => r.confidence!);
+  const confidences = results.flatMap((r) =>
+    r.status === "success" && r.confidence !== null ? [r.confidence] : [],
+  );
   const base =
     confidences.length > 0
       ? confidences.reduce((sum, value) => sum + value, 0) / confidences.length
@@ -1159,12 +1159,7 @@ export async function executeWorkflow(
   const resultsByTask = new Map<string, WorkflowTaskResult>();
   let replanCount = 0;
   let rounds = 0;
-  let observation: WorkflowObservation = {
-    findings: [],
-    overall_confidence: 0,
-    human_review_required: false,
-    summary: "Workflow did not run.",
-  };
+  let observation: WorkflowObservation;
 
   try {
     let pendingClaims = spec.claims;
@@ -1308,7 +1303,7 @@ export async function executeWorkflow(
           where: { workflowId, taskId: claim.id },
           data: {
             status: rowStatus,
-            resultJson: result,
+            resultJson: toInputJson(result),
             error: result.error,
             completedAt: new Date(),
           },

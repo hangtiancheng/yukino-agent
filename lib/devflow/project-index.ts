@@ -10,6 +10,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
 import { indexChunks, deleteBySourcePrefix } from "@/lib/milvus/indexer";
+import { asString } from "@/lib/text";
 
 import { chunkDocument, siblingIdsByParent } from "./chunking";
 import { chunkRowMetadata, getKnowledgeConfig } from "./rag";
@@ -318,6 +319,7 @@ export function parseIndexPolicyYaml(raw: string): ProjectIndexPolicy {
   } catch (e) {
     throw new Error(
       `Could not read .devflow/index.yml: ${e instanceof Error ? e.message : String(e)}`,
+      { cause: e },
     );
   }
   if (parsed === null || parsed === undefined) {
@@ -576,7 +578,7 @@ export async function indexProject(repo: Repository): Promise<{
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await setState(repo.id, { status: "failed", errorMessage: message }).catch(
-      () => {},
+      () => undefined,
     );
     throw e instanceof WorkspaceError ? e : new WorkspaceError(message, 500);
   }
@@ -593,8 +595,8 @@ export async function searchProjectDocs(
     rerank: cfg.rerankEnabled,
   });
   return docs.map((doc) => ({
-    path: String(doc.metadata.path ?? "unknown"),
-    sourceType: String(doc.metadata.source_type ?? "unknown"),
+    path: asString(doc.metadata.path, "unknown"),
+    sourceType: asString(doc.metadata.source_type, "unknown"),
     content: doc.content,
     score: doc.score,
   }));

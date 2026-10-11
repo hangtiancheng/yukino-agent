@@ -1,3 +1,5 @@
+import { enumLabel } from "@/lib/text";
+
 import { withPruning } from "./pruning";
 import { CatalogSchemaHelper } from "./schema-helper";
 import type {
@@ -195,7 +197,7 @@ export class ElementalPromptGenerator implements PromptGenerator {
         baseType = "any";
       }
     } else if (Array.isArray(propSchema.enum)) {
-      baseType = propSchema.enum.map((v) => `'${String(v)}'`).join(" | ");
+      baseType = propSchema.enum.map((v) => `'${enumLabel(v)}'`).join(" | ");
     } else if ("type" in propSchema) {
       const t = propSchema.type;
       if (t === "string") {

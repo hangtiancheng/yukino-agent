@@ -47,9 +47,11 @@ assert.deepEqual(
 );
 
 for (const [key, enMessage] of enLeaves) {
+  const zhMessage = zhLeaves.get(key);
+  assert.ok(zhMessage !== undefined, `missing zh-CN key "${key}"`);
   assert.deepEqual(
     argumentNames(enMessage),
-    argumentNames(zhLeaves.get(key)!),
+    argumentNames(zhMessage),
     `ICU arguments differ for "${key}"`,
   );
 }

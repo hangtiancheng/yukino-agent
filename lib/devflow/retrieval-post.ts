@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { getByIds } from "@/lib/milvus/client";
 import type { RetrievedDoc } from "@/lib/milvus/retriever";
+import { asString } from "@/lib/text";
 
 export const NEAR_DUPLICATE_JACCARD = 0.9;
 export const MAX_CHUNKS_PER_PARENT = 2;
@@ -46,8 +47,8 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 }
 
 function scopeKey(doc: RetrievedDoc): string {
-  const docId = String(doc.metadata.doc_id ?? "");
-  const parentId = String(doc.metadata.parent_id ?? "");
+  const docId = asString(doc.metadata.doc_id);
+  const parentId = asString(doc.metadata.parent_id);
   if (parentId) {
     return parentId;
   }
@@ -104,7 +105,7 @@ export function limitPerParent(docs: RetrievedDoc[]): RetrievedDoc[] {
   const counts = new Map<string, number>();
   const kept: RetrievedDoc[] = [];
   for (const doc of docs) {
-    const parentId = String(doc.metadata.parent_id ?? "");
+    const parentId = asString(doc.metadata.parent_id);
     if (
       parentId !== "" &&
       (counts.get(parentId) ?? 0) >= MAX_CHUNKS_PER_PARENT
@@ -151,10 +152,8 @@ function candidateFields(doc: RetrievedDoc): {
   path: string;
   text: string;
 } {
-  const title = String(
-    doc.metadata.doc_name ?? doc.metadata.display_title ?? "",
-  );
-  const path = String(doc.metadata.path ?? "");
+  const title = asString(doc.metadata.doc_name ?? doc.metadata.display_title);
+  const path = asString(doc.metadata.path);
   const section = Array.isArray(doc.metadata.section_path)
     ? (doc.metadata.section_path as unknown[]).join(" › ")
     : "";
@@ -205,7 +204,7 @@ export function heuristicScore(
   const base = clip01(normalizedScore);
   const dualRecallBonus = 0.05;
   const freshnessBonus = freshness(doc);
-  const sourceType = String(doc.metadata.source_type ?? "").toLowerCase();
+  const sourceType = asString(doc.metadata.source_type).toLowerCase();
   const sourceTypeBonus =
     sourceType !== "" && terms.some((term) => sourceType.includes(term))
       ? 0.03
@@ -251,7 +250,7 @@ function freshness(doc: RetrievedDoc): number {
     if (value === undefined || value === null || value === "") {
       continue;
     }
-    const parsed = Date.parse(String(value));
+    const parsed = Date.parse(asString(value));
     if (Number.isNaN(parsed)) {
       continue;
     }

@@ -43,6 +43,7 @@ import {
   requireCheckout,
   searchCode,
 } from "@/lib/devflow/workspace";
+import { asString } from "@/lib/text";
 
 import { analyzeIssue, debugRun, reviewPull } from "./analysis";
 import { DEVFLOW_CHAT_SYSTEM_PROMPT } from "./prompts";
@@ -72,7 +73,7 @@ export type DevflowChatEvent =
 const MAX_TOOL_RESULT_CHARS = 12_000;
 
 function pack(value: unknown): string {
-  const json = JSON.stringify(value, (_k, v) =>
+  const json = JSON.stringify(value, (_k: string, v: unknown): unknown =>
     typeof v === "bigint" ? Number(v) : v,
   );
   if (json.length <= MAX_TOOL_RESULT_CHARS) {
@@ -180,11 +181,11 @@ function errorTextChain(error: unknown): string {
       current = (current as Error & { cause?: unknown }).cause;
     } else if (typeof current === "object" && current !== null) {
       const message = (current as { message?: unknown }).message;
-      parts.push(typeof message === "string" ? message : String(current));
+      parts.push(typeof message === "string" ? message : asString(current));
       break;
     } else {
       if (current !== undefined && current !== null) {
-        parts.push(String(current));
+        parts.push(asString(current));
       }
       break;
     }
@@ -1087,7 +1088,12 @@ function resilientTools(
 ): Record<string, Tool> {
   const decorated: Record<string, Tool> = {};
   for (const [name, definition] of Object.entries(tools)) {
-    const execute = definition.execute;
+    const execute:
+      | ((
+          input: unknown,
+          options: ToolExecutionOptions<unknown>,
+        ) => PromiseLike<unknown>)
+      | undefined = definition.execute;
     if (!execute) {
       decorated[name] = definition;
       continue;
@@ -1172,7 +1178,7 @@ async function* streamAssistantAttempt(params: {
     },
   });
 
-  for await (const part of result.fullStream) {
+  for await (const part of result.stream) {
     if (part.type === "text-delta") {
       assistantText += part.text;
       yield { type: "text", content: part.text };
@@ -1298,7 +1304,7 @@ export async function* devflowChatStream(
     const reason =
       result.streamError instanceof Error
         ? result.streamError.message
-        : String(result.streamError);
+        : asString(result.streamError, "unknown error");
     const note = t("chatTurnFailed", { message: reason });
     const content = result.assistantText.trim()
       ? `${result.assistantText}\n\n${note}`
@@ -1316,7 +1322,7 @@ export async function* devflowChatStream(
       message: content,
       assistantMessageId: assistantMessage.id,
     };
-    void maybeSealAndMerge(repoId, conversation.id).catch(() => {});
+    void maybeSealAndMerge(repoId, conversation.id).catch(() => undefined);
     return;
   }
 
@@ -1324,7 +1330,7 @@ export async function* devflowChatStream(
   if (!content.trim()) {
     content = buildEmptyAnswerFallback({
       toolNames: result.toolTrace.map((call) => call.name),
-      withToolsTemplate: t.raw("chatEmptyAnswerWithTools"),
+      withToolsTemplate: asString(t.raw("chatEmptyAnswerWithTools")),
       noToolsTemplate: t("chatEmptyAnswerNoTools"),
     });
     yield { type: "text", content };
@@ -1368,5 +1374,5 @@ export async function* devflowChatStream(
     citations,
   };
 
-  void maybeSealAndMerge(repoId, conversation.id).catch(() => {});
+  void maybeSealAndMerge(repoId, conversation.id).catch(() => undefined);
 }

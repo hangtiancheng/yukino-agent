@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { count as milvusCount } from "@/lib/milvus/client";
 import { indexChunks, deleteBySourcePrefix } from "@/lib/milvus/indexer";
 import type { RetrievedDoc } from "@/lib/milvus/retriever";
+import { asString } from "@/lib/text";
 
 import { chunkDocument, siblingIdsByParent, type Chunk } from "./chunking";
 import { chunkRowMetadata } from "./rag";
@@ -541,7 +542,7 @@ export function mapSimilarHits(
   const hits: SimilarIssueHit[] = [];
   const seen = new Set<string>();
   for (const doc of docs) {
-    const itemId = String(doc.metadata.item_id ?? "");
+    const itemId = asString(doc.metadata.item_id);
     if (itemId === "" || itemId === opts.excludeItemId || seen.has(itemId)) {
       continue;
     }
@@ -550,11 +551,12 @@ export function mapSimilarHits(
     hits.push({
       itemId,
       number,
-      title: String(
-        doc.metadata.item_title ?? doc.metadata.doc_name ?? "unknown",
+      title: asString(
+        doc.metadata.item_title ?? doc.metadata.doc_name,
+        "unknown",
       ),
       url: `https://github.com/${opts.repoFullName}/issues/${number}`,
-      state: String(doc.metadata.state ?? ""),
+      state: asString(doc.metadata.state),
       score: doc.score,
       excerpt: doc.content.slice(0, 300),
     });

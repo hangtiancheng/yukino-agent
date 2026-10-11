@@ -11,6 +11,7 @@ import {
 } from "@zilliz/milvus2-sdk-node";
 
 import { config } from "@/lib/config";
+import { asString } from "@/lib/text";
 
 const COLLECTION = config.milvus.collection;
 const TIMEOUT_MS = 15_000;
@@ -341,12 +342,12 @@ export async function getByIds(ids: string[]): Promise<MilvusHit[]> {
   checkStatus(res, "get");
   const rows = (res.data ?? []) as unknown as Record<string, unknown>[];
   return rows.map((row) => ({
-    id: String(row.id ?? ""),
+    id: asString(row.id),
     score: 0,
-    content: String(row.content ?? ""),
-    source: String(row.source ?? ""),
-    metadata: String(row.metadata ?? ""),
-    created_at: String(row.created_at ?? ""),
+    content: asString(row.content),
+    source: asString(row.source),
+    metadata: asString(row.metadata),
+    created_at: asString(row.created_at),
   }));
 }
 
@@ -367,12 +368,12 @@ export async function queryByFilter(
   checkStatus(res, "query");
   const rows = (res.data ?? []) as unknown as Record<string, unknown>[];
   return rows.map((row) => ({
-    id: String(row.id ?? ""),
+    id: asString(row.id),
     score: 0,
-    content: String(row.content ?? ""),
-    source: String(row.source ?? ""),
-    metadata: String(row.metadata ?? ""),
-    created_at: String(row.created_at ?? ""),
+    content: asString(row.content),
+    source: asString(row.source),
+    metadata: asString(row.metadata),
+    created_at: asString(row.created_at),
   }));
 }
 

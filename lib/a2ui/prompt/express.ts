@@ -1,3 +1,5 @@
+import { enumLabel } from "@/lib/text";
+
 import { withPruning } from "./pruning";
 import { CatalogSchemaHelper, findSchemaEnum } from "./schema-helper";
 import type {
@@ -153,7 +155,7 @@ export class ExpressPromptGenerator implements PromptGenerator {
           }
           if (enumVals) {
             const enumValsStr = enumVals
-              .map((v) => `'${String(v)}'`)
+              .map((v) => `'${enumLabel(v)}'`)
               .join(", ");
             lineParts.push(`Must be one of: ${enumValsStr}`);
           }

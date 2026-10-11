@@ -4,6 +4,44 @@ import type { LanguageModel } from "ai";
 
 import { config } from "@/lib/config";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isUnknownArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+
+// Anthropic occasionally emits `thinking` blocks without a `signature`, which
+// the SDK rejects. Backfill an empty signature so the response parses.
+function patchAnthropicThinkingSignatures(raw: string): string | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isRecord(parsed) || parsed.type !== "message") {
+    return null;
+  }
+  const content = parsed.content;
+  if (!isUnknownArray(content)) {
+    return null;
+  }
+  let changed = false;
+  for (const block of content) {
+    if (
+      isRecord(block) &&
+      block.type === "thinking" &&
+      typeof block.signature !== "string"
+    ) {
+      block.signature = "";
+      changed = true;
+    }
+  }
+  return changed ? JSON.stringify(parsed) : null;
+}
+
 function createAnthropicFetch(): typeof globalThis.fetch {
   const baseFetch = globalThis.fetch;
   return async (input, init) => {
@@ -14,27 +52,7 @@ function createAnthropicFetch(): typeof globalThis.fetch {
     }
 
     const body = await res.text();
-    let patched = body;
-    try {
-      const json = JSON.parse(body);
-      if (json?.type === "message" && Array.isArray(json.content)) {
-        let changed = false;
-        for (const block of json.content) {
-          if (
-            block &&
-            typeof block === "object" &&
-            block.type === "thinking" &&
-            typeof block.signature !== "string"
-          ) {
-            block.signature = "";
-            changed = true;
-          }
-        }
-        if (changed) {
-          patched = JSON.stringify(json);
-        }
-      }
-    } catch {}
+    const patched = patchAnthropicThinkingSignatures(body) ?? body;
 
     const headers = new Headers(res.headers);
     if (patched !== body) {

@@ -128,7 +128,7 @@ export function DevflowProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const items = await dfGet<RepoSummary[]>("/repos");
         if (cancelled) {

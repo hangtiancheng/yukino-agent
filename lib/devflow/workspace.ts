@@ -136,8 +136,8 @@ export function parseGitRemoteUrl(
   if (!value) {
     return null;
   }
-  let host: string | null = null;
-  let urlPath = "";
+  let host: string | null;
+  let urlPath: string;
   const scpLike = /^(?:[^@\s]+@)?([^:/\s]+):(.+)$/.exec(value);
   if (scpLike && !value.includes("://")) {
     host = scpLike[1];

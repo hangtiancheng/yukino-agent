@@ -797,17 +797,12 @@ async function summaryFor(params: {
   }
 
   const payload = buildCompactionSummaryPayload(params.messages);
-  let llmSummary = "";
-  try {
-    llmSummary = formatCompactionSummary(
-      await llmCompactionSummary(payload, params.currentMessage),
-    );
-  } catch (e) {
-    // Faithful to legacy: an LLM failure aborts this compaction attempt and is
-    // recorded by the caller's circuit breaker (the deterministic fallback is
-    // only used for an *empty* model reply).
-    throw e;
-  }
+  // Faithful to legacy: an LLM failure aborts this compaction attempt and is
+  // recorded by the caller's circuit breaker (the deterministic fallback is
+  // only used for an *empty* model reply) — so let the error propagate.
+  const llmSummary = formatCompactionSummary(
+    await llmCompactionSummary(payload, params.currentMessage),
+  );
   if (!llmSummary) {
     const fallback = fallbackCompactionSummary(
       params.messages,
@@ -938,7 +933,7 @@ export async function ensureContextHeadroom(params: {
           }),
         },
       })
-      .catch(() => {});
+      .catch(() => undefined);
     return {
       attempted: true,
       compacted: false,

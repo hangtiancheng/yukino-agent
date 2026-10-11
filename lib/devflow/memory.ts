@@ -9,7 +9,9 @@ import { prisma } from "@/lib/db";
 import { contentScopeFilter } from "@/lib/devflow/content-index";
 import { addKnowledgeDocument, kbFilter } from "@/lib/devflow/rag";
 import { scopedRetrieve } from "@/lib/devflow/search";
+import { toInputJson } from "@/lib/json";
 import { observeGeneration } from "@/lib/observability";
+import { asString } from "@/lib/text";
 
 const asJson = (value: unknown): Prisma.InputJsonValue =>
   value as Prisma.InputJsonValue;
@@ -1077,13 +1079,13 @@ export function recordRecallEvent(input: RecallEventInput): void {
         conversationId: input.conversationId ?? null,
         toolName: input.toolName,
         query: clipInline(input.query, 500),
-        resultsJson: JSON.parse(JSON.stringify(results)),
-        citationsJson: JSON.parse(
-          JSON.stringify(input.citations?.slice(0, RECALL_RESULTS_LIMIT) ?? []),
+        resultsJson: toInputJson(results),
+        citationsJson: toInputJson(
+          input.citations?.slice(0, RECALL_RESULTS_LIMIT) ?? [],
         ),
         scope: input.scope ?? "project",
         mode: input.mode ?? "hybrid",
-        metadataJson: JSON.parse(JSON.stringify(input.metadata ?? {})),
+        metadataJson: toInputJson(input.metadata ?? {}),
       },
     })
     .catch((e: unknown) => {
@@ -1185,16 +1187,15 @@ export async function searchRepoMemory(
   ]);
   const merged = [...kbDocs, ...itemDocs]
     .map((doc) => ({
-      title: String(
-        doc.metadata.doc_name ??
-          doc.metadata.title ??
-          doc.metadata.item_title ??
-          "untitled",
+      title: asString(
+        doc.metadata.doc_name ?? doc.metadata.title ?? doc.metadata.item_title,
+        "untitled",
       ),
-      sourceType: String(
-        doc.metadata.source_type ?? doc.metadata.item_type ?? "document",
+      sourceType: asString(
+        doc.metadata.source_type ?? doc.metadata.item_type,
+        "document",
       ),
-      sourceId: String(doc.metadata.doc_id ?? doc.metadata.item_id ?? doc.id),
+      sourceId: asString(doc.metadata.doc_id ?? doc.metadata.item_id, doc.id),
       snippet: clipInline(doc.content, 300),
       score: doc.score,
     }))

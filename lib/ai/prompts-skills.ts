@@ -28,9 +28,7 @@ export function isValidSkillName(name: string): boolean {
   if (name.startsWith("-") || name.endsWith("-") || name.includes("--")) {
     return false;
   }
-  return [...name].every(
-    (c) => c === "-" || (c >= "0" && c <= "9") || (c >= "a" && c <= "z"),
-  );
+  return /^[0-9a-z-]+$/.test(name);
 }
 
 export function validateSkillMarkdown(
@@ -180,22 +178,21 @@ export interface LoadedSkill {
 
 export async function loadSkill(name: string): Promise<string> {
   const requested = name.trim();
-  let available: string[] = [];
   try {
     const skills = await prisma.skillAsset.findMany({
       where: { enabled: true },
       select: { name: true, content: true },
       orderBy: { name: "asc" },
     });
-    available = skills.map((s) => s.name);
     const hit = skills.find((s) => s.name === requested);
     if (hit) {
       return `Loaded skill: ${hit.name}\n\n${hit.content}`;
     }
+    const available = skills.map((s) => s.name);
+    return `Skill '${requested}' is not available. Currently loadable skills: ${available.join(", ") || "none"}.`;
   } catch (e) {
     return `Skill '${requested}' is unavailable: the skill store could not be read (${e instanceof Error ? e.message : String(e)}).`;
   }
-  return `Skill '${requested}' is not available. Currently loadable skills: ${available.join(", ") || "none"}.`;
 }
 
 export const loadSkillTool = tool({

@@ -1,4 +1,5 @@
 import { embedTexts } from "@/lib/ai/embedder";
+import { asString } from "@/lib/text";
 
 import {
   upsert,
@@ -25,7 +26,7 @@ export async function indexChunks(chunks: IndexChunk[]): Promise<number> {
     id: chunk.id,
     vector: vectors[i],
     content: chunk.content.slice(0, MAX_CONTENT_LENGTH),
-    source: String(chunk.metadata._source ?? ""),
+    source: asString(chunk.metadata._source),
     metadata: JSON.stringify(chunk.metadata).slice(0, 16384),
     created_at: new Date().toISOString(),
   }));

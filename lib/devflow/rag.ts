@@ -11,6 +11,7 @@ import { queryByFilter, quote, count } from "@/lib/milvus/client";
 import { indexChunks, deleteBySource } from "@/lib/milvus/indexer";
 import { retrieveDense } from "@/lib/milvus/retriever";
 import { observeGeneration } from "@/lib/observability";
+import { asString } from "@/lib/text";
 
 import { KNOWLEDGE_QA_PROMPT } from "./agents/prompts";
 import { chunkDocument, siblingIdsByParent, type Chunk } from "./chunking";
@@ -453,8 +454,8 @@ export async function searchKnowledge(
   });
   docs = await applyScoreThreshold(docs, query, filter, cfg);
   const hits = docs.map((doc) => ({
-    docId: String(doc.metadata.doc_id ?? ""),
-    docName: String(doc.metadata.doc_name ?? "unknown"),
+    docId: asString(doc.metadata.doc_id),
+    docName: asString(doc.metadata.doc_name, "unknown"),
     chunkIndex: Number(doc.metadata.chunk_index ?? 0),
     content: doc.content,
     score: doc.score,
@@ -878,7 +879,7 @@ export async function listDocumentChunks(
     10_000,
   );
   const parsed = rows.map((row) => {
-    let meta: Record<string, unknown> = {};
+    let meta: Record<string, unknown>;
     try {
       meta = JSON.parse(row.metadata || "{}") as Record<string, unknown>;
     } catch {
@@ -890,7 +891,7 @@ export async function listDocumentChunks(
       title:
         typeof meta.section_title === "string" && meta.section_title !== ""
           ? meta.section_title
-          : String(meta.doc_name ?? ""),
+          : asString(meta.doc_name),
       content: row.content,
     };
   });
@@ -948,7 +949,7 @@ export async function ragStatus(repoId: string): Promise<RagStatusView> {
     sourceTypes[doc.sourceType] = (sourceTypes[doc.sourceType] ?? 0) + 1;
     chunkCount += doc.chunkCount;
   }
-  let milvusChunks = 0;
+  let milvusChunks: number;
   try {
     milvusChunks = await count(kbFilter(repoId));
   } catch {

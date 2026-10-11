@@ -5,6 +5,7 @@ import type {
 } from "@/generated/prisma/client";
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/db";
+import { asString } from "@/lib/text";
 
 import { ensureDemoUser } from "./permissions";
 
@@ -120,7 +121,7 @@ export async function sendNegativeFeedbackNotification(
       const code = dict.StatusCode ?? dict.code ?? 0;
       if (code !== 0 && code !== "0") {
         throw new Error(
-          String(dict.StatusMessage ?? dict.msg ?? "webhook rejected"),
+          asString(dict.StatusMessage ?? dict.msg, "webhook rejected"),
         );
       }
     }

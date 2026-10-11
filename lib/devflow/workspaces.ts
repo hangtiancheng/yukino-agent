@@ -196,46 +196,48 @@ export async function aggregateWorkspaceStats(
   const workspace = await mustGetWorkspace(workspaceId);
   const repoIds = dedupeRepoIds(workspace.repoIds);
 
-  const repoRows = repoIds.length
-    ? await prisma.repository.findMany({
-        where: { id: { in: repoIds } },
-        select: { id: true, fullName: true },
-      })
-    : [];
+  if (repoIds.length === 0) {
+    return {
+      workspaceId: workspace.id,
+      repos: [],
+      totals: totalsFromRepoStats([]),
+    };
+  }
+
+  const repoRows = await prisma.repository.findMany({
+    where: { id: { in: repoIds } },
+    select: { id: true, fullName: true },
+  });
   const names = new Map(repoRows.map((row) => [row.id, row.fullName]));
 
   const [issuesByState, prsByState, mergedPrRows, runsByConclusion, docRows] =
-    await Promise.all(
-      repoIds.length
-        ? [
-            prisma.issue.groupBy({
-              by: ["repoId", "state"],
-              where: { repoId: { in: repoIds } },
-              _count: { _all: true },
-            }),
-            prisma.pullRequest.groupBy({
-              by: ["repoId", "state"],
-              where: { repoId: { in: repoIds } },
-              _count: { _all: true },
-            }),
-            prisma.pullRequest.groupBy({
-              by: ["repoId"],
-              where: { repoId: { in: repoIds }, mergedAt: { not: null } },
-              _count: { _all: true },
-            }),
-            prisma.workflowRun.groupBy({
-              by: ["repoId", "conclusion"],
-              where: { repoId: { in: repoIds } },
-              _count: { _all: true },
-            }),
-            prisma.knowledgeDocument.groupBy({
-              by: ["repoId"],
-              where: { repoId: { in: repoIds } },
-              _count: { _all: true },
-            }),
-          ]
-        : [[], [], [], [], []],
-    );
+    await Promise.all([
+      prisma.issue.groupBy({
+        by: ["repoId", "state"],
+        where: { repoId: { in: repoIds } },
+        _count: { _all: true },
+      }),
+      prisma.pullRequest.groupBy({
+        by: ["repoId", "state"],
+        where: { repoId: { in: repoIds } },
+        _count: { _all: true },
+      }),
+      prisma.pullRequest.groupBy({
+        by: ["repoId"],
+        where: { repoId: { in: repoIds }, mergedAt: { not: null } },
+        _count: { _all: true },
+      }),
+      prisma.workflowRun.groupBy({
+        by: ["repoId", "conclusion"],
+        where: { repoId: { in: repoIds } },
+        _count: { _all: true },
+      }),
+      prisma.knowledgeDocument.groupBy({
+        by: ["repoId"],
+        where: { repoId: { in: repoIds } },
+        _count: { _all: true },
+      }),
+    ]);
 
   const stats = new Map<string, RepoAggregate>(
     repoIds.map((repoId) => [
@@ -473,31 +475,31 @@ export async function listWorkspaces(): Promise<WorkspaceListItem[]> {
   });
   const allRepoIds = dedupeRepoIds(items.flatMap((item) => item.repoIds));
 
-  const [repoRows, issueRows, prRows, runRows] = await Promise.all(
-    allRepoIds.length
-      ? [
-          prisma.repository.findMany({
-            where: { id: { in: allRepoIds } },
-            select: { id: true, fullName: true },
-          }),
-          prisma.issue.groupBy({
-            by: ["repoId"],
-            where: { repoId: { in: allRepoIds } },
-            _count: { _all: true },
-          }),
-          prisma.pullRequest.groupBy({
-            by: ["repoId"],
-            where: { repoId: { in: allRepoIds } },
-            _count: { _all: true },
-          }),
-          prisma.workflowRun.groupBy({
-            by: ["repoId"],
-            where: { repoId: { in: allRepoIds } },
-            _count: { _all: true },
-          }),
-        ]
-      : [[], [], [], []],
-  );
+  if (allRepoIds.length === 0) {
+    return items.map((item) => ({ ...toWorkspaceView(item), repos: [] }));
+  }
+
+  const [repoRows, issueRows, prRows, runRows] = await Promise.all([
+    prisma.repository.findMany({
+      where: { id: { in: allRepoIds } },
+      select: { id: true, fullName: true },
+    }),
+    prisma.issue.groupBy({
+      by: ["repoId"],
+      where: { repoId: { in: allRepoIds } },
+      _count: { _all: true },
+    }),
+    prisma.pullRequest.groupBy({
+      by: ["repoId"],
+      where: { repoId: { in: allRepoIds } },
+      _count: { _all: true },
+    }),
+    prisma.workflowRun.groupBy({
+      by: ["repoId"],
+      where: { repoId: { in: allRepoIds } },
+      _count: { _all: true },
+    }),
+  ]);
 
   const names = new Map(repoRows.map((row) => [row.id, row.fullName]));
   const issueCounts = new Map(

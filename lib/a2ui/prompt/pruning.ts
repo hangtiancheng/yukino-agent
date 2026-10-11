@@ -34,7 +34,10 @@ export function pruneDefsByReachability(
   const queue = [...rootDefNames];
 
   while (queue.length > 0) {
-    const defName = queue.shift()!;
+    const defName = queue.shift();
+    if (defName === undefined) {
+      break;
+    }
     if (defName in defs && !visited.has(defName)) {
       visited.add(defName);
       for (const ref of collectRefs(defs[defName])) {

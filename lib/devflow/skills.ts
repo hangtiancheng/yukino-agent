@@ -417,7 +417,7 @@ export async function getSkillRegistry(): Promise<SkillRegistry> {
   if (cachedRegistry) {
     return cachedRegistry;
   }
-  let entries: string[] = [];
+  let entries: string[];
   try {
     entries = await readdir(SKILLS_DIR);
   } catch {

@@ -337,7 +337,7 @@ function checkHeuristicRerank() {
     "heuristic: query-relevant doc ranks first",
   );
   assert.ok(
-    reasons.get("high")!.includes("query terms"),
+    reasons.get("high")?.includes("query terms"),
     "heuristic: rank_reason",
   );
   assert.ok(

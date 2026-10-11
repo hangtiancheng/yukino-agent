@@ -13,7 +13,7 @@ export function OPTIONS(): Response {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
-export function ok<T>(data: T, status = 200): Response {
+export function ok(data: unknown, status = 200): Response {
   return Response.json(
     { message: "OK", data },
     { status, headers: CORS_HEADERS },

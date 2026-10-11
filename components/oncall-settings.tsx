@@ -481,7 +481,7 @@ export function OncallSettings() {
         </div>
         <Tabs
           value={tab}
-          onValueChange={(value) => {
+          onValueChange={(value: string) => {
             if (value === "prompts" || value === "skills" || value === "mcp") {
               setTab(value);
             }

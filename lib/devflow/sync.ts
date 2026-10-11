@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { toInputJson } from "@/lib/json";
+import { asString } from "@/lib/text";
 
 import { decryptToken } from "./crypto";
 import {
@@ -311,7 +313,7 @@ export async function syncRepository(
             status: item.status ?? "unknown",
             conclusion: item.conclusion ?? null,
             htmlUrl: item.html_url ?? null,
-            jobs,
+            jobs: toInputJson(jobs),
             ...(logsText !== null ? { logsText } : {}),
             githubCreatedAt: ghDate(item.created_at),
             githubUpdatedAt: ghDate(item.updated_at),
@@ -354,8 +356,8 @@ function labelsOf(labels: unknown): string[] {
   return labels
     .map((label) =>
       label && typeof label === "object" && "name" in label
-        ? String((label as { name?: unknown }).name ?? "")
-        : String(label ?? ""),
+        ? asString((label as { name?: unknown }).name)
+        : asString(label),
     )
     .filter((name) => name !== "");
 }
