@@ -124,7 +124,9 @@ export const AlertDialog = createComponentImplementation(
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (typeof props.action === "function") {props.action();}
+                if (typeof props.action === "function") {
+                  props.action();
+                }
                 setOpen(false);
               }}
             >

@@ -71,7 +71,9 @@ export class DirectJsonPromptGenerator implements PromptGenerator {
 
     if (options.includeSchema ?? true) {
       const instructions = renderAsLlmInstructions(selectedCatalog);
-      if (instructions) {parts.push(instructions);}
+      if (instructions) {
+        parts.push(instructions);
+      }
     }
 
     if (options.examples) {

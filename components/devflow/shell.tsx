@@ -118,7 +118,9 @@ function ThemeToggle() {
       variant="ghost"
       size="icon"
       aria-label={t("toggleTheme")}
-      onClick={() => { setTheme(isDark ? "light" : "dark"); }}
+      onClick={() => {
+        setTheme(isDark ? "light" : "dark");
+      }}
     >
       {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
     </Button>
@@ -145,7 +147,9 @@ function RepoPicker() {
     <Select
       value={repoId || undefined}
       onValueChange={(value) => {
-        if (value) {setRepoId(value);}
+        if (value) {
+          setRepoId(value);
+        }
       }}
     >
       <SelectTrigger className="w-56" aria-label={t("selectRepo")}>

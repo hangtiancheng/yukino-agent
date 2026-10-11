@@ -8,13 +8,18 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 
-interface Tab { title?: unknown; child?: unknown }
+interface Tab {
+  title?: unknown;
+  child?: unknown;
+}
 
 export const Tabs = createComponentImplementation(
   TabsApi,
   ({ props, buildChild }) => {
     const tabs = (Array.isArray(props.tabs) ? props.tabs : []) as Tab[];
-    if (tabs.length === 0) {return null;}
+    if (tabs.length === 0) {
+      return null;
+    }
 
     return (
       <UITabs defaultValue={0}>

@@ -23,7 +23,9 @@ export async function POST(request: Request) {
     const repo = await prisma.repository.findUnique({
       where: { id: parsed.data.repoId },
     });
-    if (!repo) {return fail(404, "repoNotFound");}
+    if (!repo) {
+      return fail(404, "repoNotFound");
+    }
     const result = await addMemoryNote(parsed.data);
     return ok(result, result.status === "skipped" ? 200 : 201);
   } catch (e) {

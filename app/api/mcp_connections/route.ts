@@ -93,10 +93,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const admin = requireOncallAdmin(request);
-  if (admin)
-    {return admin === "not_configured"
+  if (admin) {
+    return admin === "not_configured"
       ? fail(403, "adminNotConfigured")
-      : fail(401, "adminUnauthorized");}
+      : fail(401, "adminUnauthorized");
+  }
 
   let body: unknown;
   try {
@@ -105,12 +106,16 @@ export async function POST(request: NextRequest) {
     return fail(400, "invalidJsonBody");
   }
   const parsed = mcpConnectionInputSchema.safeParse(body);
-  if (!parsed.success) {return fail(400, "invalidMcpConnection");}
+  if (!parsed.success) {
+    return fail(400, "invalidMcpConnection");
+  }
 
   const existing = await prisma.mcpConnection.findUnique({
     where: { name: parsed.data.name },
   });
-  if (existing) {return fail(409, "mcpConnectionNameTaken");}
+  if (existing) {
+    return fail(409, "mcpConnectionNameTaken");
+  }
 
   try {
     const row = await prisma.mcpConnection.create({

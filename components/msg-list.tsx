@@ -168,7 +168,9 @@ function referenceStageTrace(
   labels: { vector: string; bm25: string; rerank: string },
 ): string {
   const stages = ref.stages;
-  if (!stages) {return "";}
+  if (!stages) {
+    return "";
+  }
   const parts: string[] = [];
   if (stages.vectorRank !== undefined) {
     parts.push(
@@ -352,7 +354,9 @@ const MessageItem = memo(function MessageItem({
         {message.a2ui && message.a2ui.length > 0 && (
           <A2uiView
             messages={message.a2ui}
-            onRawAction={(action) => { onA2uiAction(index, action); }}
+            onRawAction={(action) => {
+              onA2uiAction(index, action);
+            }}
           />
         )}
         {!streaming && !message.pending && sessionId !== "" && (

@@ -15,7 +15,9 @@ export function getSimpleMemory(id: string): SimpleMemory {
   }
   if (memoryMap.size >= MAX_SESSIONS) {
     const oldestKey = memoryMap.keys().next().value;
-    if (oldestKey !== undefined) {memoryMap.delete(oldestKey);}
+    if (oldestKey !== undefined) {
+      memoryMap.delete(oldestKey);
+    }
   }
   const mem = new SimpleMemory(id);
   memoryMap.set(id, mem);
@@ -32,13 +34,17 @@ export function shouldTriggerSummary(pendingPairs: number): boolean {
 
 export function capSummary(text: string, max = SUMMARY_MAX_CHARS): string {
   const normalized = text.split(/\s+/).join(" ").trim();
-  if (normalized.length <= max) {return normalized;}
+  if (normalized.length <= max) {
+    return normalized;
+  }
   return `${normalized.slice(0, max - 1).trimEnd()}…`;
 }
 
 export function summarySection(summary: string): string {
   const trimmed = summary.trim();
-  if (trimmed === "") {return "";}
+  if (trimmed === "") {
+    return "";
+  }
   return `\n\n## Conversation summary\n${trimmed}`;
 }
 
@@ -64,7 +70,9 @@ ${transcript}`;
 
 function textOf(msg: ModelMessage): string {
   const { content } = msg;
-  if (typeof content === "string") {return content;}
+  if (typeof content === "string") {
+    return content;
+  }
   return content
     .filter((p): p is { type: "text"; text: string } => p.type === "text")
     .map((p) => p.text)
@@ -87,11 +95,15 @@ export class SimpleMemory {
     this.messages.push(msg);
     if (this.messages.length > this.maxWindowSize) {
       let excess = this.messages.length - this.maxWindowSize;
-      if (excess % 2 !== 0) {excess++;}
+      if (excess % 2 !== 0) {
+        excess++;
+      }
       this.pending.push(...this.messages.slice(0, excess));
       this.messages = this.messages.slice(excess);
       const cap = MAX_PENDING_PAIRS * 2;
-      if (this.pending.length > cap) {this.pending = this.pending.slice(-cap);}
+      if (this.pending.length > cap) {
+        this.pending = this.pending.slice(-cap);
+      }
     }
   }
 
@@ -108,9 +120,15 @@ export class SimpleMemory {
   }
 
   async maybeSummarize(): Promise<void> {
-    if (!MEMORY_SUMMARY_ENABLED) {return;}
-    if (this.compacting) {return;}
-    if (!shouldTriggerSummary(this.pendingPairCount())) {return;}
+    if (!MEMORY_SUMMARY_ENABLED) {
+      return;
+    }
+    if (this.compacting) {
+      return;
+    }
+    if (!shouldTriggerSummary(this.pendingPairCount())) {
+      return;
+    }
     const folded = this.pending;
     const oldSummary = this.summary;
     this.compacting = true;

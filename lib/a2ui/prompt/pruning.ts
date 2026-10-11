@@ -5,10 +5,14 @@ export function collectRefs(value: JsonValue | undefined): Set<string> {
   const refs = new Set<string>();
   const visit = (node: JsonValue | undefined): void => {
     if (Array.isArray(node)) {
-      for (const item of node) {visit(item);}
+      for (const item of node) {
+        visit(item);
+      }
       return;
     }
-    if (!isJsonObject(node)) {return;}
+    if (!isJsonObject(node)) {
+      return;
+    }
     for (const [key, child] of Object.entries(node)) {
       if (key === "$ref" && typeof child === "string") {
         refs.add(child);
@@ -54,7 +58,9 @@ function withPrunedComponents(
   catalogSchema: JsonObject,
   allowedComponents: string[],
 ): JsonObject {
-  if (allowedComponents.length === 0) {return catalogSchema;}
+  if (allowedComponents.length === 0) {
+    return catalogSchema;
+  }
 
   const schemaCopy = structuredClone(catalogSchema);
   const allowed = new Set(allowedComponents);
@@ -72,10 +78,13 @@ function withPrunedComponents(
     const oneOf = anyComponent.oneOf;
     if (Array.isArray(oneOf)) {
       anyComponent.oneOf = oneOf.filter((item) => {
-        if (!isJsonObject(item) || typeof item.$ref !== "string")
-          {return false;}
+        if (!isJsonObject(item) || typeof item.$ref !== "string") {
+          return false;
+        }
         const ref = item.$ref;
-        if (!ref.startsWith("#/components/")) {return false;}
+        if (!ref.startsWith("#/components/")) {
+          return false;
+        }
         return allowed.has(ref.split("/").pop() ?? "");
       });
     }
@@ -88,7 +97,9 @@ function withPrunedMessages(
   s2cSchema: JsonObject,
   allowedMessages: string[],
 ): JsonObject {
-  if (allowedMessages.length === 0) {return s2cSchema;}
+  if (allowedMessages.length === 0) {
+    return s2cSchema;
+  }
 
   const schemaCopy = structuredClone(s2cSchema);
   const allowed = new Set(allowedMessages);
@@ -116,10 +127,14 @@ function withPrunedCommonTypes(
   catalog: A2uiCatalogSchemas,
 ): A2uiCatalogSchemas {
   const defs = catalog.commonTypesSchema.$defs;
-  if (!isJsonObject(defs)) {return catalog;}
+  if (!isJsonObject(defs)) {
+    return catalog;
+  }
 
   const externalRefs = collectRefs(catalog.catalogSchema);
-  for (const ref of collectRefs(catalog.s2cSchema)) {externalRefs.add(ref);}
+  for (const ref of collectRefs(catalog.s2cSchema)) {
+    externalRefs.add(ref);
+  }
 
   const rootCommonTypes: string[] = [];
   for (const ref of externalRefs) {

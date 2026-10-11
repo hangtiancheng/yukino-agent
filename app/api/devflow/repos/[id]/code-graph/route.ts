@@ -41,7 +41,9 @@ export async function GET(request: Request, context: RouteContext) {
       documents: result.documents,
     });
   } catch (e) {
-    if (e instanceof WorkspaceError) {return failRaw(e.status, e.message);}
+    if (e instanceof WorkspaceError) {
+      return failRaw(e.status, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 }
@@ -59,7 +61,9 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     return ok(await rebuildCodeGraph(id));
   } catch (e) {
-    if (e instanceof WorkspaceError) {return failRaw(e.status, e.message);}
+    if (e instanceof WorkspaceError) {
+      return failRaw(e.status, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 }

@@ -68,8 +68,9 @@ export async function POST(request: Request) {
               event.result,
               event.detail,
               alertName,
-            ).catch((e) => { console.error("[ai_ops:stream] case persistence failed:", e); },
-            );
+            ).catch((e) => {
+              console.error("[ai_ops:stream] case persistence failed:", e);
+            });
             const status =
               event.result === EXHAUSTED_RESULT ? "exhausted" : "success";
             finalizeAiOpsRun(runId, {

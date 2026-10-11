@@ -150,7 +150,9 @@ import {
   let calls = 0;
   const recovered = await executeWithRetry(async () => {
     calls += 1;
-    if (calls === 1) {throw new Error("429 Too Many Requests");}
+    if (calls === 1) {
+      throw new Error("429 Too Many Requests");
+    }
     return "second wins";
   });
   assert.deepEqual(recovered, {
@@ -209,7 +211,9 @@ import {
     throw new Error("fetch failed");
   });
   assert.equal(failure.ok, false);
-  if (failure.ok) {throw new Error("unreachable");}
+  if (failure.ok) {
+    throw new Error("unreachable");
+  }
   const observed = toolErrorObservation("list_ci_runs", failure);
   assert.equal(observed.route, "tool_error");
   assert.equal(observed.error_kind, "transient_network");

@@ -31,10 +31,12 @@ const CHUNK_OVERLAP = 100;
 
 function chunkLabel(chunk: Chunk, runningIndex: number): string {
   const sectionTitle = chunk.section_title;
-  if (typeof sectionTitle === "string" && sectionTitle !== "")
-    {return sectionTitle;}
-  if (chunk.page !== null && chunk.page !== undefined)
-    {return `Page ${chunk.page}`;}
+  if (typeof sectionTitle === "string" && sectionTitle !== "") {
+    return sectionTitle;
+  }
+  if (chunk.page !== null && chunk.page !== undefined) {
+    return `Page ${chunk.page}`;
+  }
   return `Chunk ${runningIndex + 1}`;
 }
 
@@ -45,7 +47,9 @@ export function chunkRowMetadata(
 ): Record<string, unknown> {
   const meta: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(chunk)) {
-    if (key === "content" || value === null || value === undefined) {continue;}
+    if (key === "content" || value === null || value === undefined) {
+      continue;
+    }
     meta[key] = value;
   }
   return {
@@ -271,7 +275,9 @@ export async function retryDocument(docId: string): Promise<AddDocumentResult> {
     where: { id: docId },
     include: { body: true },
   });
-  if (!doc) {throw new Error(`Knowledge document ${docId} not found`);}
+  if (!doc) {
+    throw new Error(`Knowledge document ${docId} not found`);
+  }
   if (doc.status !== "failed") {
     throw new Error(
       `Only failed documents can be retried (status: ${doc.status})`,
@@ -297,7 +303,9 @@ export async function deleteKnowledgeDocument(docId: string): Promise<void> {
   const doc = await prisma.knowledgeDocument.findUnique({
     where: { id: docId },
   });
-  if (!doc) {return;}
+  if (!doc) {
+    return;
+  }
   await deleteBySource(kbSource(doc.repoId, docId));
   await prisma.knowledgeDocument.delete({ where: { id: docId } });
 }
@@ -361,7 +369,9 @@ export async function getKnowledgeConfig(
   const row = await prisma.knowledgeBaseConfig.findUnique({
     where: { repoId },
   });
-  if (!row) {return { ...KB_CONFIG_FALLBACK };}
+  if (!row) {
+    return { ...KB_CONFIG_FALLBACK };
+  }
   return {
     retrievalMethod: isKbRetrievalMethod(row.retrievalMethod)
       ? row.retrievalMethod
@@ -408,13 +418,17 @@ export async function applyScoreThreshold<T extends { id: string }>(
   filter: string,
   cfg: KnowledgeConfigValues,
 ): Promise<T[]> {
-  if (!cfg.scoreThresholdEnabled || docs.length === 0) {return docs;}
+  if (!cfg.scoreThresholdEnabled || docs.length === 0) {
+    return docs;
+  }
   const dense = await retrieveDense(
     query,
     Math.min(Math.max(docs.length * 4, 20), 100),
     filter,
   ).catch(() => []);
-  if (dense.length === 0) {return docs;}
+  if (dense.length === 0) {
+    return docs;
+  }
   const denseScoreById = new Map(dense.map((d) => [d.id, d.score]));
   return docs.filter(
     (doc) => (denseScoreById.get(doc.id) ?? 0) >= cfg.scoreThreshold,
@@ -542,7 +556,9 @@ function detectConflict(
   hits: { docName: string; content: string }[],
 ): { type: string } | null {
   const highConfidence = hits.slice(0, 2);
-  if (highConfidence.length < 2) {return null;}
+  if (highConfidence.length < 2) {
+    return null;
+  }
   const texts = highConfidence.map(
     (hit, i) => [String(i), evidenceText(hit)] as const,
   );
@@ -568,7 +584,9 @@ export function evaluateAnswerGate(
   query: string,
   hits: { docId: string; docName: string; content: string }[],
 ): AnswerGate {
-  if (hits.length === 0) {return { decision: "insufficient_evidence" };}
+  if (hits.length === 0) {
+    return { decision: "insufficient_evidence" };
+  }
 
   const evidence = hits.map((h) => evidenceText(h)).join(" ");
   const signals = strongQuerySignals(query);
@@ -688,14 +706,20 @@ export function answerTerms(text: string): Set<string> {
   const lowered = text.toLowerCase();
   const terms = new Set<string>(lowered.match(/[a-z0-9_-]+/g) ?? []);
   for (const segment of lowered.match(/[\u4e00-\u9fff]+/g) ?? []) {
-    if (segment.length <= 3) {terms.add(segment);}
-    for (let i = 0; i + 1 < segment.length; i++)
-      {terms.add(segment.slice(i, i + 2));}
-    for (let i = 0; i + 2 < segment.length; i++)
-      {terms.add(segment.slice(i, i + 3));}
+    if (segment.length <= 3) {
+      terms.add(segment);
+    }
+    for (let i = 0; i + 1 < segment.length; i++) {
+      terms.add(segment.slice(i, i + 2));
+    }
+    for (let i = 0; i + 2 < segment.length; i++) {
+      terms.add(segment.slice(i, i + 3));
+    }
   }
   for (const term of [...terms]) {
-    if (term.trim() === "") {terms.delete(term);}
+    if (term.trim() === "") {
+      terms.delete(term);
+    }
   }
   return terms;
 }
@@ -738,10 +762,14 @@ export function buildExtractiveAnswer(
       let cleaned = sentence.trim().split(/\s+/).join(" ");
       cleaned = cleaned.replace(/(^|\s)#{1,6}\s*/g, "$1");
       cleaned = cleaned.replace(/^[-\s]+|[-\s]+$/g, "");
-      if (cleaned.length < 8) {return;}
+      if (cleaned.length < 8) {
+        return;
+      }
       let overlap = 0;
       for (const term of answerTerms(cleaned)) {
-        if (queryTerms.has(term)) {overlap++;}
+        if (queryTerms.has(term)) {
+          overlap++;
+        }
       }
       candidates.push({
         overlap,
@@ -766,17 +794,25 @@ export function buildExtractiveAnswer(
   const seen = new Set<string>();
   const usedCitations = new Set<number>();
   for (const candidate of candidates) {
-    if (bestOverlap > 0 && candidate.overlap < minimumOverlap) {continue;}
+    if (bestOverlap > 0 && candidate.overlap < minimumOverlap) {
+      continue;
+    }
     const fingerprint = candidate.sentence.replace(/\s+/g, "").toLowerCase();
-    if (seen.has(fingerprint)) {continue;}
-    if (usedCitations.has(candidate.citation) && selected.length >= 2) {continue;}
+    if (seen.has(fingerprint)) {
+      continue;
+    }
+    if (usedCitations.has(candidate.citation) && selected.length >= 2) {
+      continue;
+    }
     selected.push({
       citation: candidate.citation,
       sentence: candidate.sentence,
     });
     seen.add(fingerprint);
     usedCitations.add(candidate.citation);
-    if (selected.length === 4) {break;}
+    if (selected.length === 4) {
+      break;
+    }
   }
 
   if (selected.length === 0) {

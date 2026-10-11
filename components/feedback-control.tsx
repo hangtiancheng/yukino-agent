@@ -65,7 +65,9 @@ export default function FeedbackControl({
         const params = new URLSearchParams({ targetType, targetId });
         const resp = await fetch(`/api/feedback?${params.toString()}`);
         const items = await listResponseSchema.parse(resp);
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         const wantedSubject = subjectId ?? "";
         const record =
           items.find((item) => item.subjectId === wantedSubject) ?? null;
@@ -76,7 +78,9 @@ export default function FeedbackControl({
           setCorrection(record.correction ?? "");
         }
       } catch {
-        if (!cancelled) {setCurrent(null);}
+        if (!cancelled) {
+          setCurrent(null);
+        }
       }
     })();
     return () => {
@@ -110,7 +114,9 @@ export default function FeedbackControl({
         };
         if (json.message === "OK" && json.data) {
           setCurrent(json.data);
-          if (rating === "negative") {setExpanded(true);}
+          if (rating === "negative") {
+            setExpanded(true);
+          }
         }
       } catch {
         // feedback is best-effort; never block the chat
@@ -122,7 +128,9 @@ export default function FeedbackControl({
   );
 
   const remove = useCallback(async () => {
-    if (current === null) {return;}
+    if (current === null) {
+      return;
+    }
     setPending(true);
     try {
       await fetch(`/api/feedback/${current.id}`, { method: "DELETE" });
@@ -139,7 +147,9 @@ export default function FeedbackControl({
   }, [current]);
 
   const saveDetails = useCallback(async () => {
-    if (current === null) {return;}
+    if (current === null) {
+      return;
+    }
     await upsert(current.rating);
     setExpanded(false);
   }, [current, upsert]);
@@ -185,7 +195,9 @@ export default function FeedbackControl({
           className="size-6 rounded-md"
           title={t("details")}
           aria-expanded={expanded}
-          onClick={() => { setExpanded((v) => !v); }}
+          onClick={() => {
+            setExpanded((v) => !v);
+          }}
         >
           <MessageSquareText className={iconSize} />
         </Button>
@@ -206,20 +218,26 @@ export default function FeedbackControl({
         <div className="bg-card border-border flex max-w-md flex-col gap-1.5 rounded-lg border p-2">
           <input
             value={reason}
-            onChange={(e) => { setReason(e.target.value.slice(0, 80)); }}
+            onChange={(e) => {
+              setReason(e.target.value.slice(0, 80));
+            }}
             placeholder={t("reasonPlaceholder")}
             className="border-border bg-background placeholder:text-muted-foreground rounded-md border px-2 py-1 text-xs outline-none"
           />
           <textarea
             value={comment}
-            onChange={(e) => { setComment(e.target.value.slice(0, 2000)); }}
+            onChange={(e) => {
+              setComment(e.target.value.slice(0, 2000));
+            }}
             placeholder={t("commentPlaceholder")}
             rows={2}
             className="border-border bg-background placeholder:text-muted-foreground resize-y rounded-md border px-2 py-1 text-xs outline-none"
           />
           <textarea
             value={correction}
-            onChange={(e) => { setCorrection(e.target.value.slice(0, 4000)); }}
+            onChange={(e) => {
+              setCorrection(e.target.value.slice(0, 4000));
+            }}
             placeholder={t("correctionPlaceholder")}
             rows={2}
             className="border-border bg-background placeholder:text-muted-foreground resize-y rounded-md border px-2 py-1 text-xs outline-none"

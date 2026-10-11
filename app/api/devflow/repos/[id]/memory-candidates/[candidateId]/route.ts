@@ -16,7 +16,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { id, candidateId } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
-    if (!repo) {return fail(404, "repoNotFound");}
+    if (!repo) {
+      return fail(404, "repoNotFound");
+    }
     const parsed = MemoryCandidateActionSchema.safeParse(
       await request.json().catch(() => null),
     );
@@ -27,11 +29,15 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
     if (parsed.data.action === "approve") {
       const result = await approveMemoryCandidate(id, candidateId);
-      if (!result) {return fail(404, "memoryCandidateNotFound");}
+      if (!result) {
+        return fail(404, "memoryCandidateNotFound");
+      }
       return ok(result);
     }
     const candidate = await rejectMemoryCandidate(id, candidateId);
-    if (!candidate) {return fail(404, "memoryCandidateNotFound");}
+    if (!candidate) {
+      return fail(404, "memoryCandidateNotFound");
+    }
     return ok({ candidate, documentId: null, kbStatus: null, kbError: null });
   } catch (e) {
     return failRaw(500, errorMessage(e));

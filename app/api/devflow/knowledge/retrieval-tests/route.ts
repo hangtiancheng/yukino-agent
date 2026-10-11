@@ -21,7 +21,9 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const repoId = url.searchParams.get("repoId");
-    if (!repoId) {return fail(400, "repoIdQueryRequired");}
+    if (!repoId) {
+      return fail(400, "repoIdQueryRequired");
+    }
     const limitParam = Number(url.searchParams.get("limit") ?? "20");
     const limit = Number.isFinite(limitParam)
       ? Math.min(Math.max(Math.trunc(limitParam), 1), 100)
@@ -55,7 +57,9 @@ export async function POST(request: Request) {
     }
     const { repoId, query, topK } = parsed.data;
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-    if (!repo) {return fail(404, "repoNotFound");}
+    if (!repo) {
+      return fail(404, "repoNotFound");
+    }
 
     const config = await getKnowledgeConfig(repoId);
     const effectiveTopK = topK ?? config.topK;

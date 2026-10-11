@@ -37,8 +37,12 @@ async function gitTextAt(args: string[], cwd: string): Promise<string> {
 
 function resolveUserPath(raw: string): string {
   const cleaned = raw.trim().replace(/^['"]|['"]$/g, "");
-  if (!cleaned) {throw new Error("Path cannot be empty");}
-  if (cleaned === "~") {return homedir();}
+  if (!cleaned) {
+    throw new Error("Path cannot be empty");
+  }
+  if (cleaned === "~") {
+    return homedir();
+  }
   const expanded = cleaned.startsWith("~/")
     ? path.join(homedir(), cleaned.slice(2))
     : cleaned;
@@ -170,7 +174,9 @@ export async function POST(request: Request) {
         repo = path.basename(localPath);
       }
       const host = remoteInfo?.host ?? null;
-      if (host && !GITHUB_HOSTS.has(host)) {provider = "github_compatible";}
+      if (host && !GITHUB_HOSTS.has(host)) {
+        provider = "github_compatible";
+      }
       if (provider === "github_compatible") {
         apiBaseUrl = apiBaseUrl ?? (host ? `https://${host}/api/v3` : null);
       } else {
@@ -188,7 +194,9 @@ export async function POST(request: Request) {
           token: token ?? null,
           baseUrl: provider === "github_compatible" ? apiBaseUrl : null,
         });
-        if (!meta.defaultBranch) {meta.defaultBranch = currentBranch;}
+        if (!meta.defaultBranch) {
+          meta.defaultBranch = currentBranch;
+        }
       } catch {
         meta = {
           githubId: null,

@@ -4,15 +4,21 @@ import { isJsonObject } from "./types";
 export function findSchemaEnum(
   propSchema: JsonValue | undefined,
 ): JsonValue[] | null {
-  if (!isJsonObject(propSchema)) {return null;}
-  if (Array.isArray(propSchema.enum)) {return propSchema.enum;}
+  if (!isJsonObject(propSchema)) {
+    return null;
+  }
+  if (Array.isArray(propSchema.enum)) {
+    return propSchema.enum;
+  }
   const subs = [
     ...(Array.isArray(propSchema.oneOf) ? propSchema.oneOf : []),
     ...(Array.isArray(propSchema.anyOf) ? propSchema.anyOf : []),
   ];
   for (const sub of subs) {
     const enumVal = findSchemaEnum(sub);
-    if (enumVal) {return enumVal;}
+    if (enumVal) {
+      return enumVal;
+    }
   }
   return null;
 }
@@ -24,11 +30,17 @@ function permittedNames(
 ): Set<string> {
   const names = new Set<string>();
   const defs = catalogSchema.$defs;
-  if (!isJsonObject(defs)) {return names;}
+  if (!isJsonObject(defs)) {
+    return names;
+  }
   const anyDef = defs[defName];
-  if (!isJsonObject(anyDef) || !Array.isArray(anyDef.oneOf)) {return names;}
+  if (!isJsonObject(anyDef) || !Array.isArray(anyDef.oneOf)) {
+    return names;
+  }
   for (const item of anyDef.oneOf) {
-    if (!isJsonObject(item)) {continue;}
+    if (!isJsonObject(item)) {
+      continue;
+    }
     const ref = item.$ref;
     if (typeof ref === "string" && ref.startsWith(refPrefix)) {
       names.add(ref.split("/").pop() ?? "");
@@ -41,7 +53,9 @@ function subSchemas(schema: JsonObject): JsonObject[] {
   const subs: JsonObject[] = [schema];
   if (Array.isArray(schema.allOf)) {
     for (const sub of schema.allOf) {
-      if (isJsonObject(sub)) {subs.push(sub);}
+      if (isJsonObject(sub)) {
+        subs.push(sub);
+      }
     }
   }
   return subs;
@@ -71,9 +85,12 @@ export class CatalogSchemaHelper {
     );
     this.components = {};
     for (const [name, schema] of Object.entries(componentsMap)) {
-      if (!isJsonObject(schema)) {continue;}
-      if (permittedComponents.size > 0 && !permittedComponents.has(name))
-        {continue;}
+      if (!isJsonObject(schema)) {
+        continue;
+      }
+      if (permittedComponents.size > 0 && !permittedComponents.has(name)) {
+        continue;
+      }
       this.components[name] = schema;
     }
 
@@ -87,9 +104,12 @@ export class CatalogSchemaHelper {
     );
     this.functions = {};
     for (const [name, schema] of Object.entries(functionsMap)) {
-      if (!isJsonObject(schema)) {continue;}
-      if (permittedFunctions.size > 0 && !permittedFunctions.has(name))
-        {continue;}
+      if (!isJsonObject(schema)) {
+        continue;
+      }
+      if (permittedFunctions.size > 0 && !permittedFunctions.has(name)) {
+        continue;
+      }
       this.functions[name] = schema;
     }
 
@@ -109,18 +129,24 @@ export class CatalogSchemaHelper {
         }
         if (isJsonObject(sub.properties)) {
           for (const key of Object.keys(sub.properties)) {
-            if (!props.includes(key)) {props.push(key);}
+            if (!props.includes(key)) {
+              props.push(key);
+            }
           }
         }
         if (Array.isArray(sub.required)) {
           for (const r of sub.required) {
-            if (typeof r === "string") {reqs.push(r);}
+            if (typeof r === "string") {
+              reqs.push(r);
+            }
           }
         }
       }
 
       const orderedKeys = props.filter((k) => k !== "component" && k !== "id");
-      if (isCheckable) {orderedKeys.push("checks");}
+      if (isCheckable) {
+        orderedKeys.push("checks");
+      }
 
       this.componentProperties[name] = orderedKeys;
       this.componentRequired[name] = reqs;
@@ -131,17 +157,25 @@ export class CatalogSchemaHelper {
       const props: string[] = [];
       const reqs: string[] = [];
       for (const sub of subSchemas(schema)) {
-        if (!isJsonObject(sub.properties)) {continue;}
+        if (!isJsonObject(sub.properties)) {
+          continue;
+        }
         const argsObj = sub.properties.args;
-        if (!isJsonObject(argsObj)) {continue;}
+        if (!isJsonObject(argsObj)) {
+          continue;
+        }
         if (isJsonObject(argsObj.properties)) {
           for (const key of Object.keys(argsObj.properties)) {
-            if (!props.includes(key)) {props.push(key);}
+            if (!props.includes(key)) {
+              props.push(key);
+            }
           }
         }
         if (Array.isArray(argsObj.required)) {
           for (const r of argsObj.required) {
-            if (typeof r === "string") {reqs.push(r);}
+            if (typeof r === "string") {
+              reqs.push(r);
+            }
           }
         }
       }
@@ -175,23 +209,33 @@ export class CatalogSchemaHelper {
     propName: string,
   ): JsonObject | null {
     const fnSchema = this.functions[fnName];
-    if (!fnSchema) {return null;}
+    if (!fnSchema) {
+      return null;
+    }
     for (const sub of subSchemas(fnSchema)) {
-      if (!isJsonObject(sub.properties)) {continue;}
+      if (!isJsonObject(sub.properties)) {
+        continue;
+      }
       const argsObj = sub.properties.args;
-      if (!isJsonObject(argsObj) || !isJsonObject(argsObj.properties))
-        {continue;}
+      if (!isJsonObject(argsObj) || !isJsonObject(argsObj.properties)) {
+        continue;
+      }
       const propSchema = argsObj.properties[propName];
-      if (propSchema !== undefined && isJsonObject(propSchema))
-        {return propSchema;}
+      if (propSchema !== undefined && isJsonObject(propSchema)) {
+        return propSchema;
+      }
     }
     return null;
   }
 
   getComponentDescription(name: string): string | null {
     const schema = this.components[name];
-    if (!schema) {return null;}
-    if (typeof schema.description === "string") {return schema.description;}
+    if (!schema) {
+      return null;
+    }
+    if (typeof schema.description === "string") {
+      return schema.description;
+    }
     if (Array.isArray(schema.allOf)) {
       for (const sub of schema.allOf) {
         if (isJsonObject(sub) && typeof sub.description === "string") {
@@ -204,10 +248,10 @@ export class CatalogSchemaHelper {
 
   getFunctionDescription(name: string): string | null {
     const schema = this.functions[name];
-    if (!schema) {return null;}
-    return typeof schema.description === "string"
-      ? schema.description
-      : null;
+    if (!schema) {
+      return null;
+    }
+    return typeof schema.description === "string" ? schema.description : null;
   }
 
   getPropertySchema(
@@ -215,7 +259,9 @@ export class CatalogSchemaHelper {
     propertyName: string,
   ): JsonObject | null {
     const schema = this.components[componentName];
-    if (!schema) {return null;}
+    if (!schema) {
+      return null;
+    }
     for (const sub of subSchemas(schema)) {
       if (
         isJsonObject(sub.properties) &&

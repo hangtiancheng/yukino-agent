@@ -37,7 +37,9 @@ export async function GET(request: Request, context: RouteContext) {
     await getRepoOrThrow(id);
     return ok(await impactForFiles(id, files));
   } catch (e) {
-    if (e instanceof WorkspaceError) {return failRaw(e.status, e.message);}
+    if (e instanceof WorkspaceError) {
+      return failRaw(e.status, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 }

@@ -14,7 +14,9 @@ export async function GET(_request: Request, context: RouteContext) {
     const doc = await prisma.knowledgeDocument.findUnique({
       where: { id: docId },
     });
-    if (!doc) {return fail(404, "docNotFound");}
+    if (!doc) {
+      return fail(404, "docNotFound");
+    }
     return ok({
       id: doc.id,
       repoId: doc.repoId,

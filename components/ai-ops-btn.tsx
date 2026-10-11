@@ -34,7 +34,9 @@ export default function AIOpsBtn({ onClick, disabled }: AIOpsButtonProps) {
   const suppressClickRef = useRef(false);
 
   const handlePointerDown = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    if (e.pointerType === "mouse" && e.button !== 0) {return;}
+    if (e.pointerType === "mouse" && e.button !== 0) {
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     dragRef.current = {
       pointerId: e.pointerId,
@@ -51,7 +53,9 @@ export default function AIOpsBtn({ onClick, disabled }: AIOpsButtonProps) {
 
   const handlePointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
-    if (!drag || drag.pointerId !== e.pointerId) {return;}
+    if (!drag || drag.pointerId !== e.pointerId) {
+      return;
+    }
     if (
       !drag.dragged &&
       Math.abs(e.clientX - drag.startX) < DRAG_THRESHOLD &&
@@ -74,7 +78,9 @@ export default function AIOpsBtn({ onClick, disabled }: AIOpsButtonProps) {
 
   const handlePointerEnd = (e: ReactPointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
-    if (!drag || drag.pointerId !== e.pointerId) {return;}
+    if (!drag || drag.pointerId !== e.pointerId) {
+      return;
+    }
     suppressClickRef.current = drag.dragged;
     dragRef.current = null;
   };
@@ -84,7 +90,9 @@ export default function AIOpsBtn({ onClick, disabled }: AIOpsButtonProps) {
       suppressClickRef.current = false;
       return;
     }
-    if (disabled) {return;}
+    if (disabled) {
+      return;
+    }
     onClick();
   };
 

@@ -28,7 +28,9 @@ const MAX_CANDIDATE_LIMIT = 50;
 const DEVFLOW_SOURCE_PREFIX = "devflow:";
 
 function parseMetadata(raw: string): Record<string, unknown> {
-  if (!raw) {return {};}
+  if (!raw) {
+    return {};
+  }
   try {
     return JSON.parse(raw) as Record<string, unknown>;
   } catch {
@@ -89,7 +91,9 @@ export async function retrieve(
   const withStages = docs.map((doc) => {
     const denseRank = denseIndex.rankById.get(doc.id);
     const bm25Rank = bm25Index.rankById.get(doc.id);
-    if (!denseRank && !bm25Rank) {return doc;}
+    if (!denseRank && !bm25Rank) {
+      return doc;
+    }
     return {
       ...doc,
       stages: {

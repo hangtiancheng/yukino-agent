@@ -58,7 +58,9 @@ export async function POST(request: Request) {
       pushRunEvent(events, event);
       if (event.type === "done") {
         void persistDiagnosticCase(event.result, event.detail, alertName).catch(
-          (e) => { console.error("[ai_ops] diagnostic case persistence failed:", e); },
+          (e) => {
+            console.error("[ai_ops] diagnostic case persistence failed:", e);
+          },
         );
         const status =
           event.result === EXHAUSTED_RESULT ? "exhausted" : "success";

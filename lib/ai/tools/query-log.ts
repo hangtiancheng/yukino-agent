@@ -94,10 +94,9 @@ function withTimeout<T>(
   label: string,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(
-      () => { reject(new Error(`${label} timed out after ${ms}ms`)); },
-      ms,
-    );
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms}ms`));
+    }, ms);
     promise.then(
       (value) => {
         clearTimeout(timer);
@@ -159,7 +158,9 @@ async function getToolsForConnection(
 ): Promise<ConnectionCacheEntry> {
   const sig = signature(conn);
   const cached = cache.get(conn.id);
-  if (cached && cached.signature === sig) {return cached;}
+  if (cached && cached.signature === sig) {
+    return cached;
+  }
 
   const previous = liveClients.get(conn.id);
   if (previous) {

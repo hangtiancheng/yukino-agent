@@ -17,7 +17,9 @@ export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
-    if (!repo) {return fail(404, "repoNotFound");}
+    if (!repo) {
+      return fail(404, "repoNotFound");
+    }
     const url = new URL(request.url);
     const parsed = MemoryCandidateListQuerySchema.safeParse(
       Object.fromEntries(url.searchParams),
@@ -42,7 +44,9 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
-    if (!repo) {return fail(404, "repoNotFound");}
+    if (!repo) {
+      return fail(404, "repoNotFound");
+    }
     const parsed = MemoryCandidateCreateSchema.safeParse(
       await request.json().catch(() => null),
     );
@@ -56,7 +60,9 @@ export async function POST(request: Request, context: RouteContext) {
       const conversation = await prisma.conversation.findFirst({
         where: { id: conversationId, repoId: id },
       });
-      if (!conversation) {return fail(404, "conversationNotFound");}
+      if (!conversation) {
+        return fail(404, "conversationNotFound");
+      }
     }
     const result = await proposeMemoryCandidate({
       repoId: id,

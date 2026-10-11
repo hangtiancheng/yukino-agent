@@ -31,9 +31,13 @@ export function encryptToken(plain: string): string {
 export function decryptToken(
   payload: string | null | undefined,
 ): string | null {
-  if (!payload) {return null;}
+  if (!payload) {
+    return null;
+  }
   const parts = payload.split(".");
-  if (parts.length !== 3) {return null;}
+  if (parts.length !== 3) {
+    return null;
+  }
   try {
     const [iv, tag, data] = parts.map((p) => Buffer.from(p, "base64"));
     const decipher = createDecipheriv("aes-256-gcm", getKey(), iv);

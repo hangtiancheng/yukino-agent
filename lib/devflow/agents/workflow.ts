@@ -183,7 +183,9 @@ export async function loadEntitySnapshot(
   repoId: string,
 ): Promise<EntitySnapshot | null> {
   const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-  if (!repo) {return null;}
+  if (!repo) {
+    return null;
+  }
   const [issues, pulls, runs] = await Promise.all([
     prisma.issue.findMany({
       where: { repoId },
@@ -245,7 +247,9 @@ export function resolveClaimEntity(
   snapshot: EntitySnapshot,
 ): ResolvedEntity | null {
   const ref = claim.entity_ref.trim();
-  if (ref.length === 0) {return null;}
+  if (ref.length === 0) {
+    return null;
+  }
   if (claim.entity_type === "issue") {
     const number = Number(ref.replace(/^#/, ""));
     const issue = snapshot.issues.find(
@@ -442,7 +446,9 @@ async function generateSpec(
   let firstError: unknown;
   try {
     const res = await runOnce(prompt);
-    if (res.output) {return res.output;}
+    if (res.output) {
+      return res.output;
+    }
     firstError = new Error("empty structured output");
   } catch (e) {
     firstError = e;
@@ -450,7 +456,9 @@ async function generateSpec(
   const retryPrompt = `${prompt}\n\nIMPORTANT: respond with ONLY a JSON object that matches the required schema. No markdown, no code fences, no commentary.`;
   try {
     const res = await runOnce(retryPrompt);
-    if (res.output) {return res.output;}
+    if (res.output) {
+      return res.output;
+    }
   } catch (e) {
     firstError = e;
   }
@@ -472,7 +480,9 @@ export async function planWorkflow(
   goal: string,
 ): Promise<PlanWorkflowResult | null> {
   const snapshot = await loadEntitySnapshot(repoId);
-  if (!snapshot) {return null;}
+  if (!snapshot) {
+    return null;
+  }
 
   if (llmConfigured()) {
     try {
@@ -540,7 +550,9 @@ export function scheduleClaims(
         cursors[index] += 1;
       }
     });
-    if (heads.length === 0) {break;}
+    if (heads.length === 0) {
+      break;
+    }
     for (let i = 0; i < heads.length; i += maxParallel) {
       waves.push(heads.slice(i, i + maxParallel));
     }
@@ -680,8 +692,9 @@ export function observeWorkflow(
   }
 
   for (const result of results) {
-    if (result.status !== "success" || result.taskType === "repo_health")
-      {continue;}
+    if (result.status !== "success" || result.taskType === "repo_health") {
+      continue;
+    }
     if (result.evidenceCount <= 0) {
       findings.push(
         finding({
@@ -748,9 +761,13 @@ export function shouldReplan(
 
 function uniqueClaimId(spec: WorkflowSpec, base: string): string {
   const existing = new Set(spec.claims.map((claim) => claim.id));
-  if (!existing.has(base)) {return base;}
+  if (!existing.has(base)) {
+    return base;
+  }
   let index = 2;
-  while (existing.has(`${base}_${index}`)) {index += 1;}
+  while (existing.has(`${base}_${index}`)) {
+    index += 1;
+  }
   return `${base}_${index}`;
 }
 
@@ -876,7 +893,9 @@ function memoNextSteps(
     steps.push(...strings(issueResult.output.checklist).slice(0, 2));
   }
   for (const f of observation.findings) {
-    if (f.recommendation) {steps.push(f.recommendation);}
+    if (f.recommendation) {
+      steps.push(f.recommendation);
+    }
   }
   if (steps.length === 0) {
     steps.push(
@@ -1046,11 +1065,15 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
     return await Promise.race([
       promise,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => { reject(new TaskTimeoutError(ms)); }, ms);
+        timer = setTimeout(() => {
+          reject(new TaskTimeoutError(ms));
+        }, ms);
       }),
     ]);
   } finally {
-    if (timer) {clearTimeout(timer);}
+    if (timer) {
+      clearTimeout(timer);
+    }
   }
 }
 
@@ -1109,7 +1132,9 @@ export async function executeWorkflow(
   const run = await prisma.agentWorkflowRun.findUnique({
     where: { id: runId },
   });
-  if (!run) {throw new Error(`Workflow run ${runId} not found`);}
+  if (!run) {
+    throw new Error(`Workflow run ${runId} not found`);
+  }
   if (run.status !== "running") {
     throw new Error(
       `Workflow run ${runId} is not runnable (status: ${run.status})`,
@@ -1127,7 +1152,9 @@ export async function executeWorkflow(
     throw new Error(`Workflow run ${runId} has no repository`);
   }
   const snapshot = await loadEntitySnapshot(run.repoId);
-  if (!snapshot) {throw new Error(`Repository ${run.repoId} not found`);}
+  if (!snapshot) {
+    throw new Error(`Repository ${run.repoId} not found`);
+  }
 
   let spec = parsedSpec.data;
   const resultsByTask = new Map<string, WorkflowTaskResult>();

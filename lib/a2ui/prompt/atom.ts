@@ -109,7 +109,9 @@ export class AtomPromptGenerator implements PromptGenerator {
       const orderedArgs: string[] = [];
       const propDetails: string[] = [];
       for (const p of props) {
-        if (p === "id" || p === "component") {continue;}
+        if (p === "id" || p === "component") {
+          continue;
+        }
         const optSuffix = reqs.includes(p) ? "" : "?";
         const propSchema = this.helper.getPropertySchema(name, p);
 
@@ -123,7 +125,9 @@ export class AtomPromptGenerator implements PromptGenerator {
 
         if (propDesc || enumVals) {
           const lineParts: string[] = [];
-          if (propDesc) {lineParts.push(propDesc);}
+          if (propDesc) {
+            lineParts.push(propDesc);
+          }
           if (enumVals) {
             const enumValsStr = enumVals
               .map((v) => `'${String(v)}'`)
@@ -169,7 +173,9 @@ export class AtomPromptGenerator implements PromptGenerator {
 
         if (propDesc || enumVals) {
           const lineParts: string[] = [];
-          if (propDesc) {lineParts.push(propDesc);}
+          if (propDesc) {
+            lineParts.push(propDesc);
+          }
           if (enumVals) {
             const enumValsStr = enumVals
               .map((v) => `'${String(v)}'`)

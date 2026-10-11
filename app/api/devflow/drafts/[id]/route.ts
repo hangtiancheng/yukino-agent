@@ -57,11 +57,12 @@ export async function PATCH(request: Request, context: RouteContext) {
         executionResult: draft.executionResult ?? null,
         errorMessage: draft.errorMessage ?? null,
       },
-    }).catch((e) => { console.warn(
+    }).catch((e) => {
+      console.warn(
         "[devflow:audit] failed to record draft action:",
         e instanceof Error ? e.message : String(e),
-      ); },
-    );
+      );
+    });
     return ok({
       id: draft.id,
       status: draft.status,

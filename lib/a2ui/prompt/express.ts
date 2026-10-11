@@ -73,7 +73,9 @@ The host compiler will compile your A2UI Express output into the correct JSON en
 function schemaAllowsDatabinding(
   propSchema: JsonValue | null | undefined,
 ): boolean {
-  if (!isJsonObject(propSchema)) {return false;}
+  if (!isJsonObject(propSchema)) {
+    return false;
+  }
   const ref = propSchema.$ref;
   if (typeof ref === "string") {
     if (
@@ -146,7 +148,9 @@ export class ExpressPromptGenerator implements PromptGenerator {
 
         if (propDesc || enumVals) {
           const lineParts: string[] = [];
-          if (propDesc) {lineParts.push(propDesc);}
+          if (propDesc) {
+            lineParts.push(propDesc);
+          }
           if (enumVals) {
             const enumValsStr = enumVals
               .map((v) => `'${String(v)}'`)
@@ -223,9 +227,7 @@ export class ExpressPromptGenerator implements PromptGenerator {
       const properties = isJsonObject(funcSchema.properties)
         ? funcSchema.properties
         : {};
-      const argsObj = isJsonObject(properties.args)
-        ? properties.args
-        : {};
+      const argsObj = isJsonObject(properties.args) ? properties.args : {};
       const argsProperties = isJsonObject(argsObj.properties)
         ? argsObj.properties
         : {};
@@ -236,8 +238,7 @@ export class ExpressPromptGenerator implements PromptGenerator {
 
         const propSchema = argsProperties[p];
         const propDesc =
-          isJsonObject(propSchema) &&
-          typeof propSchema.description === "string"
+          isJsonObject(propSchema) && typeof propSchema.description === "string"
             ? propSchema.description
             : null;
         if (propDesc) {
@@ -259,7 +260,9 @@ export class ExpressPromptGenerator implements PromptGenerator {
   }
 
   catalogDescription(includeSchema = true): string {
-    if (!includeSchema) {return "";}
+    if (!includeSchema) {
+      return "";
+    }
 
     const compSigs = this.generateComponentSignatures();
     const funcSigs = this.generateFunctionSignatures();

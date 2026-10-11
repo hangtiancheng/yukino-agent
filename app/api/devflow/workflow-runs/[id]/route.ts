@@ -17,7 +17,9 @@ export async function GET(_request: Request, context: RouteContext) {
         repo: { select: { fullName: true } },
       },
     });
-    if (!run) {return fail(404, "workflowRunNotFound");}
+    if (!run) {
+      return fail(404, "workflowRunNotFound");
+    }
     return ok({
       id: run.id,
       repoId: run.repoId,

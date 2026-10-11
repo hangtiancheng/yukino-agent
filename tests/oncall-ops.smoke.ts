@@ -381,8 +381,11 @@ const alertmanagerPayload = [
   const failures: string[] = [];
   const expectFail = (content: string, fileName?: string, why = "?") => {
     const r = validateSkillMarkdown(content, fileName);
-    if (r.ok) {failures.push(why);}
-    else {assert.ok(r.error.length > 0, why);}
+    if (r.ok) {
+      failures.push(why);
+    } else {
+      assert.ok(r.error.length > 0, why);
+    }
   };
   expectFail("no frontmatter here", undefined, "missing frontmatter");
   expectFail("---\nname: ok-name\n---\nbody", undefined, "missing description");

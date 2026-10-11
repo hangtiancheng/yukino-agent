@@ -29,8 +29,12 @@ const DIRECT_SOURCE_TYPES = new Set([
 ]);
 
 export function retrievalMode(sourceType: string): RetrievalMode {
-  if (RAG_SOURCE_TYPES.has(sourceType)) {return "rag";}
-  if (DIRECT_SOURCE_TYPES.has(sourceType)) {return "direct";}
+  if (RAG_SOURCE_TYPES.has(sourceType)) {
+    return "rag";
+  }
+  if (DIRECT_SOURCE_TYPES.has(sourceType)) {
+    return "direct";
+  }
   return "direct";
 }
 
@@ -84,7 +88,9 @@ export function ciLogChunks(text: string): {
   const chunks: string[] = [];
   for (let start = 0; start < bounded.length; start += CI_LOG_CHUNK_CHARS) {
     const piece = bounded.slice(start, start + CI_LOG_CHUNK_CHARS);
-    if (piece.trim() !== "") {chunks.push(piece);}
+    if (piece.trim() !== "") {
+      chunks.push(piece);
+    }
   }
   return { chunks, truncated: sanitized.length > maxChars };
 }
@@ -169,7 +175,9 @@ function itemPayload(
   metadata: Record<string, unknown>,
   logWindow?: ItemPayload["logWindow"],
 ): ItemPayload | null {
-  if (!content.trim()) {return null;}
+  if (!content.trim()) {
+    return null;
+  }
   return {
     itemId,
     sourceType,
@@ -186,12 +194,18 @@ function iso(value: Date | null | undefined): string | null {
 }
 
 function jobNames(jobs: unknown): string[] {
-  if (!Array.isArray(jobs)) {return [];}
+  if (!Array.isArray(jobs)) {
+    return [];
+  }
   const names: string[] = [];
   for (const job of jobs) {
-    if (typeof job !== "object" || job === null) {continue;}
+    if (typeof job !== "object" || job === null) {
+      continue;
+    }
     const name = (job as { name?: unknown }).name;
-    if (typeof name === "string") {names.push(name);}
+    if (typeof name === "string") {
+      names.push(name);
+    }
   }
   return names;
 }
@@ -222,7 +236,9 @@ export function buildItemPayloads(input: {
         closed_at: iso(issue.closedAt),
       },
     );
-    if (payload) {payloads.push(payload);}
+    if (payload) {
+      payloads.push(payload);
+    }
   }
 
   for (const pr of input.pullRequests) {
@@ -265,11 +281,15 @@ export function buildItemPayloads(input: {
         path: `pull/${pr.baseBranch ?? ""}...${pr.headBranch ?? ""}`,
       },
     );
-    if (payload) {payloads.push(payload);}
+    if (payload) {
+      payloads.push(payload);
+    }
   }
 
   for (const run of input.workflowRuns) {
-    if (run.conclusion !== "failure" || !(run.logsText ?? "").trim()) {continue;}
+    if (run.conclusion !== "failure" || !(run.logsText ?? "").trim()) {
+      continue;
+    }
     const { chunks, truncated } = ciLogChunks(run.logsText ?? "");
     chunks.forEach((logChunk, chunkIndex) => {
       const content = [run.name, logChunk].join("\n");
@@ -296,7 +316,9 @@ export function buildItemPayloads(input: {
         },
         { index: chunkIndex, total: chunks.length, truncated },
       );
-      if (payload) {payloads.push(payload);}
+      if (payload) {
+        payloads.push(payload);
+      }
     });
   }
 
@@ -385,7 +407,9 @@ export async function indexRepositoryContent(
 ): Promise<ContentIndexResult> {
   const started = Date.now();
   const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-  if (!repo) {throw new Error(`Repository ${repoId} not found`);}
+  if (!repo) {
+    throw new Error(`Repository ${repoId} not found`);
+  }
 
   const issues = await prisma.issue.findMany({ where: { repoId } });
   const pullRequests = await prisma.pullRequest.findMany({
@@ -518,8 +542,9 @@ export function mapSimilarHits(
   const seen = new Set<string>();
   for (const doc of docs) {
     const itemId = String(doc.metadata.item_id ?? "");
-    if (itemId === "" || itemId === opts.excludeItemId || seen.has(itemId))
-      {continue;}
+    if (itemId === "" || itemId === opts.excludeItemId || seen.has(itemId)) {
+      continue;
+    }
     seen.add(itemId);
     const number = Number(doc.metadata.number ?? 0);
     hits.push({
@@ -533,7 +558,9 @@ export function mapSimilarHits(
       score: doc.score,
       excerpt: doc.content.slice(0, 300),
     });
-    if (hits.length >= opts.limit) {break;}
+    if (hits.length >= opts.limit) {
+      break;
+    }
   }
   return hits;
 }
@@ -668,7 +695,9 @@ export function buildReviewChecklist(
 
   for (const rule of SENSITIVE_RULES) {
     const matched = filenames.filter((f) => rule.re.test(f));
-    if (matched.length === 0) {continue;}
+    if (matched.length === 0) {
+      continue;
+    }
     findings.push({
       severity: rule.severity,
       title: `Sensitive area touched: ${rule.label}`,

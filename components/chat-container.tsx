@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 
 import type { ChatMessage, Mode } from "@/hooks/use-chat";
 
-
 import ChatInput from "./chat-input";
 import MessageList from "./msg-list";
 
@@ -69,7 +68,9 @@ export default function ChatContainer({
               <button
                 key={key}
                 type="button"
-                onClick={() => { onSend(t(key)); }}
+                onClick={() => {
+                  onSend(t(key));
+                }}
                 className="border-border/80 bg-card/80 text-muted-foreground hover:border-primary/40 hover:bg-accent/60 hover:text-foreground shadow-soft inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-left text-[13px] transition-colors"
               >
                 <Icon className="text-primary size-3.5 shrink-0" />

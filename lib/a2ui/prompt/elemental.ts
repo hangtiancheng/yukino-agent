@@ -57,7 +57,9 @@ You can call these functions inside attribute expressions \`{...}\` using named 
 \`\`\`[CATALOG_INSTRUCTIONS_BLOCK]`;
 
 function schemaAllowsDatabinding(propSchema: JsonValue | undefined): boolean {
-  if (!isJsonObject(propSchema)) {return false;}
+  if (!isJsonObject(propSchema)) {
+    return false;
+  }
   const ref = propSchema.$ref;
   if (typeof ref === "string") {
     if (
@@ -84,15 +86,21 @@ function schemaAllowsDatabinding(propSchema: JsonValue | undefined): boolean {
 }
 
 function isAction(propSchema: JsonValue | null | undefined): boolean {
-  if (!isJsonObject(propSchema)) {return false;}
+  if (!isJsonObject(propSchema)) {
+    return false;
+  }
   const ref = propSchema.$ref;
-  if (typeof ref === "string") {return ref.includes("Action");}
+  if (typeof ref === "string") {
+    return ref.includes("Action");
+  }
   const subs = [
     ...(Array.isArray(propSchema.oneOf) ? propSchema.oneOf : []),
     ...(Array.isArray(propSchema.anyOf) ? propSchema.anyOf : []),
     ...(Array.isArray(propSchema.allOf) ? propSchema.allOf : []),
   ];
-  if (subs.length > 0) {return subs.some((sub) => isAction(sub));}
+  if (subs.length > 0) {
+    return subs.some((sub) => isAction(sub));
+  }
   return false;
 }
 
@@ -119,9 +127,13 @@ export class ElementalPromptGenerator implements PromptGenerator {
     propName: string,
     propSchema: JsonValue | null | undefined,
   ): string {
-    if (propName === "checks") {return "FunctionCall[]";}
+    if (propName === "checks") {
+      return "FunctionCall[]";
+    }
 
-    if (!isJsonObject(propSchema)) {return "any";}
+    if (!isJsonObject(propSchema)) {
+      return "any";
+    }
 
     const allowsDb = schemaAllowsDatabinding(propSchema);
     let baseType = "any";
@@ -169,7 +181,9 @@ export class ElementalPromptGenerator implements PromptGenerator {
       let types: string[] = [];
       for (const sub of subs) {
         const t = this.mapSchemaToTsType(componentName, propName, sub);
-        if (t !== "any") {types.push(t);}
+        if (t !== "any") {
+          types.push(t);
+        }
       }
       if (types.length > 0) {
         types = [...new Set(types)];
@@ -269,7 +283,9 @@ export class ElementalPromptGenerator implements PromptGenerator {
   }
 
   private toComments(description: string | null, indent = ""): string[] {
-    if (!description) {return [];}
+    if (!description) {
+      return [];
+    }
     return description
       .trim()
       .split("\n")
@@ -343,9 +359,7 @@ export class ElementalPromptGenerator implements PromptGenerator {
       const properties = isJsonObject(funcSchema.properties)
         ? funcSchema.properties
         : {};
-      const argsObj = isJsonObject(properties.args)
-        ? properties.args
-        : {};
+      const argsObj = isJsonObject(properties.args) ? properties.args : {};
       const argsProperties = isJsonObject(argsObj.properties)
         ? argsObj.properties
         : {};
@@ -368,7 +382,9 @@ export class ElementalPromptGenerator implements PromptGenerator {
   }
 
   catalogDescription(includeSchema = true): string {
-    if (!includeSchema) {return "";}
+    if (!includeSchema) {
+      return "";
+    }
 
     const compDecls = this.generateComponentDeclarations();
     const funcDecls = this.generateFunctionDeclarations();

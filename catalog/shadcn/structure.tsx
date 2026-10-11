@@ -48,7 +48,6 @@ import { weightStyle } from "@/lib/utils";
 
 import { COMMON } from "./common";
 
-
 export const AccordionApi = {
   name: "Accordion",
   schema: z
@@ -69,7 +68,10 @@ export const AccordionApi = {
     .strict(),
 };
 
-interface AccordionItemDef { title?: unknown; child?: unknown }
+interface AccordionItemDef {
+  title?: unknown;
+  child?: unknown;
+}
 
 export const Accordion = createComponentImplementation(
   AccordionApi,
@@ -232,7 +234,10 @@ export const ResizableApi = {
     .strict(),
 };
 
-interface PanelDef { child?: unknown; defaultSize?: unknown }
+interface PanelDef {
+  child?: unknown;
+  defaultSize?: unknown;
+}
 
 export const Resizable = createComponentImplementation(
   ResizableApi,
@@ -294,7 +299,10 @@ export const TableApi = {
     .strict(),
 };
 
-interface ColumnDef { key?: unknown; header?: unknown }
+interface ColumnDef {
+  key?: unknown;
+  header?: unknown;
+}
 
 export const Table = createComponentImplementation(TableApi, ({ props }) => {
   const columns = (

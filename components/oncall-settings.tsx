@@ -96,7 +96,9 @@ export function OncallSettings() {
   const [checkingId, setCheckingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) {return;}
+    if (!open) {
+      return;
+    }
     let cancelled = false;
     void (async () => {
       setLoading(true);
@@ -113,7 +115,9 @@ export function OncallSettings() {
           await skillsResp.json(),
         );
         const parsedMcp = mcpResponseSchema.safeParse(await mcpResp.json());
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setPrompts(
           parsedPrompts.success ? (parsedPrompts.data.data?.items ?? []) : [],
         );
@@ -128,7 +132,9 @@ export function OncallSettings() {
           setConnections([]);
         }
       } finally {
-        if (!cancelled) {setLoading(false);}
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
     return () => {
@@ -155,13 +161,17 @@ export function OncallSettings() {
     let message = fallback;
     try {
       const json = (await resp.json()) as { message?: string };
-      if (json.message) {message = json.message;}
+      if (json.message) {
+        message = json.message;
+      }
     } catch {}
     toast.add({ title: message, type: "error", timeout: 4000 });
   }, []);
 
   const submitPrompt = useCallback(async () => {
-    if (promptName.trim() === "" || busy) {return;}
+    if (promptName.trim() === "" || busy) {
+      return;
+    }
     setBusy(true);
     try {
       const resp =
@@ -285,7 +295,9 @@ export function OncallSettings() {
   );
 
   const submitMcp = useCallback(async () => {
-    if (mcpName.trim() === "" || mcpUrl.trim() === "" || busy) {return;}
+    if (mcpName.trim() === "" || mcpUrl.trim() === "" || busy) {
+      return;
+    }
     const headers: Record<string, string> = {};
     if (mcpHeaders.trim() !== "") {
       try {
@@ -305,7 +317,9 @@ export function OncallSettings() {
         for (const [key, value] of Object.entries(
           parsed as Record<string, unknown>,
         )) {
-          if (typeof value === "string") {headers[key] = value;}
+          if (typeof value === "string") {
+            headers[key] = value;
+          }
         }
       } catch {
         toast.add({
@@ -455,7 +469,9 @@ export function OncallSettings() {
             id="admin-token"
             type="password"
             value={token}
-            onChange={(e) => { persistToken(e.target.value); }}
+            onChange={(e) => {
+              persistToken(e.target.value);
+            }}
             placeholder={t("adminTokenPlaceholder")}
             className="h-8 text-xs"
           />
@@ -491,7 +507,9 @@ export function OncallSettings() {
               <div className="flex items-center gap-1.5">
                 <Input
                   value={promptName}
-                  onChange={(e) => { setPromptName(e.target.value); }}
+                  onChange={(e) => {
+                    setPromptName(e.target.value);
+                  }}
                   placeholder={t("promptNamePlaceholder")}
                   className="h-8 text-xs"
                 />
@@ -512,7 +530,9 @@ export function OncallSettings() {
               </div>
               <Textarea
                 value={promptContent}
-                onChange={(e) => { setPromptContent(e.target.value); }}
+                onChange={(e) => {
+                  setPromptContent(e.target.value);
+                }}
                 placeholder={t("promptContentPlaceholder")}
                 rows={4}
                 className="resize-y text-xs"
@@ -597,7 +617,9 @@ export function OncallSettings() {
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   event.target.value = "";
-                  if (file) {void uploadSkill(file);}
+                  if (file) {
+                    void uploadSkill(file);
+                  }
                 }}
               />
             </label>
@@ -651,14 +673,17 @@ export function OncallSettings() {
               <div className="flex items-center gap-1.5">
                 <Input
                   value={mcpName}
-                  onChange={(e) => { setMcpName(e.target.value); }}
+                  onChange={(e) => {
+                    setMcpName(e.target.value);
+                  }}
                   placeholder={t("mcpNamePlaceholder")}
                   className="h-8 text-xs"
                 />
                 <select
                   value={mcpTransport}
-                  onChange={(e) => { setMcpTransport(e.target.value === "http" ? "http" : "sse"); }
-                  }
+                  onChange={(e) => {
+                    setMcpTransport(e.target.value === "http" ? "http" : "sse");
+                  }}
                   className={cn(
                     "border-border bg-background text-muted-foreground h-8 shrink-0 rounded-md border px-2 text-xs",
                   )}
@@ -669,13 +694,17 @@ export function OncallSettings() {
               </div>
               <Input
                 value={mcpUrl}
-                onChange={(e) => { setMcpUrl(e.target.value); }}
+                onChange={(e) => {
+                  setMcpUrl(e.target.value);
+                }}
                 placeholder={t("mcpUrlPlaceholder")}
                 className="h-8 text-xs"
               />
               <Input
                 value={mcpHeaders}
-                onChange={(e) => { setMcpHeaders(e.target.value); }}
+                onChange={(e) => {
+                  setMcpHeaders(e.target.value);
+                }}
                 placeholder={t("mcpHeadersPlaceholder")}
                 className="h-8 text-xs"
               />

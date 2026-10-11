@@ -249,12 +249,17 @@ export default function DevflowKnowledgePage() {
         const items = await dfGet<KnowledgeDoc[]>(
           `/knowledge?repoId=${repoId}`,
         );
-        if (!cancelled) {setDocs(items);}
+        if (!cancelled) {
+          setDocs(items);
+        }
       } catch (e) {
-        if (!cancelled)
-          {notify.error(e instanceof Error ? e.message : String(e));}
+        if (!cancelled) {
+          notify.error(e instanceof Error ? e.message : String(e));
+        }
       } finally {
-        if (!cancelled) {setDocsLoading(false);}
+        if (!cancelled) {
+          setDocsLoading(false);
+        }
       }
     })();
     return () => {
@@ -282,7 +287,9 @@ export default function DevflowKnowledgePage() {
           `/content-index?repoId=${repoId}`,
         ),
       ]);
-      if (cancelled) {return;}
+      if (cancelled) {
+        return;
+      }
       if (configRes.status === "fulfilled") {
         setConfig(configRes.value.config);
         setConfigStored(configRes.value.stored);
@@ -310,7 +317,9 @@ export default function DevflowKnowledgePage() {
   };
 
   const handleUpload = async (files: FileList | null) => {
-    if (!files || files.length === 0 || !repoId) {return;}
+    if (!files || files.length === 0 || !repoId) {
+      return;
+    }
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
@@ -337,12 +346,16 @@ export default function DevflowKnowledgePage() {
       notify.error(e instanceof Error ? e.message : String(e));
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {fileInputRef.current.value = "";}
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
   const removeDoc = async () => {
-    if (!deleteTarget) {return;}
+    if (!deleteTarget) {
+      return;
+    }
     try {
       await dfDelete(`/knowledge/${deleteTarget.id}`);
       notify.success(t("deleted", { name: deleteTarget.name }));
@@ -389,7 +402,9 @@ export default function DevflowKnowledgePage() {
   };
 
   const createNote = async () => {
-    if (!repoId) {return;}
+    if (!repoId) {
+      return;
+    }
     if (!noteTitle.trim() && !noteContent.trim()) {
       notify.error(t("noteNeedsContent"));
       return;
@@ -413,7 +428,9 @@ export default function DevflowKnowledgePage() {
   };
 
   const runTest = async () => {
-    if (!repoId || !testQuery.trim()) {return;}
+    if (!repoId || !testQuery.trim()) {
+      return;
+    }
     setTesting(true);
     try {
       const run = await dfPost<RetrievalTestRunDetail>(
@@ -446,8 +463,12 @@ export default function DevflowKnowledgePage() {
   };
 
   const saveConfig = async () => {
-    if (!repoId || !config) {return;}
-    if (config.chunkOverlap >= config.chunkSize) {return;}
+    if (!repoId || !config) {
+      return;
+    }
+    if (config.chunkOverlap >= config.chunkSize) {
+      return;
+    }
     setConfigSaving(true);
     try {
       const result = await dfPut<{
@@ -465,7 +486,9 @@ export default function DevflowKnowledgePage() {
   };
 
   const rebuildIndex = async () => {
-    if (!repoId) {return;}
+    if (!repoId) {
+      return;
+    }
     setIndexing(true);
     try {
       const result = await dfPost<ContentIndexResult>("/content-index", {
@@ -493,7 +516,9 @@ export default function DevflowKnowledgePage() {
   };
 
   const ask = async () => {
-    if (!repoId || !question.trim()) {return;}
+    if (!repoId || !question.trim()) {
+      return;
+    }
     setAsking(true);
     try {
       const result = await dfPost<{
@@ -554,7 +579,9 @@ export default function DevflowKnowledgePage() {
           <TabsContent value="documents" className="mt-4 space-y-4">
             <Card
               className="border-dashed"
-              onDragOver={(e) => { e.preventDefault(); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+              }}
               onDrop={(e) => {
                 e.preventDefault();
                 void handleUpload(e.dataTransfer.files);
@@ -590,7 +617,9 @@ export default function DevflowKnowledgePage() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => { setNoteOpen(true); }}
+                    onClick={() => {
+                      setNoteOpen(true);
+                    }}
                     disabled={!repoId}
                   >
                     <StickyNote />
@@ -685,7 +714,9 @@ export default function DevflowKnowledgePage() {
                           variant="ghost"
                           size="icon"
                           className="text-muted-foreground hover:text-destructive shrink-0"
-                          onClick={() => { setDeleteTarget(doc); }}
+                          onClick={() => {
+                            setDeleteTarget(doc);
+                          }}
                         >
                           <Trash2 className="size-4" />
                         </Button>
@@ -707,9 +738,13 @@ export default function DevflowKnowledgePage() {
                       id="retrieval-query"
                       placeholder={t("queryPlaceholder")}
                       value={testQuery}
-                      onChange={(e) => { setTestQuery(e.target.value); }}
+                      onChange={(e) => {
+                        setTestQuery(e.target.value);
+                      }}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {void runTest();}
+                        if (e.key === "Enter") {
+                          void runTest();
+                        }
                       }}
                     />
                   </div>
@@ -721,7 +756,9 @@ export default function DevflowKnowledgePage() {
                       min={1}
                       max={20}
                       value={testTopK}
-                      onChange={(e) => { setTestTopK(Number(e.target.value) || 5); }}
+                      onChange={(e) => {
+                        setTestTopK(Number(e.target.value) || 5);
+                      }}
                     />
                   </div>
                   <Button onClick={() => void runTest()} disabled={testing}>
@@ -811,7 +848,9 @@ export default function DevflowKnowledgePage() {
                         key={run.id}
                         type="button"
                         title={t("test.historyFill")}
-                        onClick={() => { setTestQuery(run.query); }}
+                        onClick={() => {
+                          setTestQuery(run.query);
+                        }}
                         className="hover:bg-accent/40 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left"
                       >
                         <span className="text-foreground min-w-0 flex-1 truncate text-sm">
@@ -844,7 +883,9 @@ export default function DevflowKnowledgePage() {
                     rows={3}
                     placeholder={t("questionPlaceholder")}
                     value={question}
-                    onChange={(e) => { setQuestion(e.target.value); }}
+                    onChange={(e) => {
+                      setQuestion(e.target.value);
+                    }}
                   />
                 </div>
                 <Button onClick={() => void ask()} disabled={asking}>
@@ -956,11 +997,12 @@ export default function DevflowKnowledgePage() {
                           min={1}
                           max={20}
                           value={config.topK}
-                          onChange={(e) => { setConfig({
+                          onChange={(e) => {
+                            setConfig({
                               ...config,
                               topK: Number(e.target.value) || config.topK,
-                            }); }
-                          }
+                            });
+                          }}
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -973,12 +1015,13 @@ export default function DevflowKnowledgePage() {
                           min={100}
                           max={8000}
                           value={config.chunkSize}
-                          onChange={(e) => { setConfig({
+                          onChange={(e) => {
+                            setConfig({
                               ...config,
                               chunkSize:
                                 Number(e.target.value) || config.chunkSize,
-                            }); }
-                          }
+                            });
+                          }}
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -991,12 +1034,13 @@ export default function DevflowKnowledgePage() {
                           min={0}
                           max={4000}
                           value={config.chunkOverlap}
-                          onChange={(e) => { setConfig({
+                          onChange={(e) => {
+                            setConfig({
                               ...config,
                               chunkOverlap:
                                 Number(e.target.value) || config.chunkOverlap,
-                            }); }
-                          }
+                            });
+                          }}
                         />
                       </div>
                     </div>
@@ -1011,8 +1055,9 @@ export default function DevflowKnowledgePage() {
                       </div>
                       <Switch
                         checked={config.rerankEnabled}
-                        onCheckedChange={(checked) => { setConfig({ ...config, rerankEnabled: checked }); }
-                        }
+                        onCheckedChange={(checked) => {
+                          setConfig({ ...config, rerankEnabled: checked });
+                        }}
                       />
                     </div>
                     <div className="border-border flex items-center justify-between gap-4 rounded-lg border p-3">
@@ -1032,23 +1077,25 @@ export default function DevflowKnowledgePage() {
                           step={0.05}
                           value={config.scoreThreshold}
                           disabled={!config.scoreThresholdEnabled}
-                          onChange={(e) => { setConfig({
+                          onChange={(e) => {
+                            setConfig({
                               ...config,
                               scoreThreshold: Math.min(
                                 1,
                                 Math.max(0, Number(e.target.value) || 0),
                               ),
-                            }); }
-                          }
+                            });
+                          }}
                           className="h-8 w-20 text-xs"
                         />
                         <Switch
                           checked={config.scoreThresholdEnabled}
-                          onCheckedChange={(checked) => { setConfig({
+                          onCheckedChange={(checked) => {
+                            setConfig({
                               ...config,
                               scoreThresholdEnabled: checked,
-                            }); }
-                          }
+                            });
+                          }}
                         />
                       </div>
                     </div>
@@ -1141,7 +1188,9 @@ export default function DevflowKnowledgePage() {
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) {setDeleteTarget(null);}
+          if (!open) {
+            setDeleteTarget(null);
+          }
         }}
       >
         <AlertDialogContent>
@@ -1165,7 +1214,9 @@ export default function DevflowKnowledgePage() {
       <Dialog
         open={previewDoc !== null}
         onOpenChange={(open) => {
-          if (!open) {setPreviewDoc(null);}
+          if (!open) {
+            setPreviewDoc(null);
+          }
         }}
       >
         <DialogContent className="max-w-2xl">
@@ -1214,7 +1265,9 @@ export default function DevflowKnowledgePage() {
       <Dialog
         open={noteOpen}
         onOpenChange={(open) => {
-          if (!open) {setNoteOpen(false);}
+          if (!open) {
+            setNoteOpen(false);
+          }
         }}
       >
         <DialogContent>
@@ -1228,17 +1281,26 @@ export default function DevflowKnowledgePage() {
                 id="note-title"
                 placeholder={t("noteTitlePlaceholder")}
                 value={noteTitle}
-                onChange={(e) => { setNoteTitle(e.target.value); }}
+                onChange={(e) => {
+                  setNoteTitle(e.target.value);
+                }}
               />
             </div>
             <Textarea
               placeholder={t("noteContentPlaceholder")}
               rows={6}
               value={noteContent}
-              onChange={(e) => { setNoteContent(e.target.value); }}
+              onChange={(e) => {
+                setNoteContent(e.target.value);
+              }}
             />
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => { setNoteOpen(false); }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setNoteOpen(false);
+                }}
+              >
                 {tc("cancel")}
               </Button>
               <Button onClick={() => void createNote()} disabled={noteSaving}>

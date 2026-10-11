@@ -91,15 +91,18 @@ export async function GET() {
   ];
 
   const issues: string[] = [];
-  if (config.openaiEmbedding.apiKey === "")
-    {issues.push("OPENAI_EMBEDDING_API_KEY");}
+  if (config.openaiEmbedding.apiKey === "") {
+    issues.push("OPENAI_EMBEDDING_API_KEY");
+  }
   if (
     (config.provider === "openai" && config.openai.quick.apiKey === "") ||
     (config.provider === "anthropic" && config.anthropic.quick.apiKey === "")
   ) {
     issues.push("LLM_API_KEY");
   }
-  if (config.oncallAdminToken === "") {issues.push("ONCALL_ADMIN_TOKEN");}
+  if (config.oncallAdminToken === "") {
+    issues.push("ONCALL_ADMIN_TOKEN");
+  }
 
   return Response.json({
     message: "OK",

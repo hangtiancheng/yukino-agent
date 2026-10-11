@@ -42,7 +42,9 @@ export default function DevflowReportsPage() {
   const [generating, setGenerating] = useState(false);
 
   const generate = async () => {
-    if (!repoId) {return;}
+    if (!repoId) {
+      return;
+    }
     if (startDate > endDate) {
       notify.error(t("invalidRange"));
       return;
@@ -83,7 +85,9 @@ export default function DevflowReportsPage() {
               id="report-start"
               type="date"
               value={startDate}
-              onChange={(e) => { setStartDate(e.target.value); }}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+              }}
             />
           </div>
           <div className="space-y-1.5">
@@ -92,7 +96,9 @@ export default function DevflowReportsPage() {
               id="report-end"
               type="date"
               value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); }}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+              }}
             />
           </div>
           <Button

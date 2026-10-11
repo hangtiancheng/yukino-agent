@@ -13,7 +13,9 @@ async function resolveRepoId(request: Request): Promise<string | null> {
   const fromQuery = MemoryRepoQuerySchema.safeParse(
     Object.fromEntries(url.searchParams),
   );
-  if (fromQuery.success) {return fromQuery.data.repoId;}
+  if (fromQuery.success) {
+    return fromQuery.data.repoId;
+  }
   const body = await request.json().catch(() => null);
   const fromBody = MemoryRepoQuerySchema.safeParse(body);
   return fromBody.success ? fromBody.data.repoId : null;
@@ -22,9 +24,13 @@ async function resolveRepoId(request: Request): Promise<string | null> {
 export async function GET(request: Request) {
   try {
     const repoId = await resolveRepoId(request);
-    if (!repoId) {return fail(400, "repoIdQueryRequired");}
+    if (!repoId) {
+      return fail(400, "repoIdQueryRequired");
+    }
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-    if (!repo) {return fail(404, "repoNotFound");}
+    if (!repo) {
+      return fail(404, "repoNotFound");
+    }
     return ok(await getRepoMemoryOverview(repoId));
   } catch (e) {
     return failRaw(500, errorMessage(e));
@@ -34,9 +40,13 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     const repoId = await resolveRepoId(request);
-    if (!repoId) {return fail(400, "repoIdQueryRequired");}
+    if (!repoId) {
+      return fail(400, "repoIdQueryRequired");
+    }
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-    if (!repo) {return fail(404, "repoNotFound");}
+    if (!repo) {
+      return fail(404, "repoNotFound");
+    }
     return ok(await mergeThreadMemory(repoId));
   } catch (e) {
     return failRaw(500, errorMessage(e));

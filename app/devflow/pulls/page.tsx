@@ -108,23 +108,35 @@ export default function DevflowPullsPage() {
       setLoading(true);
       try {
         const params = new URLSearchParams();
-        if (state !== "all") {params.set("state", state);}
-        if (query.trim()) {params.set("q", query.trim());}
+        if (state !== "all") {
+          params.set("state", state);
+        }
+        if (query.trim()) {
+          params.set("q", query.trim());
+        }
         const items = await dfGet<PullSummary[]>(
           `/repos/${repoId}/pulls?${params.toString()}`,
         );
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setPulls(items);
         setSelected((current) => {
-          if (current && items.some((p) => p.id === current.id)) {return current;}
+          if (current && items.some((p) => p.id === current.id)) {
+            return current;
+          }
           return items[0] ?? null;
         });
       } catch (e) {
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         notify.error(e instanceof Error ? e.message : String(e));
         setPulls([]);
       } finally {
-        if (!cancelled) {setLoading(false);}
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
     return () => {
@@ -133,7 +145,9 @@ export default function DevflowPullsPage() {
   }, [repoId, state, query, reloadKey]);
 
   useEffect(() => {
-    if (!selected) {return;}
+    if (!selected) {
+      return;
+    }
     let cancelled = false;
     (async () => {
       setReviewLoading(true);
@@ -143,12 +157,18 @@ export default function DevflowPullsPage() {
         const records = await dfGet<AnalysisRecord[]>(
           `/analyses?targetType=pull_request&targetId=${selected.id}&limit=1`,
         );
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setReview(records.length > 0 ? (records[0].result as PRReview) : null);
       } catch {
-        if (!cancelled) {setReview(null);}
+        if (!cancelled) {
+          setReview(null);
+        }
       } finally {
-        if (!cancelled) {setReviewLoading(false);}
+        if (!cancelled) {
+          setReviewLoading(false);
+        }
       }
     })();
     return () => {
@@ -157,7 +177,9 @@ export default function DevflowPullsPage() {
   }, [selected]);
 
   const runReview = async () => {
-    if (!selected) {return;}
+    if (!selected) {
+      return;
+    }
     setReviewing(true);
     try {
       const record = await dfPost<{ id: string; result: PRReview }>(
@@ -174,7 +196,9 @@ export default function DevflowPullsPage() {
   };
 
   const runChecklist = async () => {
-    if (!selected) {return;}
+    if (!selected) {
+      return;
+    }
     setChecklistLoading(true);
     setChecklistOpen(true);
     setChecklist(null);
@@ -192,7 +216,9 @@ export default function DevflowPullsPage() {
   };
 
   const draftReviewComment = async () => {
-    if (!selected || !repoId || !review) {return;}
+    if (!selected || !repoId || !review) {
+      return;
+    }
     const body = [
       t("aiReviewHeading", { number: selected.number }),
       "",
@@ -241,7 +267,9 @@ export default function DevflowPullsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => { setReloadKey((k) => k + 1); }}
+            onClick={() => {
+              setReloadKey((k) => k + 1);
+            }}
             disabled={loading}
           >
             <RefreshCw className={loading ? "animate-spin" : ""} />
@@ -259,7 +287,9 @@ export default function DevflowPullsPage() {
                 className="pl-8"
                 placeholder={t("searchPlaceholder")}
                 value={query}
-                onChange={(e) => { setQuery(e.target.value); }}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                }}
               />
             </div>
             <Tabs value={state} onValueChange={setState}>
@@ -292,7 +322,9 @@ export default function DevflowPullsPage() {
                 pulls.map((pr) => (
                   <button
                     key={pr.id}
-                    onClick={() => { setSelected(pr); }}
+                    onClick={() => {
+                      setSelected(pr);
+                    }}
                     className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
                       selected?.id === pr.id
                         ? "border-primary/50 bg-primary/5"

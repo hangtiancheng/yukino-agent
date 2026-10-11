@@ -27,7 +27,6 @@ import { weightStyle } from "@/lib/utils";
 
 import { COMMON } from "./common";
 
-
 export const ChartApi = {
   name: "Chart",
   schema: z
@@ -65,7 +64,10 @@ export const ChartApi = {
     .strict(),
 };
 
-interface SeriesDef { key?: unknown; label?: unknown }
+interface SeriesDef {
+  key?: unknown;
+  label?: unknown;
+}
 
 const PALETTE = [
   "var(--chart-2)",

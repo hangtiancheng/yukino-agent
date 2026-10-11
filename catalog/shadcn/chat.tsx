@@ -53,7 +53,6 @@ import { weightStyle } from "@/lib/utils";
 
 import { ICON_NAME, COMMON } from "./common";
 
-
 export const AttachmentApi = {
   name: "Attachment",
   schema: z
@@ -327,7 +326,11 @@ interface QuestionDef {
   value?: unknown;
   setValue?: (value: string | string[]) => void;
 }
-interface ChoiceDef { label?: unknown; value?: unknown; description?: unknown }
+interface ChoiceDef {
+  label?: unknown;
+  value?: unknown;
+  description?: unknown;
+}
 
 const toChoices = (raw: unknown): ChoiceDef[] =>
   Array.isArray(raw) ? (raw as ChoiceDef[]) : [];
@@ -344,7 +347,9 @@ export const Questionnaire = createComponentImplementation(
         style={weightStyle(props.weight)}
         onSubmit={(event) => {
           event.preventDefault();
-          if (typeof props.submitAction === "function") {props.submitAction();}
+          if (typeof props.submitAction === "function") {
+            props.submitAction();
+          }
         }}
         items={items.map((item, i) => ({
           name: String(item.name ?? `question-${i}`),
@@ -407,7 +412,9 @@ export const Questionnaire = createComponentImplementation(
                         key={j}
                         value={value}
                         checked={selected.includes(value)}
-                        onChange={(e) => { toggle(value, e.target.checked); }}
+                        onChange={(e) => {
+                          toggle(value, e.target.checked);
+                        }}
                       >
                         {String(choice.label ?? value)}
                         {choice.description ? (

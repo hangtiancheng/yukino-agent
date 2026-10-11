@@ -21,8 +21,9 @@ export const Slider = createComponentImplementation(SliderApi, ({ props }) => {
         min={min}
         max={max}
         value={[value]}
-        onValueChange={(v) => { props.setValue(Array.isArray(v) ? Number(v[0]) : Number(v)); }
-        }
+        onValueChange={(v) => {
+          props.setValue(Array.isArray(v) ? Number(v[0]) : Number(v));
+        }}
       />
       {hasError && <FieldError>{errors[0]}</FieldError>}
     </Field>

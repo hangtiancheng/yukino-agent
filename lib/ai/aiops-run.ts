@@ -21,7 +21,9 @@ export const RUN_EVENT_STEP_CHARS = 400;
 
 function clipEventText(value: string, max: number): string {
   const normalized = value.split(/\s+/).join(" ").trim();
-  if (normalized.length <= max) {return normalized;}
+  if (normalized.length <= max) {
+    return normalized;
+  }
   return `${normalized.slice(0, max - 3)}...`;
 }
 
@@ -70,7 +72,9 @@ export function pushRunEvent(
   events: Record<string, unknown>[],
   event: PlanExecuteEvent,
 ): void {
-  if (events.length >= MAX_RUN_EVENTS) {return;}
+  if (events.length >= MAX_RUN_EVENTS) {
+    return;
+  }
   events.push(toRunEvent(event));
 }
 
@@ -93,7 +97,9 @@ export function finalizeAiOpsRun(
   runId: string | null,
   update: AiOpsRunFinalize,
 ): void {
-  if (runId === null) {return;}
+  if (runId === null) {
+    return;
+  }
   void prisma.aiOpsRun
     .update({
       where: { id: runId },
@@ -111,13 +117,17 @@ export function finalizeAiOpsRun(
         endedAt: new Date(),
       },
     })
-    .catch((e) => { console.error("[ai_ops] run finalize failed:", e); });
+    .catch((e) => {
+      console.error("[ai_ops] run finalize failed:", e);
+    });
 }
 
 export function alertNameOf(
   alert: Record<string, string> | null,
 ): string | null {
-  if (alert === null) {return null;}
+  if (alert === null) {
+    return null;
+  }
   return alert.alert_name ?? alert.alertName ?? alert.name ?? null;
 }
 
@@ -129,7 +139,9 @@ export function normalizeAlertInput(
   }
   const flat: Record<string, string> = {};
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof value === "string") {flat[key] = value;}
+    if (typeof value === "string") {
+      flat[key] = value;
+    }
   }
   return Object.keys(flat).length > 0 ? flat : null;
 }

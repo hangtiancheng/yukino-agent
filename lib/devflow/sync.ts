@@ -34,7 +34,9 @@ const LOG_TAIL_CHARS = 20_000;
 const MAX_FAILED_JOB_LOGS = 3;
 
 function ghDate(value: unknown): Date | null {
-  if (typeof value !== "string" || !value) {return null;}
+  if (typeof value !== "string" || !value) {
+    return null;
+  }
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
@@ -42,13 +44,17 @@ function ghDate(value: unknown): Date | null {
 function loginOf(user: unknown): string | null {
   if (user && typeof user === "object" && "login" in user) {
     const login = (user as { login?: unknown }).login;
-    if (typeof login === "string" && login) {return login;}
+    if (typeof login === "string" && login) {
+      return login;
+    }
   }
   return null;
 }
 
 function truncateLog(text: string): string {
-  if (text.length <= LOG_HEAD_CHARS + LOG_TAIL_CHARS) {return text;}
+  if (text.length <= LOG_HEAD_CHARS + LOG_TAIL_CHARS) {
+    return text;
+  }
   return (
     text.slice(0, LOG_HEAD_CHARS) +
     "\n...[truncated]...\n" +
@@ -88,7 +94,9 @@ export async function syncRepository(
   options: SyncOptions = {},
 ): Promise<SyncResult> {
   const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-  if (!repo) {throw new Error(`Repository ${repoId} not found`);}
+  if (!repo) {
+    throw new Error(`Repository ${repoId} not found`);
+  }
   if (repo.provider !== "github" && repo.provider !== "github_compatible") {
     throw new Error(`${repo.provider} sync is not implemented yet`);
   }
@@ -330,16 +338,19 @@ export async function syncRepository(
   ) {
     throw new Error(`GitHub sync failed — ${errors.join("; ")}`);
   }
-  void rebuildGraph(repoId).catch((e) => { console.error(
+  void rebuildGraph(repoId).catch((e) => {
+    console.error(
       "[sync] knowledge graph rebuild failed:",
       e instanceof Error ? e.message : e,
-    ); },
-  );
+    );
+  });
   return synced;
 }
 
 function labelsOf(labels: unknown): string[] {
-  if (!Array.isArray(labels)) {return [];}
+  if (!Array.isArray(labels)) {
+    return [];
+  }
   return labels
     .map((label) =>
       label && typeof label === "object" && "name" in label
@@ -350,8 +361,9 @@ function labelsOf(labels: unknown): string[] {
 }
 
 function describeError(e: unknown): string {
-  if (e instanceof GitHubApiError)
-    {return `GitHub API ${e.status}: ${e.message}`;}
+  if (e instanceof GitHubApiError) {
+    return `GitHub API ${e.status}: ${e.message}`;
+  }
   return e instanceof Error ? e.message : String(e);
 }
 

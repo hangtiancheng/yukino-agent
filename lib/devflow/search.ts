@@ -53,7 +53,9 @@ export async function scopedRetrieve(
     ranked = heuristic.ranked;
     for (const doc of ranked) {
       const reason = heuristic.reasons.get(doc.id);
-      if (reason) {reasons.set(doc.id, reason);}
+      if (reason) {
+        reasons.set(doc.id, reason);
+      }
     }
   }
 

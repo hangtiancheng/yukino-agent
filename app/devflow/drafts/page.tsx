@@ -99,23 +99,35 @@ export default function DevflowDraftsPage() {
       setLoading(true);
       try {
         const params = new URLSearchParams();
-        if (repoId) {params.set("repoId", repoId);}
-        if (statusFilter !== "all") {params.set("status", statusFilter);}
+        if (repoId) {
+          params.set("repoId", repoId);
+        }
+        if (statusFilter !== "all") {
+          params.set("status", statusFilter);
+        }
         const items = await dfGet<ActionDraft[]>(
           `/drafts?${params.toString()}`,
         );
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setDrafts(items);
         setSelected((current) => {
-          if (current && items.some((d) => d.id === current.id)) {return current;}
+          if (current && items.some((d) => d.id === current.id)) {
+            return current;
+          }
           return items[0] ?? null;
         });
       } catch (e) {
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         notify.error(e instanceof Error ? e.message : String(e));
         setDrafts([]);
       } finally {
-        if (!cancelled) {setLoading(false);}
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
     return () => {
@@ -124,22 +136,32 @@ export default function DevflowDraftsPage() {
   }, [repoId, statusFilter, reloadKey]);
 
   useEffect(() => {
-    if (!auditOpen) {return;}
+    if (!auditOpen) {
+      return;
+    }
     let cancelled = false;
     (async () => {
       setAuditLoading(true);
       try {
         const params = new URLSearchParams({ limit: "50" });
-        if (repoId) {params.set("repoId", repoId);}
+        if (repoId) {
+          params.set("repoId", repoId);
+        }
         const items = await dfGet<AuditRow[]>(`/audit-logs?${params}`);
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setAudits(items);
       } catch (e) {
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         notify.error(e instanceof Error ? e.message : String(e));
         setAudits([]);
       } finally {
-        if (!cancelled) {setAuditLoading(false);}
+        if (!cancelled) {
+          setAuditLoading(false);
+        }
       }
     })();
     return () => {
@@ -193,7 +215,9 @@ export default function DevflowDraftsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => { setReloadKey((k) => k + 1); }}
+            onClick={() => {
+              setReloadKey((k) => k + 1);
+            }}
             disabled={loading}
           >
             <RefreshCw className={loading ? "animate-spin" : ""} />
@@ -231,7 +255,9 @@ export default function DevflowDraftsPage() {
             drafts.map((draft) => (
               <button
                 key={draft.id}
-                onClick={() => { setSelected(draft); }}
+                onClick={() => {
+                  setSelected(draft);
+                }}
                 className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
                   selected?.id === draft.id
                     ? "border-primary/50 bg-primary/5"
@@ -323,7 +349,9 @@ export default function DevflowDraftsPage() {
                 {selected.status === "pending_confirmation" ? (
                   <div className="flex flex-wrap gap-2 pt-2">
                     <Button
-                      onClick={() => { setExecuteTarget(selected); }}
+                      onClick={() => {
+                        setExecuteTarget(selected);
+                      }}
                       disabled={acting}
                     >
                       <Play />
@@ -378,7 +406,9 @@ export default function DevflowDraftsPage() {
       <Card>
         <CardContent className="pt-5">
           <button
-            onClick={() => { setAuditOpen((open) => !open); }}
+            onClick={() => {
+              setAuditOpen((open) => !open);
+            }}
             className="hover:bg-accent/50 flex w-full items-center gap-2 rounded-md text-left"
           >
             {auditOpen ? (
@@ -452,7 +482,9 @@ export default function DevflowDraftsPage() {
       <AlertDialog
         open={executeTarget !== null}
         onOpenChange={(open) => {
-          if (!open) {setExecuteTarget(null);}
+          if (!open) {
+            setExecuteTarget(null);
+          }
         }}
       >
         <AlertDialogContent>

@@ -13,7 +13,9 @@ interface RouteContext {
 }
 
 function intParam(value: string | null): number | undefined {
-  if (value === null) {return undefined;}
+  if (value === null) {
+    return undefined;
+  }
   const n = Number.parseInt(value, 10);
   return Number.isFinite(n) ? n : undefined;
 }
@@ -24,7 +26,9 @@ export async function GET(request: Request, context: RouteContext) {
     const repo = await getRepoOrThrow(id);
     const url = new URL(request.url);
     const relPath = url.searchParams.get("path");
-    if (!relPath) {return fail(400, "pathRequired");}
+    if (!relPath) {
+      return fail(400, "pathRequired");
+    }
     const checkout = await requireCheckout(repo);
     const file = await readCodeFile(checkout, relPath, {
       startLine: intParam(url.searchParams.get("startLine")),
@@ -32,7 +36,9 @@ export async function GET(request: Request, context: RouteContext) {
     });
     return ok(file);
   } catch (e) {
-    if (e instanceof WorkspaceError) {return failRaw(e.status, e.message);}
+    if (e instanceof WorkspaceError) {
+      return failRaw(e.status, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 }

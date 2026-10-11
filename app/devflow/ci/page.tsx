@@ -53,22 +53,32 @@ export default function DevflowCiPage() {
       setLoading(true);
       try {
         const params = new URLSearchParams();
-        if (filter === "failed") {params.set("conclusion", "failure");}
+        if (filter === "failed") {
+          params.set("conclusion", "failure");
+        }
         const items = await dfGet<RunSummary[]>(
           `/repos/${repoId}/runs?${params.toString()}`,
         );
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setRuns(items);
         setSelected((current) => {
-          if (current && items.some((r) => r.id === current.id)) {return current;}
+          if (current && items.some((r) => r.id === current.id)) {
+            return current;
+          }
           return items[0] ?? null;
         });
       } catch (e) {
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         notify.error(e instanceof Error ? e.message : String(e));
         setRuns([]);
       } finally {
-        if (!cancelled) {setLoading(false);}
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
     return () => {
@@ -77,7 +87,9 @@ export default function DevflowCiPage() {
   }, [repoId, filter, reloadKey]);
 
   useEffect(() => {
-    if (!selected) {return;}
+    if (!selected) {
+      return;
+    }
     let cancelled = false;
     (async () => {
       setDebugLoading(true);
@@ -85,12 +97,18 @@ export default function DevflowCiPage() {
         const records = await dfGet<AnalysisRecord[]>(
           `/analyses?targetType=workflow_run&targetId=${selected.id}&limit=1`,
         );
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setDebug(records.length > 0 ? (records[0].result as CIDebug) : null);
       } catch {
-        if (!cancelled) {setDebug(null);}
+        if (!cancelled) {
+          setDebug(null);
+        }
       } finally {
-        if (!cancelled) {setDebugLoading(false);}
+        if (!cancelled) {
+          setDebugLoading(false);
+        }
       }
     })();
     return () => {
@@ -99,7 +117,9 @@ export default function DevflowCiPage() {
   }, [selected]);
 
   const runDebug = async () => {
-    if (!selected) {return;}
+    if (!selected) {
+      return;
+    }
     setDebugging(true);
     try {
       const record = await dfPost<{ id: string; result: CIDebug }>(
@@ -128,7 +148,9 @@ export default function DevflowCiPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => { setReloadKey((k) => k + 1); }}
+            onClick={() => {
+              setReloadKey((k) => k + 1);
+            }}
             disabled={loading}
           >
             <RefreshCw className={loading ? "animate-spin" : ""} />
@@ -167,7 +189,9 @@ export default function DevflowCiPage() {
                 runs.map((run) => (
                   <button
                     key={run.id}
-                    onClick={() => { setSelected(run); }}
+                    onClick={() => {
+                      setSelected(run);
+                    }}
                     className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
                       selected?.id === run.id
                         ? "border-primary/50 bg-primary/5"

@@ -104,7 +104,9 @@ export function normalizeModelName(model: string | null | undefined): string {
   let value = String(model ?? "")
     .trim()
     .toLowerCase();
-  if (!value) {return "unknown";}
+  if (!value) {
+    return "unknown";
+  }
   value = value.split("/").pop() ?? value;
   return value.replace(
     /-(20\d{2}[-_]\d{2}[-_]\d{2}|\d{4}[-_]\d{2}[-_]\d{2})$/,
@@ -117,9 +119,13 @@ function modelLookup(
   table: Record<string, number>,
 ): number | null {
   const normalized = normalizeModelName(model);
-  if (normalized in table) {return table[normalized];}
+  if (normalized in table) {
+    return table[normalized];
+  }
   for (const [key, value] of Object.entries(table)) {
-    if (normalized.startsWith(key)) {return value;}
+    if (normalized.startsWith(key)) {
+      return value;
+    }
   }
   return null;
 }
@@ -128,7 +134,9 @@ export function modelContextWindowTokens(
   model: string | null | undefined,
 ): number {
   const known = modelLookup(model, MODEL_CONTEXT_WINDOWS);
-  if (known !== null) {return known;}
+  if (known !== null) {
+    return known;
+  }
   return Math.max(
     4096,
     CONTEXT_MAX_INPUT_TOKENS + CONTEXT_RESERVED_RESPONSE_TOKENS,
@@ -139,7 +147,9 @@ export function modelOutputWindowTokens(
   model: string | null | undefined,
 ): number {
   const known = modelLookup(model, MODEL_OUTPUT_WINDOWS);
-  if (known !== null) {return known;}
+  if (known !== null) {
+    return known;
+  }
   return Math.max(512, CONTEXT_RESERVED_RESPONSE_TOKENS);
 }
 
@@ -216,11 +226,17 @@ export function calculateContextPressure(
   const effectiveWindow = effectiveContextWindowTokens(model, true);
   const t = thresholdsForWindow(effectiveWindow);
   let stage: PressureStage;
-  if (tokenUsage >= t.manual) {stage = "manual_path";}
-  else if (tokenUsage >= t.aggressive) {stage = "aggressive";}
-  else if (tokenUsage >= t.auto) {stage = "auto_compact";}
-  else if (tokenUsage >= t.warning) {stage = "warning";}
-  else {stage = "normal";}
+  if (tokenUsage >= t.manual) {
+    stage = "manual_path";
+  } else if (tokenUsage >= t.aggressive) {
+    stage = "aggressive";
+  } else if (tokenUsage >= t.auto) {
+    stage = "auto_compact";
+  } else if (tokenUsage >= t.warning) {
+    stage = "warning";
+  } else {
+    stage = "normal";
+  }
   return {
     stage,
     tokenUsage,
@@ -315,16 +331,22 @@ export function compressMessages(
     );
     const clipped = clipToTokenBudget(content, perMessageBudget);
     const cost = estimateTokens(role) + estimateTokens(clipped);
-    if (keptReversed.length > 0 && used + cost > maxTokens) {break;}
+    if (keptReversed.length > 0 && used + cost > maxTokens) {
+      break;
+    }
     keptReversed.push({ role, content: clipped });
     if (clipped === content.trim()) {
-      if (exactSuffixOpen) {exactSuffixMessages += 1;}
+      if (exactSuffixOpen) {
+        exactSuffixMessages += 1;
+      }
     } else {
       truncatedMessages += 1;
       exactSuffixOpen = false;
     }
     used += cost;
-    if (used >= maxTokens) {break;}
+    if (used >= maxTokens) {
+      break;
+    }
   }
   const kept = keptReversed.reverse();
   const eligibleMessages = messages.filter(
@@ -380,7 +402,9 @@ export function mustPreserveCandidates(
   const candidates: string[] = [];
   for (const message of messages) {
     const content = String(message.content ?? "");
-    if (!content) {continue;}
+    if (!content) {
+      continue;
+    }
     for (const match of content.matchAll(PATH_LIKE_PATTERN)) {
       candidates.push(match[0].trim());
     }
@@ -390,7 +414,9 @@ export function mustPreserveCandidates(
         .replace(/^[-\t ]+/, "")
         .split(/\s+/)
         .join(" ");
-      if (!line) {continue;}
+      if (!line) {
+        continue;
+      }
       const lower = line.toLowerCase();
       if (
         COMMAND_HINT_PATTERN.test(line) ||
@@ -486,7 +512,9 @@ export function buildCompactionSummaryPayload(
       String(message.content ?? ""),
       perMessage,
     );
-    if (!content) {continue;}
+    if (!content) {
+      continue;
+    }
     const toolNames = message.toolNames ?? [];
     const suffix = toolNames.length > 0 ? ` tools=${toolNames.join(",")}` : "";
     lines.push(`${role}${suffix}: ${content}`);
@@ -498,7 +526,9 @@ export function formatCompactionSummary(summary: string): string {
   let formatted = String(summary ?? "").trim();
   formatted = formatted.replace(/<analysis>[\s\S]*?<\/analysis>/gi, "").trim();
   const match = /<summary>([\s\S]*?)<\/summary>/i.exec(formatted);
-  if (match) {formatted = `摘要: \n${match[1].trim()}`;}
+  if (match) {
+    formatted = `摘要: \n${match[1].trim()}`;
+  }
   return formatted.replace(/\n{3,}/g, "\n\n").trim();
 }
 
@@ -518,7 +548,9 @@ export function fallbackCompactionSummary(
   for (const content of [...userMessages, ...assistantMessages]) {
     for (const rawLine of content.split("\n")) {
       const line = rawLine.trim().replace(/^[-\t ]+/, "");
-      if (!line) {continue;}
+      if (!line) {
+        continue;
+      }
       const lower = line.toLowerCase();
       if (
         ["decision", "decide", "agreed", "决定", "确定"].some((token) =>
@@ -534,7 +566,9 @@ export function fallbackCompactionSummary(
       ) {
         tasks.push(line);
       }
-      if (line.length > 20 && facts.length < 10) {facts.push(line);}
+      if (line.length > 20 && facts.length < 10) {
+        facts.push(line);
+      }
     }
   }
   const summary = [
@@ -614,7 +648,9 @@ interface MetaShape {
 }
 
 export function isCompactBoundaryMessage(message: MetaShape): boolean {
-  if (message.role !== "system") {return false;}
+  if (message.role !== "system") {
+    return false;
+  }
   const parsed = z
     .object({ subtype: z.string().optional() })
     .safeParse(message.meta);
@@ -622,7 +658,9 @@ export function isCompactBoundaryMessage(message: MetaShape): boolean {
 }
 
 function isCompactionFailureMessage(message: MetaShape): boolean {
-  if (message.role !== "system") {return false;}
+  if (message.role !== "system") {
+    return false;
+  }
   const parsed = z
     .object({ subtype: z.string().optional() })
     .safeParse(message.meta);
@@ -645,7 +683,9 @@ export async function latestCompactBoundary(
     },
   });
   for (const row of rows) {
-    if (isCompactBoundaryMessage(row)) {return row;}
+    if (isCompactBoundaryMessage(row)) {
+      return row;
+    }
   }
   return null;
 }
@@ -672,7 +712,9 @@ export function renderStructuredMemory(
 ): string {
   const sections: string[] = [];
   const summary = String(memory.summary ?? "").trim();
-  if (summary) {sections.push(`摘要: \n${summary}`);}
+  if (summary) {
+    sections.push(`摘要: \n${summary}`);
+  }
   const groups: [string, string[]][] = [
     ["事实", stringList(memory.facts)],
     ["决策", stringList(memory.decisions)],
@@ -965,7 +1007,9 @@ async function compactSegment(params: {
       0,
       Math.max(0, messages.length - keep.length),
     );
-    if (summarize.length === 0) {continue;}
+    if (summarize.length === 0) {
+      continue;
+    }
     const { summary, mode, report } = await summaryFor({
       repoId,
       conversationId,
@@ -1049,6 +1093,8 @@ function toolNamesOf(toolCalls: unknown): string[] {
   const parsed = z
     .array(z.object({ name: z.string().catch("") }))
     .safeParse(toolCalls);
-  if (!parsed.success) {return [];}
+  if (!parsed.success) {
+    return [];
+  }
   return parsed.data.map((item) => item.name).filter((name) => name !== "");
 }

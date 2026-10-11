@@ -55,8 +55,11 @@ function checkSanitize() {
     sanitized.includes("::add-mask::[REDACTED]"),
     "add-mask line redacted",
   );
-  assert.ok(sanitized.includes('API_KEY=[REDACTED]'), "key=value redacted");
-  assert.ok(sanitized.includes('db_password: [REDACTED]'), "key: value redacted");
+  assert.ok(sanitized.includes("API_KEY=[REDACTED]"), "key=value redacted");
+  assert.ok(
+    sanitized.includes("db_password: [REDACTED]"),
+    "key: value redacted",
+  );
   assert.ok(sanitized.includes("plain text stays intact"), "normal text kept");
   assert.ok(!sanitized.includes("hunter2"), "secret value gone");
   assert.ok(!sanitized.includes("MIIEowIBAAKCAQEA7crypted"), "key body gone");

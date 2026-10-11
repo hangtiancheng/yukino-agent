@@ -41,14 +41,18 @@ export default function ChatInput({
 
   useEffect(() => {
     const el = textareaRef.current;
-    if (!el) {return;}
+    if (!el) {
+      return;
+    }
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, [text]);
 
   const send = () => {
     const t = text.trim();
-    if (!t || isStreaming) {return;}
+    if (!t || isStreaming) {
+      return;
+    }
     onSend(t);
     setText("");
   };
@@ -58,7 +62,9 @@ export default function ChatInput({
       <InputGroupTextarea
         ref={textareaRef}
         value={text}
-        onChange={(e) => { setText(e.target.value); }}
+        onChange={(e) => {
+          setText(e.target.value);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -98,7 +104,9 @@ export default function ChatInput({
             value={[mode]}
             onValueChange={(v) => {
               const next = v.at(-1);
-              if (next === "quick" || next === "stream") {onModeChange(next);}
+              if (next === "quick" || next === "stream") {
+                onModeChange(next);
+              }
             }}
             aria-label={t("chatMode")}
           >
@@ -124,7 +132,9 @@ export default function ChatInput({
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) {onUpload(f);}
+          if (f) {
+            onUpload(f);
+          }
           e.target.value = "";
         }}
       />

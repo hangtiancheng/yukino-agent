@@ -52,7 +52,9 @@ export default function Home() {
   const handleUpload = useCallback(
     async (file: File) => {
       const msg = await uploadFile(file);
-      if (msg) {addMessage({ type: "assistant", content: msg });}
+      if (msg) {
+        addMessage({ type: "assistant", content: msg });
+      }
     },
     [uploadFile, addMessage],
   );

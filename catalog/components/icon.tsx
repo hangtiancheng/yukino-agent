@@ -1,4 +1,3 @@
-
 import { createComponentImplementation } from "@a2ui/react/v0_9";
 import { IconApi } from "@a2ui/web_core/v0_9/basic_catalog";
 import {
@@ -132,7 +131,7 @@ export const Icon = createComponentImplementation(IconApi, ({ props }) => {
   if (typeof name === "object" && name !== null && "svgPath" in name) {
     return (
       <svg viewBox="0 0 24 24" className="size-6 shrink-0 fill-current">
-        <path d={(name).svgPath} />
+        <path d={name.svgPath} />
       </svg>
     );
   }
@@ -149,8 +148,12 @@ export function CatalogIcon({
   name?: string;
   className?: string;
 }) {
-  if (!name) {return null;}
+  if (!name) {
+    return null;
+  }
   const LucideGlyph = ICON_MAP[name];
-  if (!LucideGlyph) {return null;}
+  if (!LucideGlyph) {
+    return null;
+  }
   return <LucideGlyph className={className} />;
 }

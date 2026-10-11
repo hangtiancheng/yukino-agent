@@ -19,7 +19,9 @@ export async function GET() {
     const items = await listWorkspaces();
     return ok(items);
   } catch (e) {
-    if (e instanceof PermissionError) {return failRaw(403, e.message);}
+    if (e instanceof PermissionError) {
+      return failRaw(403, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 }
@@ -38,7 +40,9 @@ export async function POST(request: Request) {
   try {
     user = await requirePermission("settings:manage");
   } catch (e) {
-    if (e instanceof PermissionError) {return failRaw(403, e.message);}
+    if (e instanceof PermissionError) {
+      return failRaw(403, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 
@@ -50,15 +54,18 @@ export async function POST(request: Request) {
       targetType: "workspace",
       targetId: workspace.id,
       requestJson: parsed.data,
-    }).catch((err) => { console.warn(
+    }).catch((err) => {
+      console.warn(
         "[devflow:audit] failed to record workspace.create:",
         err instanceof Error ? err.message : String(err),
-      ); },
-    );
+      );
+    });
     return ok(workspace, 201);
   } catch (e) {
     if (e instanceof WorkspaceError) {
-      if (e.code === "nameTaken") {return fail(409, "workspaceNameTaken");}
+      if (e.code === "nameTaken") {
+        return fail(409, "workspaceNameTaken");
+      }
       if (e.code === "reposMissing") {
         return fail(404, "workspaceReposMissing", {
           repos: e.missingRepoIds.join(", "),

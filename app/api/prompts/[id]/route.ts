@@ -47,7 +47,9 @@ function adminFailure(
 export async function PATCH(request: Request, context: RouteContext) {
   const t = await getTranslations("api.oncall");
   const admin = requireOncallAdmin(request);
-  if (admin !== null) {return adminFailure(admin);}
+  if (admin !== null) {
+    return adminFailure(admin);
+  }
   const { id } = await context.params;
   const parsed = promptPatchSchema.safeParse(
     await request.json().catch(() => null),
@@ -138,7 +140,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 export async function DELETE(request: Request, context: RouteContext) {
   const t = await getTranslations("api.oncall");
   const admin = requireOncallAdmin(request);
-  if (admin !== null) {return adminFailure(admin);}
+  if (admin !== null) {
+    return adminFailure(admin);
+  }
   const { id } = await context.params;
   try {
     const existing = await prisma.chatPrompt.findUnique({ where: { id } });

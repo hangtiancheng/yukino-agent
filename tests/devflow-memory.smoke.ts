@@ -173,7 +173,9 @@ import {
     assert.ok(start >= 0, `${label} section must render`);
     let lines = 0;
     for (let i = start + 1; i < renderedLines.length; i += 1) {
-      if (!renderedLines[i].startsWith("- ")) {break;}
+      if (!renderedLines[i].startsWith("- ")) {
+        break;
+      }
       lines += 1;
     }
     assert.equal(lines, limit, `${label} must be capped at ${limit}`);

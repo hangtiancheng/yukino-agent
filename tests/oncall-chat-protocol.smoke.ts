@@ -52,7 +52,9 @@ function firstPromptExampleBlock(): string {
     );
     const trimmed = body.trim();
     if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
-      if (parseA2uiBlock(body).messages) {return block;}
+      if (parseA2uiBlock(body).messages) {
+        return block;
+      }
     }
   }
 }
@@ -63,7 +65,9 @@ async function collect(
 ): Promise<{ events: ChatStreamEvent[]; final: ChatStreamPartsResult }> {
   const gen = processChatStreamParts(
     (async function* () {
-      for (const p of parts) {yield p;}
+      for (const p of parts) {
+        yield p;
+      }
     })(),
     hooks,
   );

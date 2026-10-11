@@ -11,7 +11,9 @@ import {
 
 function makeDocx(entries: Map<string, string>): Buffer {
   const record: Record<string, Uint8Array> = {};
-  for (const [name, data] of entries) {record[name] = strToU8(data);}
+  for (const [name, data] of entries) {
+    record[name] = strToU8(data);
+  }
   return Buffer.from(zipSync(record));
 }
 
@@ -38,7 +40,9 @@ async function main() {
   );
 
   const many = new Map<string, string>();
-  for (let i = 0; i < MAX_DOCX_ENTRIES + 5; i++) {many.set(`x${i}.xml`, "<a/>");}
+  for (let i = 0; i < MAX_DOCX_ENTRIES + 5; i++) {
+    many.set(`x${i}.xml`, "<a/>");
+  }
   many.set("[Content_Types].xml", CONTENT_TYPES);
   const manyBuf = makeDocx(many);
   let rejectedEntries = false;
@@ -52,8 +56,9 @@ async function main() {
   assert.ok(rejectedEntries, "entry/size bomb rejected");
 
   const bomb: Record<string, Uint8Array> = {};
-  for (let i = 0; i < 30; i++)
-    {bomb[`z${i}.bin`] = new Uint8Array(4 * 1024 * 1024);}
+  for (let i = 0; i < 30; i++) {
+    bomb[`z${i}.bin`] = new Uint8Array(4 * 1024 * 1024);
+  }
   bomb["[Content_Types].xml"] = strToU8(CONTENT_TYPES);
   const bombBuf = Buffer.from(zipSync(bomb));
   assert.ok(

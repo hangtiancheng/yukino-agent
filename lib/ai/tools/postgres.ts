@@ -13,10 +13,11 @@ export async function executeOncallSql(
   operateType: string,
   connectionString = config.oncallDatabaseUrl,
 ): Promise<unknown> {
-  if (!connectionString)
-    {throw new Error(
+  if (!connectionString) {
+    throw new Error(
       "OnCall SQL is unavailable: configure ONCALL_DATABASE_URL with a separate database and restricted role.",
-    );}
+    );
+  }
   const application = new URL(config.database.url);
   const target = new URL(connectionString);
   const applicationDatabase = decodeURIComponent(application.pathname.slice(1));
@@ -54,7 +55,9 @@ export async function executeOncallSql(
       );
     }
     const result = await client.query({ text: sql, name: "oncall-query" });
-    if (operateType === "query") {return result.rows;}
+    if (operateType === "query") {
+      return result.rows;
+    }
     return {
       success: true,
       affected_rows: result.rowCount ?? 0,

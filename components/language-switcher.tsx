@@ -26,7 +26,9 @@ export function LanguageSwitcher({ className }: { className?: string }) {
   const router = useRouter();
 
   function handleChange(value: Locale | null) {
-    if (value === null || value === locale) {return;}
+    if (value === null || value === locale) {
+      return;
+    }
     persistLocale(value);
     router.refresh();
   }

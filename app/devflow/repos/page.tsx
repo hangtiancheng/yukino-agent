@@ -57,13 +57,21 @@ type RepoRow = RepoSummary & {
 };
 
 function timeAgo(t: ReposTranslations, iso: string | null): string {
-  if (!iso) {return t("never");}
+  if (!iso) {
+    return t("never");
+  }
   const diff = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) {return t("justNow");}
-  if (minutes < 60) {return t("minutesAgo", { count: minutes });}
+  if (minutes < 1) {
+    return t("justNow");
+  }
+  if (minutes < 60) {
+    return t("minutesAgo", { count: minutes });
+  }
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) {return t("hoursAgo", { count: hours });}
+  if (hours < 24) {
+    return t("hoursAgo", { count: hours });
+  }
   return t("daysAgo", { count: Math.floor(hours / 24) });
 }
 
@@ -157,7 +165,9 @@ function ConnectDialog({
             <FieldLabel>{t("connect.mode")}</FieldLabel>
             <Select
               value={mode}
-              onValueChange={(v) => { setMode(v!); }}
+              onValueChange={(v) => {
+                setMode(v!);
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -180,7 +190,9 @@ function ConnectDialog({
                 id="df-local-path"
                 placeholder={t("connect.localPathPlaceholder")}
                 value={localPath}
-                onChange={(e) => { setLocalPath(e.target.value); }}
+                onChange={(e) => {
+                  setLocalPath(e.target.value);
+                }}
               />
             </Field>
           ) : (
@@ -194,7 +206,9 @@ function ConnectDialog({
                     id="df-owner"
                     placeholder={t("connect.ownerPlaceholder")}
                     value={owner}
-                    onChange={(e) => { setOwner(e.target.value); }}
+                    onChange={(e) => {
+                      setOwner(e.target.value);
+                    }}
                   />
                 </Field>
                 <Field>
@@ -205,7 +219,9 @@ function ConnectDialog({
                     id="df-repo"
                     placeholder={t("connect.repositoryPlaceholder")}
                     value={repo}
-                    onChange={(e) => { setRepo(e.target.value); }}
+                    onChange={(e) => {
+                      setRepo(e.target.value);
+                    }}
                   />
                 </Field>
               </div>
@@ -213,8 +229,9 @@ function ConnectDialog({
                 <FieldLabel>{t("connect.provider")}</FieldLabel>
                 <Select
                   value={provider}
-                  onValueChange={(v) => { setProvider(v!); }
-                  }
+                  onValueChange={(v) => {
+                    setProvider(v!);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -238,7 +255,9 @@ function ConnectDialog({
                     id="df-base"
                     placeholder={t("connect.apiBaseUrlPlaceholder")}
                     value={apiBaseUrl}
-                    onChange={(e) => { setApiBaseUrl(e.target.value); }}
+                    onChange={(e) => {
+                      setApiBaseUrl(e.target.value);
+                    }}
                   />
                 </Field>
               ) : null}
@@ -256,7 +275,9 @@ function ConnectDialog({
                   id="df-clone-parent"
                   placeholder={t("connect.cloneParentDirPlaceholder")}
                   value={cloneParentDir}
-                  onChange={(e) => { setCloneParentDir(e.target.value); }}
+                  onChange={(e) => {
+                    setCloneParentDir(e.target.value);
+                  }}
                 />
               </Field>
             </>
@@ -274,12 +295,19 @@ function ConnectDialog({
               type="password"
               placeholder={t("connect.tokenPlaceholder")}
               value={token}
-              onChange={(e) => { setToken(e.target.value); }}
+              onChange={(e) => {
+                setToken(e.target.value);
+              }}
             />
           </Field>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => { onOpenChange(false); }}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              onOpenChange(false);
+            }}
+          >
             {tc("cancel")}
           </Button>
           <Button onClick={connect} disabled={connecting}>
@@ -330,7 +358,9 @@ export default function DevflowReposPage() {
   );
 
   const remove = useCallback(async () => {
-    if (!deleteTarget) {return;}
+    if (!deleteTarget) {
+      return;
+    }
     try {
       await dfDelete(`/repos/${deleteTarget.id}`);
       notify.success(t("deleted", { repo: deleteTarget.fullName }));
@@ -347,7 +377,11 @@ export default function DevflowReposPage() {
         title={t("title")}
         description={t("description")}
         actions={
-          <Button onClick={() => { setConnectOpen(true); }}>
+          <Button
+            onClick={() => {
+              setConnectOpen(true);
+            }}
+          >
             <Plus />
             {t("connectRepository")}
           </Button>
@@ -368,7 +402,11 @@ export default function DevflowReposPage() {
             <p className="text-muted-foreground max-w-sm text-sm">
               {t("noReposDescription")}
             </p>
-            <Button onClick={() => { setConnectOpen(true); }}>
+            <Button
+              onClick={() => {
+                setConnectOpen(true);
+              }}
+            >
               <Plus />
               {t("connectRepository")}
             </Button>
@@ -459,7 +497,9 @@ export default function DevflowReposPage() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => { setRepoId(repo.id); }}
+                      onClick={() => {
+                        setRepoId(repo.id);
+                      }}
                       disabled={repo.id === repoId}
                     >
                       {repo.id === repoId ? t("selected") : t("select")}
@@ -468,7 +508,9 @@ export default function DevflowReposPage() {
                       size="sm"
                       variant="ghost"
                       className="text-destructive hover:text-destructive ml-auto"
-                      onClick={() => { setDeleteTarget(repo); }}
+                      onClick={() => {
+                        setDeleteTarget(repo);
+                      }}
                     >
                       <Trash2 />
                     </Button>
@@ -489,7 +531,9 @@ export default function DevflowReposPage() {
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) {setDeleteTarget(null);}
+          if (!open) {
+            setDeleteTarget(null);
+          }
         }}
       >
         <AlertDialogContent>

@@ -96,7 +96,9 @@ function ringLayout(
   centerKey: string,
 ): Map<string, PlacedNode> {
   const positions = new Map<string, PlacedNode>();
-  if (nodes.length === 0) {return positions;}
+  if (nodes.length === 0) {
+    return positions;
+  }
 
   const adjacency = new Map<string, string[]>();
   for (const edge of edges) {
@@ -115,7 +117,9 @@ function ringLayout(
     const key = queue[head];
     const distance = hop.get(key) ?? 0;
     for (const next of adjacency.get(key) ?? []) {
-      if (hop.has(next)) {continue;}
+      if (hop.has(next)) {
+        continue;
+      }
       hop.set(next, distance + 1);
       queue.push(next);
     }
@@ -175,7 +179,9 @@ export default function DevflowGraphPage() {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    if (!repoId) {return;}
+    if (!repoId) {
+      return;
+    }
     let cancelled = false;
     (async () => {
       setSummaryLoading(true);
@@ -183,7 +189,9 @@ export default function DevflowGraphPage() {
       setQuery("");
       try {
         const data = await dfGet<GraphSummary>(`/repos/${repoId}/graph`);
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setSummary(data);
         setSelected((current) => {
           if (
@@ -198,10 +206,13 @@ export default function DevflowGraphPage() {
           return first ? { type: first.type, id: first.id } : null;
         });
       } catch (e) {
-        if (!cancelled)
-          {notify.error(e instanceof Error ? e.message : String(e));}
+        if (!cancelled) {
+          notify.error(e instanceof Error ? e.message : String(e));
+        }
       } finally {
-        if (!cancelled) {setSummaryLoading(false);}
+        if (!cancelled) {
+          setSummaryLoading(false);
+        }
       }
     })();
     return () => {
@@ -210,7 +221,9 @@ export default function DevflowGraphPage() {
   }, [repoId, reloadKey]);
 
   useEffect(() => {
-    if (!repoId || !selected) {return;}
+    if (!repoId || !selected) {
+      return;
+    }
     let cancelled = false;
     (async () => {
       setSubLoading(true);
@@ -223,12 +236,17 @@ export default function DevflowGraphPage() {
         const data = await dfGet<SubgraphResult>(
           `/repos/${repoId}/graph/subgraph?${params.toString()}`,
         );
-        if (!cancelled) {setSubgraph(data);}
+        if (!cancelled) {
+          setSubgraph(data);
+        }
       } catch (e) {
-        if (!cancelled)
-          {notify.error(e instanceof Error ? e.message : String(e));}
+        if (!cancelled) {
+          notify.error(e instanceof Error ? e.message : String(e));
+        }
       } finally {
-        if (!cancelled) {setSubLoading(false);}
+        if (!cancelled) {
+          setSubLoading(false);
+        }
       }
     })();
     return () => {
@@ -244,7 +262,9 @@ export default function DevflowGraphPage() {
     isNodeTypeKey(type) ? t(`nodeTypes.${NODE_TYPE_KEYS[type]}`) : type;
 
   async function rebuild(): Promise<void> {
-    if (!repoId) {return;}
+    if (!repoId) {
+      return;
+    }
     setRebuilding(true);
     try {
       const result = await dfPost<{ edges: number; nodes: number }>(
@@ -265,7 +285,9 @@ export default function DevflowGraphPage() {
   const filteredNodes = useMemo(() => {
     const nodes = summary?.nodes ?? [];
     const q = query.trim().toLowerCase();
-    if (!q) {return nodes;}
+    if (!q) {
+      return nodes;
+    }
     return nodes.filter(
       (n) => n.label.toLowerCase().includes(q) || n.type.includes(q),
     );
@@ -291,7 +313,9 @@ export default function DevflowGraphPage() {
   }, [summary, subgraph]);
 
   const adjacencyRows = useMemo(() => {
-    if (!subgraph || !centerKey) {return [];}
+    if (!subgraph || !centerKey) {
+      return [];
+    }
     return subgraph.edges.filter(
       (edge) =>
         keyOf(edge.fromType, edge.fromId) === centerKey ||
@@ -301,7 +325,9 @@ export default function DevflowGraphPage() {
 
   const legendRelations = useMemo(() => {
     const present = new Set<string>();
-    for (const edge of subgraph?.edges ?? []) {present.add(edge.relation);}
+    for (const edge of subgraph?.edges ?? []) {
+      present.add(edge.relation);
+    }
     for (const relation of Object.keys(summary?.relationCounts ?? {})) {
       present.add(relation);
     }
@@ -405,7 +431,9 @@ export default function DevflowGraphPage() {
               <CardContent className="space-y-2">
                 <Input
                   value={query}
-                  onChange={(event) => { setQuery(event.target.value); }}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                  }}
                   placeholder={t("searchNodes")}
                   className="h-9"
                 />
@@ -418,8 +446,9 @@ export default function DevflowGraphPage() {
                       <button
                         key={key}
                         type="button"
-                        onClick={() => { setSelected({ type: node.type, id: node.id }); }
-                        }
+                        onClick={() => {
+                          setSelected({ type: node.type, id: node.id });
+                        }}
                         className={`hover:bg-muted/60 flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition ${
                           active
                             ? "border-foreground/30 bg-muted font-medium"
@@ -461,7 +490,9 @@ export default function DevflowGraphPage() {
                       size="sm"
                       variant={depth === d ? "default" : "outline"}
                       className="h-7 w-7 p-0"
-                      onClick={() => { setDepth(d); }}
+                      onClick={() => {
+                        setDepth(d);
+                      }}
                     >
                       {d}
                     </Button>
@@ -493,7 +524,9 @@ export default function DevflowGraphPage() {
                           const to = positions.get(
                             keyOf(edge.toType, edge.toId),
                           );
-                          if (!from || !to) {return null;}
+                          if (!from || !to) {
+                            return null;
+                          }
                           const color =
                             RELATION_COLORS[edge.relation] ??
                             FALLBACK_RELATION_COLOR;
@@ -526,7 +559,9 @@ export default function DevflowGraphPage() {
                         {subgraph.nodes.map((node) => {
                           const key = keyOf(node.type, node.id);
                           const pos = positions.get(key);
-                          if (!pos) {return null;}
+                          if (!pos) {
+                            return null;
+                          }
                           const isCenter = key === centerKey;
                           const style =
                             NODE_STYLES[node.type] ?? FALLBACK_NODE_STYLE;
@@ -536,8 +571,9 @@ export default function DevflowGraphPage() {
                               role="button"
                               tabIndex={0}
                               className="cursor-pointer"
-                              onClick={() => { setSelected({ type: node.type, id: node.id }); }
-                              }
+                              onClick={() => {
+                                setSelected({ type: node.type, id: node.id });
+                              }}
                               onKeyDown={(event) => {
                                 if (
                                   event.key === "Enter" ||
@@ -636,11 +672,12 @@ export default function DevflowGraphPage() {
                               <button
                                 type="button"
                                 className="text-foreground/80 hover:text-foreground min-w-0 flex-1 truncate text-left hover:underline"
-                                onClick={() => { setSelected({
+                                onClick={() => {
+                                  setSelected({
                                     type: otherType,
                                     id: otherId,
-                                  }); }
-                                }
+                                  });
+                                }}
                               >
                                 {labelByKey.get(keyOf(otherType, otherId)) ??
                                   otherId}

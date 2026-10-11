@@ -59,7 +59,9 @@ function block(
 }
 
 function validateLimits(maxChars: number, overlap: number): void {
-  if (maxChars <= 0) {throw new Error("max_chars must be greater than zero");}
+  if (maxChars <= 0) {
+    throw new Error("max_chars must be greater than zero");
+  }
   if (overlap < 0 || overlap >= maxChars) {
     throw new Error("overlap must be between zero and max_chars");
   }
@@ -79,17 +81,23 @@ function lineForOffset(
   offset: number,
   firstLine: number | null,
 ): number | null {
-  if (firstLine === null) {return null;}
+  if (firstLine === null) {
+    return null;
+  }
   let count = 0;
   const end = Math.max(0, Math.min(offset, text.length));
   for (let i = 0; i < end; i++) {
-    if (text.charCodeAt(i) === 10) {count++;}
+    if (text.charCodeAt(i) === 10) {
+      count++;
+    }
   }
   return firstLine + count;
 }
 
 function splitLongText(b: Block, maxChars: number): Block[] {
-  if (b.text.length <= maxChars) {return [b];}
+  if (b.text.length <= maxChars) {
+    return [b];
+  }
 
   let units = b.text
     .split(/(?<=[。！？!?])|(?<=[.!?])\s+|\n+/)
@@ -105,7 +113,9 @@ function splitLongText(b: Block, maxChars: number): Block[] {
   let current = "";
   for (let unit of units) {
     unit = unit.trim();
-    if (unit === "") {continue;}
+    if (unit === "") {
+      continue;
+    }
     if (unit.length > maxChars) {
       if (current) {
         pieces.push(current);
@@ -124,13 +134,17 @@ function splitLongText(b: Block, maxChars: number): Block[] {
       current = candidate;
     }
   }
-  if (current) {pieces.push(current);}
+  if (current) {
+    pieces.push(current);
+  }
 
   const output: Block[] = [];
   let cursor = 0;
   for (const piece of pieces) {
     let offset = b.text.indexOf(piece, cursor);
-    if (offset < 0) {offset = cursor;}
+    if (offset < 0) {
+      offset = cursor;
+    }
     const endOffset = Math.min(b.text.length, offset + piece.length);
     output.push(
       block(
@@ -150,9 +164,13 @@ function splitLongText(b: Block, maxChars: number): Block[] {
 }
 
 function splitLongCodeFence(b: Block, maxChars: number): Block[] {
-  if (b.text.length <= maxChars) {return [b];}
+  if (b.text.length <= maxChars) {
+    return [b];
+  }
   const lines = b.text.split("\n");
-  if (lines.length === 0) {return [];}
+  if (lines.length === 0) {
+    return [];
+  }
   if (maxChars <= 8) {
     return splitLongText(
       block(
@@ -228,7 +246,9 @@ function splitLongCodeFence(b: Block, maxChars: number): Block[] {
   let currentStart = firstBodyLine;
 
   const flush = (endLine: number | null): void => {
-    if (current.length === 0) {return;}
+    if (current.length === 0) {
+      return;
+    }
     const bodyText = current.join("\n");
     output.push(
       makeFenceBlock(
@@ -260,31 +280,43 @@ function splitLongCodeFence(b: Block, maxChars: number): Block[] {
       flush(index !== null ? index - 1 : null);
       currentStart = index;
     }
-    if (current.length === 0) {currentStart = index;}
+    if (current.length === 0) {
+      currentStart = index;
+    }
     current.push(line);
     currentSize += lineSize;
   }
   let lastBodyLine: number | null = null;
-  if (b.endLine !== null) {lastBodyLine = b.endLine - (hasCloser ? 1 : 0);}
+  if (b.endLine !== null) {
+    lastBodyLine = b.endLine - (hasCloser ? 1 : 0);
+  }
   flush(lastBodyLine);
   return output;
 }
 
 function expandBlock(b: Block, maxChars: number): Block[] {
-  if (b.kind === "code_fence") {return splitLongCodeFence(b, maxChars);}
+  if (b.kind === "code_fence") {
+    return splitLongCodeFence(b, maxChars);
+  }
   return splitLongText(b, maxChars);
 }
 
 function overlapBlocks(blocks: Block[], overlap: number): Block[] {
-  if (overlap <= 0 || blocks.length === 0) {return [];}
+  if (overlap <= 0 || blocks.length === 0) {
+    return [];
+  }
   const selected: Block[] = [];
   let remaining = overlap;
   for (let i = blocks.length - 1; i >= 0; i--) {
     const b = blocks[i];
-    if (!b.text || b.kind === "code_fence") {continue;}
+    if (!b.text || b.kind === "code_fence") {
+      continue;
+    }
     const separator = selected.length > 0 ? 2 : 0;
     const allowance = remaining - separator;
-    if (allowance <= 0) {break;}
+    if (allowance <= 0) {
+      break;
+    }
     if (b.text.length <= allowance) {
       selected.push(b);
       remaining -= b.text.length + separator;
@@ -300,9 +332,7 @@ function overlapBlocks(blocks: Block[], overlap: number): Block[] {
     const wordBoundaries = [...lookback.matchAll(/\s+/g)];
     let fragmentOffset: number;
     if (sentenceBoundaries.length > 0) {
-      const last = sentenceBoundaries[
-        sentenceBoundaries.length - 1
-      ];
+      const last = sentenceBoundaries[sentenceBoundaries.length - 1];
       fragmentOffset = lookbackStart + last.index + last[0].length;
     } else if (wordBoundaries.length > 0) {
       const last = wordBoundaries[wordBoundaries.length - 1];
@@ -343,10 +373,16 @@ function sectionPrefix(
   const parts = path.map(
     (title, index) => `${"#".repeat(Math.min(index + 1, 6))} ${title}`,
   );
-  if (page !== null) {parts.push(`Page ${page}`);}
+  if (page !== null) {
+    parts.push(`Page ${page}`);
+  }
   const value = parts.join("\n");
-  if (limit === undefined || value.length <= limit) {return value;}
-  if (limit <= 3) {return value.slice(0, limit);}
+  if (limit === undefined || value.length <= limit) {
+    return value;
+  }
+  if (limit <= 3) {
+    return value.slice(0, limit);
+  }
   return `${value.slice(0, limit - 3).trimEnd()}...`;
 }
 
@@ -356,7 +392,9 @@ function prefixForChunk(
   maxChars: number,
   hasBody: boolean,
 ): string {
-  if (path.length === 0 && page === null) {return "";}
+  if (path.length === 0 && page === null) {
+    return "";
+  }
   let limit: number;
   if (!hasBody) {
     limit = maxChars;
@@ -408,7 +446,9 @@ function emitChunk(
     ? "markdown_code"
     : opts.chunkType;
   const metadata: Record<string, unknown> = {};
-  for (const b of blocks) {Object.assign(metadata, b.metadata);}
+  for (const b of blocks) {
+    Object.assign(metadata, b.metadata);
+  }
   const startLines = blocks
     .filter((b) => b.startLine !== null)
     .map((b) => b.startLine!);
@@ -424,7 +464,7 @@ function emitChunk(
     section_path: first.sectionPath,
     section_title:
       first.sectionPath.length > 0
-        ? (first.sectionPath[first.sectionPath.length - 1])
+        ? first.sectionPath[first.sectionPath.length - 1]
         : null,
     page: first.page,
     start_line: startLines.length > 0 ? Math.min(...startLines) : null,
@@ -448,7 +488,9 @@ function packBlocks(
   const childCounts = new Map<string, number>();
 
   const flush = (): void => {
-    if (current.length === 0 || currentKey === null) {return;}
+    if (current.length === 0 || currentKey === null) {
+      return;
+    }
     const childIndex = childCounts.get(currentKey) ?? 0;
     chunks.push(
       emitChunk(current, {
@@ -499,8 +541,9 @@ function packBlocks(
           if (
             nextBody.length + prefix.length + (prefix ? 2 : 0) <=
             opts.maxChars
-          )
-            {break;}
+          ) {
+            break;
+          }
           current.shift();
         }
       }
@@ -522,8 +565,9 @@ function plainBlocks(text: string): Block[] {
 
   const flush = (endLine: number): void => {
     const content = current.join("\n").trim();
-    if (content)
-      {blocks.push(block(content, startLine, Math.max(startLine, endLine)));}
+    if (content) {
+      blocks.push(block(content, startLine, Math.max(startLine, endLine)));
+    }
     current = [];
   };
 
@@ -534,7 +578,9 @@ function plainBlocks(text: string): Block[] {
       flush(lineNumber - 1);
       continue;
     }
-    if (current.length === 0) {startLine = lineNumber;}
+    if (current.length === 0) {
+      startLine = lineNumber;
+    }
     current.push(line);
   }
   flush(lines.length);
@@ -604,7 +650,9 @@ function plainChunks(
         );
       }
     }
-    if (end >= textLength) {break;}
+    if (end >= textLength) {
+      break;
+    }
     cursor = Math.max(cursor + 1, end - overlap);
   }
   return chunks;
@@ -613,8 +661,7 @@ function plainChunks(
 function markdownBlocks(text: string): Block[] {
   const lines = text.split("\n");
   const blocks: Block[] = [];
-  const headings: { level: number; title: string; occurrence: number }[] =
-    [];
+  const headings: { level: number; title: string; occurrence: number }[] = [];
   const headingOccurrences = new Map<string, number>();
   let currentPage: number | null = null;
   let current: string[] = [];
@@ -670,8 +717,8 @@ function markdownBlocks(text: string): Block[] {
     const headingMatch = headingRe.exec(line);
     if (headingMatch) {
       flush(lineNumber - 1);
-      const level = (headingMatch[1]).length;
-      const title = (headingMatch[2]).trim();
+      const level = headingMatch[1].length;
+      const title = headingMatch[2].trim();
       while (
         headings.length > 0 &&
         (headings[headings.length - 1] as { level: number }).level >= level
@@ -713,7 +760,9 @@ function markdownBlocks(text: string): Block[] {
       flush(lineNumber - 1);
       continue;
     }
-    if (current.length === 0) {currentStart = lineNumber;}
+    if (current.length === 0) {
+      currentStart = lineNumber;
+    }
     current.push(line);
   }
   flush(lines.length);
@@ -823,21 +872,28 @@ export function parseCsvRows(text: string): string[][] {
     }
     if (c === "\r") {
       pushRow();
-      if (text[i + 1] === "\n") {i += 2;}
-      else {i += 1;}
+      if (text[i + 1] === "\n") {
+        i += 2;
+      } else {
+        i += 1;
+      }
       continue;
     }
     field += c;
     i += 1;
   }
-  if (field !== "" || row.length > 0) {pushRow();}
+  if (field !== "" || row.length > 0) {
+    pushRow();
+  }
   return rows.filter((r) => !(r.length === 1 && r[0] === ""));
 }
 
 export function renderCsvRow(row: string[]): string {
   return row
     .map((value) => {
-      if (/[",\n\r]/.test(value)) {return `"${value.replaceAll('"', '""')}"`;}
+      if (/[",\n\r]/.test(value)) {
+        return `"${value.replaceAll('"', '""')}"`;
+      }
       return value;
     })
     .join(",");
@@ -860,7 +916,9 @@ function csvChunks(
       chunkType: "text",
     });
   }
-  if (rows.length === 0) {return [];}
+  if (rows.length === 0) {
+    return [];
+  }
 
   const render = (row: string[]): string => renderCsvRow(row);
   const header = render(rows[0]);
@@ -912,7 +970,9 @@ function csvChunks(
     for (let index = 0; index < header.length; index += maxChars) {
       headerParts.push(header.slice(index, index + maxChars));
     }
-    if (headerParts.length === 0) {headerParts.push("");}
+    if (headerParts.length === 0) {
+      headerParts.push("");
+    }
     headerParts.forEach((part, partIndex) => {
       appendChunk(part, {
         rowStart: 1,
@@ -957,7 +1017,9 @@ function csvChunks(
     for (let index = 0; index < rendered.length; index += rowBudget) {
       parts.push(rendered.slice(index, index + rowBudget));
     }
-    if (parts.length === 0) {parts.push("");}
+    if (parts.length === 0) {
+      parts.push("");
+    }
     parts.forEach((part, partIndex) => {
       records.push({
         part,
@@ -975,11 +1037,13 @@ function csvChunks(
     let index = start;
     while (index < records.length) {
       const candidateRows = selected.map((item) => item.part);
-      candidateRows.push((records[index]).part);
+      candidateRows.push(records[index].part);
       const candidate = headerPrefix
         ? [headerPrefix, ...candidateRows].join("\n")
         : candidateRows.join("\n");
-      if (selected.length > 0 && candidate.length > maxChars) {break;}
+      if (selected.length > 0 && candidate.length > maxChars) {
+        break;
+      }
       selected.push(records[index]);
       index += 1;
     }
@@ -997,7 +1061,9 @@ function csvChunks(
       rowParts: selected.length === 1 ? first.rowParts : null,
       preciseLines: selected.every((item) => item.precise),
     });
-    if (index >= records.length) {break;}
+    if (index >= records.length) {
+      break;
+    }
     if (overlap <= 0) {
       start = index;
       continue;
@@ -1007,10 +1073,14 @@ function csvChunks(
     for (let i = selected.length - 1; i >= 0; i--) {
       const record = selected[i];
       const recordSize = record.part.length;
-      if (overlapRecords > 0 && size + recordSize > overlap) {break;}
+      if (overlapRecords > 0 && size + recordSize > overlap) {
+        break;
+      }
       size += recordSize;
       overlapRecords += 1;
-      if (size >= overlap) {break;}
+      if (size >= overlap) {
+        break;
+      }
     }
     start = Math.max(start + 1, index - overlapRecords);
   }
@@ -1033,13 +1103,18 @@ export function chunkDocument(
   overlap = 160,
 ): Chunk[] {
   validateLimits(maxChars, overlap);
-  if (!text) {return [];}
+  if (!text) {
+    return [];
+  }
   const normalized = normalizeText(text);
-  if (normalized.trim() === "") {return [];}
+  if (normalized.trim() === "") {
+    return [];
+  }
 
   const suffix = suffixOf(sourcePath);
-  if (suffix === ".csv")
-    {return csvChunks(normalized, sourcePath, maxChars, overlap);}
+  if (suffix === ".csv") {
+    return csvChunks(normalized, sourcePath, maxChars, overlap);
+  }
   let blocks: Block[];
   let chunkType: string;
   if (MARKDOWN_SUFFIXES.has(suffix)) {
@@ -1101,8 +1176,10 @@ function lineWindows(
     let size = 0;
     let end = cursor;
     while (end < stop) {
-      const lineSize = (lines[end]).length + (end > cursor ? 1 : 0);
-      if (end > cursor && size + lineSize > maxChars) {break;}
+      const lineSize = lines[end].length + (end > cursor ? 1 : 0);
+      if (end > cursor && size + lineSize > maxChars) {
+        break;
+      }
       size += lineSize;
       end += 1;
     }
@@ -1111,9 +1188,13 @@ function lineWindows(
         .slice(cursor, end)
         .join("\n")
         .replace(/^[\n]+|[\n]+$/g, "");
-      if (content) {output.push({ content, start: cursor + 1, end });}
+      if (content) {
+        output.push({ content, start: cursor + 1, end });
+      }
     }
-    if (end >= stop) {break;}
+    if (end >= stop) {
+      break;
+    }
     cursor = Math.max(cursor + 1, end - overlapLines);
   }
   return output;
@@ -1212,7 +1293,9 @@ function genericSymbol(
 ): { name: string; kind: string } | null {
   for (const { pattern, kind } of patternsForSuffix(suffix)) {
     const match = pattern.exec(line);
-    if (match) {return { name: match[1], kind };}
+    if (match) {
+      return { name: match[1], kind };
+    }
   }
   return null;
 }
@@ -1225,8 +1308,9 @@ function genericRegions(
   const starts: { line: number; name: string; kind: string }[] = [];
   for (let i = 0; i < lines.length; i++) {
     const symbol = genericSymbol(lines[i], suffix);
-    if (symbol)
-      {starts.push({ line: i + 1, name: symbol.name, kind: symbol.kind });}
+    if (symbol) {
+      starts.push({ line: i + 1, name: symbol.name, kind: symbol.kind });
+    }
   }
   if (starts.length === 0) {
     return lines.length > 0
@@ -1262,7 +1346,9 @@ function genericRegions(
 
 function languageForPath(path: string): string {
   const suffix = suffixOf(path).replace(/^\./, "");
-  if (suffix) {return suffix;}
+  if (suffix) {
+    return suffix;
+  }
   return (path.split(/[\\/]/).pop() ?? path).toLowerCase();
 }
 
@@ -1271,9 +1357,13 @@ export function chunkCodeText(
   path: string,
   maxChars = 2200,
 ): Chunk[] {
-  if (maxChars <= 0) {throw new Error("max_chars must be greater than zero");}
+  if (maxChars <= 0) {
+    throw new Error("max_chars must be greater than zero");
+  }
   const normalized = normalizeText(text);
-  if (normalized.trim() === "") {return [];}
+  if (normalized.trim() === "") {
+    return [];
+  }
   const suffix = suffixOf(path);
   const language = languageForPath(path);
 
@@ -1305,10 +1395,11 @@ export function chunkCodeText(
 
   const lines = normalized.split("\n");
   let regions = genericRegions(normalized, suffix);
-  if (regions.length === 0)
-    {regions = [
+  if (regions.length === 0) {
+    regions = [
       { start: 1, end: lines.length, symbol: "module", kind: "module" },
-    ];}
+    ];
+  }
 
   const chunks: Chunk[] = [];
   const symbolOccurrences = new Map<string, number>();
@@ -1318,12 +1409,10 @@ export function chunkCodeText(
     const parentId = stableId("code-parent", path, symbol, occurrence);
     const windows = lineWindows(lines, start, end, maxChars);
     for (let partIndex = 0; partIndex < windows.length; partIndex++) {
-      const {
-        content,
-        start: partStart,
-        end: partEnd,
-      } = windows[partIndex];
-      if (!content.trim()) {continue;}
+      const { content, start: partStart, end: partEnd } = windows[partIndex];
+      if (!content.trim()) {
+        continue;
+      }
       const chunkId = stableId("code", parentId, partIndex, content);
       const partSuffix = partIndex > 0 ? ` (part ${partIndex + 1})` : "";
       chunks.push({
@@ -1389,13 +1478,17 @@ export function siblingIdsByParent(
     list.push({ running, child: chunk.child_index });
     groups.set(chunk.parent_id, list);
   });
-  for (const list of groups.values()) {list.sort((a, b) => a.child - b.child);}
+  for (const list of groups.values()) {
+    list.sort((a, b) => a.child - b.child);
+  }
 
   return chunks.map((chunk, running) => {
     const list = groups.get(chunk.parent_id) ?? [];
     const pos = list.findIndex((entry) => entry.running === running);
     const ownId = idFor(running);
-    if (pos < 0 || list.length <= 1) {return ["", ownId, ""];}
+    if (pos < 0 || list.length <= 1) {
+      return ["", ownId, ""];
+    }
     const prev =
       pos > 0 ? idFor((list[pos - 1] as { running: number }).running) : "";
     const next =

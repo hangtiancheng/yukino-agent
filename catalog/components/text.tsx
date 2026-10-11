@@ -1,4 +1,3 @@
-
 import { createComponentImplementation } from "@a2ui/react/v0_9";
 import { TextApi } from "@a2ui/web_core/v0_9/basic_catalog";
 import type { CSSProperties } from "react";

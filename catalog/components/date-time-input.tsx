@@ -1,4 +1,3 @@
-
 import { createComponentImplementation } from "@a2ui/react/v0_9";
 import { DateTimeInputApi } from "@a2ui/web_core/v0_9/basic_catalog";
 import { format } from "date-fns";
@@ -20,7 +19,9 @@ function splitValue(value: string | null | undefined): {
   date: string;
   time: string;
 } {
-  if (!value) {return { date: "", time: "" };}
+  if (!value) {
+    return { date: "", time: "" };
+  }
 
   const hasT = value.includes("T");
   const split = value.split("T");
@@ -48,7 +49,9 @@ export const DateTimeInput = createComponentImplementation(
 
     const enableDate = !!props.enableDate;
     const enableTime = !!props.enableTime;
-    if (!(enableDate || enableTime)) {return null;}
+    if (!(enableDate || enableTime)) {
+      return null;
+    }
 
     const errors = props.validationErrors;
     const hasError = !!errors && errors.length > 0;
@@ -136,7 +139,9 @@ export const DateTimeInput = createComponentImplementation(
               value={time}
               min={timeBound(minParts)}
               max={timeBound(maxParts)}
-              onChange={(e) => { commit(date, e.target.value); }}
+              onChange={(e) => {
+                commit(date, e.target.value);
+              }}
               aria-invalid={hasError || undefined}
               className={cn(TIME_INPUT_CLASSES, enableDate && "w-32")}
             />

@@ -457,26 +457,26 @@ function checkBuildExtractiveAnswer() {
   assert.ok(selected.length >= 2);
   assert.ok(
     selected.some(
-      (s) => s.citation === 1 && s.sentence.includes('oversized batch'),
+      (s) => s.citation === 1 && s.sentence.includes("oversized batch"),
     ),
     "best-overlap sentence surfaced with its citation",
   );
   assert.ok(
     selected.some(
-      (s) => s.citation === 2 && s.sentence.includes('restart the proxy'),
+      (s) => s.citation === 2 && s.sentence.includes("restart the proxy"),
     ),
     "faq sentence surfaced",
   );
   assert.ok(
-    !selected.some((s) => s.sentence.includes('EMBED_BATCH_SIZE')),
+    !selected.some((s) => s.sentence.includes("EMBED_BATCH_SIZE")),
     "second sentence from an already-cited source dropped",
   );
   assert.ok(
-    !selected.some((s) => s.sentence.includes('cafeteria')),
+    !selected.some((s) => s.sentence.includes("cafeteria")),
     "low-overlap sentence dropped",
   );
   const proxyQuotes = selected.filter((s) =>
-    s.sentence.includes('restart the proxy'),
+    s.sentence.includes("restart the proxy"),
   );
   assert.equal(proxyQuotes.length, 1);
   assert.ok(!selected.some((s) => s.sentence.startsWith("#")));

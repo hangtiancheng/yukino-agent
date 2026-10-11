@@ -38,7 +38,9 @@ export async function POST(_request: Request, context: RouteContext) {
   } catch (e) {
     return failRaw(500, errorMessage(e));
   }
-  if (!run) {return failRaw(404, `Workflow run ${id} not found`);}
+  if (!run) {
+    return failRaw(404, `Workflow run ${id} not found`);
+  }
 
   const t = await getTranslations("devflow.analyzeStream");
   const jobsCount = Array.isArray(run.jobs) ? run.jobs.length : 0;

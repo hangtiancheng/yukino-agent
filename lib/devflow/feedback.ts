@@ -77,7 +77,9 @@ export async function sendNegativeFeedbackNotification(
   ctx: FeedbackNotificationContext,
 ): Promise<[status: string, error: string | null]> {
   const webhookUrl = (config.devflow.feedback.feishuWebhookUrl || "").trim();
-  if (!webhookUrl) {return ["not_configured", null];}
+  if (!webhookUrl) {
+    return ["not_configured", null];
+  }
 
   const lines = [
     "DevFlow received negative chat feedback",
@@ -86,13 +88,19 @@ export async function sendNegativeFeedbackNotification(
     `message_id: ${feedback.assistantMessageId}`,
     `Reason: ${REASON_LABELS[(feedback.reason as FeedbackReason) ?? "other"] ?? "Not provided"}`,
   ];
-  if (feedback.comment) {lines.push(`Comment: ${clip(feedback.comment, 300)}`);}
-  if (ctx.userQuestion) {lines.push(`Question: ${clip(ctx.userQuestion, 300)}`);}
+  if (feedback.comment) {
+    lines.push(`Comment: ${clip(feedback.comment, 300)}`);
+  }
+  if (ctx.userQuestion) {
+    lines.push(`Question: ${clip(ctx.userQuestion, 300)}`);
+  }
   lines.push(`Answer: ${clip(ctx.message.content, 500)}`);
   lines.push(`Trace: ${traceUrl(feedback.assistantMessageId)}`);
 
   const controller = new AbortController();
-  const timer = setTimeout(() => { controller.abort(); }, 5000);
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, 5000);
   try {
     const response = await fetch(webhookUrl, {
       method: "POST",
@@ -103,7 +111,9 @@ export async function sendNegativeFeedbackNotification(
       }),
       signal: controller.signal,
     });
-    if (!response.ok) {throw new Error(`webhook responded ${response.status}`);}
+    if (!response.ok) {
+      throw new Error(`webhook responded ${response.status}`);
+    }
     const payload: unknown = await response.json().catch(() => null);
     if (payload && typeof payload === "object") {
       const dict = payload as Record<string, unknown>;
@@ -172,7 +182,9 @@ export async function createFeedback(
       role: "assistant",
     },
   });
-  if (!message) {throw new FeedbackNotFoundError("Assistant answer not found");}
+  if (!message) {
+    throw new FeedbackNotFoundError("Assistant answer not found");
+  }
 
   const reporter = await ensureDemoUser();
   const existing = await prisma.chatFeedback.findUnique({
@@ -268,7 +280,9 @@ export async function reviewFeedback(
   const feedback = await prisma.chatFeedback.findUnique({
     where: { id: feedbackId },
   });
-  if (!feedback) {throw new FeedbackNotFoundError("Feedback record not found");}
+  if (!feedback) {
+    throw new FeedbackNotFoundError("Feedback record not found");
+  }
   const resolved =
     input.reviewStatus === "resolved" || input.reviewStatus === "dismissed";
   return prisma.chatFeedback.update({
@@ -319,8 +333,9 @@ export async function feedbackMetrics(
   const unhelpful = rows.filter((r) => r.rating === "unhelpful").length;
   const reasonCounts: Record<string, number> = {};
   for (const row of rows) {
-    if (row.reason)
-      {reasonCounts[row.reason] = (reasonCounts[row.reason] ?? 0) + 1;}
+    if (row.reason) {
+      reasonCounts[row.reason] = (reasonCounts[row.reason] ?? 0) + 1;
+    }
   }
   const round4 = (n: number) => Math.round(n * 10_000) / 10_000;
   return {
@@ -385,7 +400,9 @@ export async function feedbackTrace(
           where: { id: feedback.assistantMessageId },
         })
       : null);
-  if (!assistantMessage) {throw new FeedbackNotFoundError("Trace not found");}
+  if (!assistantMessage) {
+    throw new FeedbackNotFoundError("Trace not found");
+  }
 
   const conversation = await prisma.conversation.findUnique({
     where: { id: assistantMessage.conversationId },

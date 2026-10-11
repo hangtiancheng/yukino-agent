@@ -18,7 +18,9 @@ export async function POST(request: Request) {
     const repo = await prisma.repository.findUnique({
       where: { id: parsed.data.repoId },
     });
-    if (!repo) {return fail(404, "repoNotFound");}
+    if (!repo) {
+      return fail(404, "repoNotFound");
+    }
     const [openIssues, openPrs, failedCi, mergedPrs7d] = await Promise.all([
       prisma.issue.count({ where: { repoId: repo.id, state: "open" } }),
       prisma.pullRequest.count({ where: { repoId: repo.id, state: "open" } }),
@@ -33,12 +35,14 @@ export async function POST(request: Request) {
       }),
     ]);
     const risks: string[] = [];
-    if (failedCi > 0)
-      {risks.push("Failed CI runs present — investigate before merging.");}
-    if (openPrs > 10)
-      {risks.push(
+    if (failedCi > 0) {
+      risks.push("Failed CI runs present — investigate before merging.");
+    }
+    if (openPrs > 10) {
+      risks.push(
         "Large open-PR backlog — review throughput may be a bottleneck.",
-      );}
+      );
+    }
     return ok({
       repoId: repo.id,
       summary:

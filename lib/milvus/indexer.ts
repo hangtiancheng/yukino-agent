@@ -16,7 +16,9 @@ export interface IndexChunk {
 }
 
 export async function indexChunks(chunks: IndexChunk[]): Promise<number> {
-  if (chunks.length === 0) {return 0;}
+  if (chunks.length === 0) {
+    return 0;
+  }
   const vectors = await embedTexts(chunks.map((c) => c.embedText ?? c.content));
 
   const rows: MilvusRow[] = chunks.map((chunk, i) => ({

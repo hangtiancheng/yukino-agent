@@ -21,7 +21,9 @@ export async function persistDiagnosticCase(
   alertName?: string | null,
 ): Promise<string | null> {
   const trimmed = report.trim();
-  if (trimmed.length < MIN_REPORT_CHARS) {return null;}
+  if (trimmed.length < MIN_REPORT_CHARS) {
+    return null;
+  }
 
   const dir = path.resolve(config.fileDir);
   await mkdir(dir, { recursive: true });
@@ -31,7 +33,9 @@ export async function persistDiagnosticCase(
   const existing = (await readdir(dir).catch(() => [] as string[])).filter(
     (entry) => entry.startsWith(CASE_PREFIX),
   );
-  if (existing.includes(name)) {return null;}
+  if (existing.includes(name)) {
+    return null;
+  }
   if (existing.length >= MAX_CASE_FILES) {
     console.warn(
       `[diagnostic-cases] case cap (${MAX_CASE_FILES}) reached; skipping persistence`,
@@ -74,17 +78,22 @@ export async function persistDiagnosticCase(
     alertName: alertName ?? "",
     summary: caseSummary(trimmed),
     fileName: name,
-  }).catch((e) => { console.error("[diagnostic-cases] case record upsert failed:", e); },
-  );
+  }).catch((e) => {
+    console.error("[diagnostic-cases] case record upsert failed:", e);
+  });
   return name;
 }
 
 export function caseTitle(report: string): string {
   for (const line of report.split("\n")) {
     const trimmed = line.trim();
-    if (trimmed === "") {continue;}
+    if (trimmed === "") {
+      continue;
+    }
     const heading = /^#{1,6}\s+(.+)$/.exec(trimmed);
-    if (heading) {return (heading[1] ?? trimmed).slice(0, 200);}
+    if (heading) {
+      return (heading[1] ?? trimmed).slice(0, 200);
+    }
     return trimmed.slice(0, 200);
   }
   return "AI Ops case";

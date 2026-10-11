@@ -28,7 +28,9 @@ export async function GET(_request: Request, context: RouteContext) {
         },
       },
     });
-    if (!repo) {return fail(404, "repoNotFound");}
+    if (!repo) {
+      return fail(404, "repoNotFound");
+    }
     return ok({
       id: repo.id,
       owner: repo.owner,
@@ -65,7 +67,9 @@ export async function DELETE(_request: Request, context: RouteContext) {
       where: { id },
       include: { knowledgeDocuments: { select: { id: true } } },
     });
-    if (!repo) {return fail(404, "repoNotFound");}
+    if (!repo) {
+      return fail(404, "repoNotFound");
+    }
 
     for (const doc of repo.knowledgeDocuments) {
       await deleteBySourcePrefix(kbSource(id, doc.id)).catch(() => undefined);

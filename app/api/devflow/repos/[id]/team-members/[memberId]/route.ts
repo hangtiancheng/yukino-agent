@@ -21,7 +21,9 @@ async function repoExists(repoId: string): Promise<boolean> {
 export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { id, memberId } = await context.params;
-    if (!(await repoExists(id))) {return fail(404, "repoNotFound");}
+    if (!(await repoExists(id))) {
+      return fail(404, "repoNotFound");
+    }
 
     const parsed = TeamMemberUpdateSchema.safeParse(
       await request.json().catch(() => null),
@@ -44,7 +46,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
     const { id, memberId } = await context.params;
-    if (!(await repoExists(id))) {return fail(404, "repoNotFound");}
+    if (!(await repoExists(id))) {
+      return fail(404, "repoNotFound");
+    }
 
     const outcome = await deleteTeamMember(id, memberId);
     if (!outcome.ok) {

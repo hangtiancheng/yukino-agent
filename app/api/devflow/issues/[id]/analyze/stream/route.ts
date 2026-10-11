@@ -38,7 +38,9 @@ export async function POST(_request: Request, context: RouteContext) {
   } catch (e) {
     return failRaw(500, errorMessage(e));
   }
-  if (!issue) {return failRaw(404, `Issue ${id} not found`);}
+  if (!issue) {
+    return failRaw(404, `Issue ${id} not found`);
+  }
 
   const t = await getTranslations("devflow.analyzeStream");
   const encoder = new TextEncoder();

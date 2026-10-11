@@ -120,7 +120,9 @@ export async function generateWeeklyReport(
   const repo = await prisma.repository.findUnique({
     where: { id: input.repoId },
   });
-  if (!repo) {throw new Error(`Repository ${input.repoId} not found`);}
+  if (!repo) {
+    throw new Error(`Repository ${input.repoId} not found`);
+  }
 
   const { start, end } = rangeBounds(input.startDate, input.endDate);
 

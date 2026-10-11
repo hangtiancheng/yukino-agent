@@ -69,8 +69,12 @@ function isTypeKey(value: string): value is keyof typeof TYPE_LABEL_KEYS {
 }
 
 function formatBytes(n: number): string {
-  if (n < 1024) {return `${n} B`;}
-  if (n < 1024 * 1024) {return `${(n / 1024).toFixed(1)} KB`;}
+  if (n < 1024) {
+    return `${n} B`;
+  }
+  if (n < 1024 * 1024) {
+    return `${(n / 1024).toFixed(1)} KB`;
+  }
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
@@ -99,12 +103,17 @@ export default function KnowledgePage() {
       try {
         const resp = await fetch("/api/knowledge_docs");
         const parsed = listSchema.safeParse(await resp.json());
-        if (!cancelled)
-          {setDocs(parsed.success ? (parsed.data.data?.items ?? []) : []);}
+        if (!cancelled) {
+          setDocs(parsed.success ? (parsed.data.data?.items ?? []) : []);
+        }
       } catch {
-        if (!cancelled) {setDocs([]);}
+        if (!cancelled) {
+          setDocs([]);
+        }
       } finally {
-        if (!cancelled) {setLoading(false);}
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
     return () => {
@@ -249,7 +258,9 @@ export default function KnowledgePage() {
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) {void upload(file);}
+                if (file) {
+                  void upload(file);
+                }
                 e.target.value = "";
               }}
             />
@@ -275,7 +286,9 @@ export default function KnowledgePage() {
               <Input
                 type="password"
                 value={adminToken}
-                onChange={(e) => { setAdminToken(e.target.value); }}
+                onChange={(e) => {
+                  setAdminToken(e.target.value);
+                }}
                 placeholder="••••••••"
                 autoComplete="off"
               />
@@ -361,7 +374,9 @@ export default function KnowledgePage() {
                         className="text-destructive size-7"
                         title={t("delete")}
                         disabled={busy !== null}
-                        onClick={() => { setDeleteTarget(doc); }}
+                        onClick={() => {
+                          setDeleteTarget(doc);
+                        }}
                       >
                         <Trash2 className="size-3.5" />
                       </Button>
@@ -377,7 +392,9 @@ export default function KnowledgePage() {
       <Dialog
         open={previewName !== null}
         onOpenChange={(open) => {
-          if (!open) {setPreviewName(null);}
+          if (!open) {
+            setPreviewName(null);
+          }
         }}
       >
         <DialogContent className="max-h-[80svh] max-w-2xl overflow-y-auto">
@@ -419,7 +436,9 @@ export default function KnowledgePage() {
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) {setDeleteTarget(null);}
+          if (!open) {
+            setDeleteTarget(null);
+          }
         }}
       >
         <AlertDialogContent>
@@ -435,7 +454,9 @@ export default function KnowledgePage() {
             <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (deleteTarget) {void removeDoc(deleteTarget);}
+                if (deleteTarget) {
+                  void removeDoc(deleteTarget);
+                }
               }}
             >
               {t("delete")}

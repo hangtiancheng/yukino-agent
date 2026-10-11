@@ -29,7 +29,9 @@ export async function correctA2uiBlock(params: {
     providerOptions,
   });
   const retried = extractA2ui(result.text);
-  if (retried.messages) {return retried.messages;}
+  if (retried.messages) {
+    return retried.messages;
+  }
   console.error(
     `[a2ui] corrective retry still invalid: ${retried.error ?? "no A2UI block found"}`,
   );

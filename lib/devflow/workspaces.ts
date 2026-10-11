@@ -105,7 +105,9 @@ export function classifyRepoRisk(input: RepoRiskInput): {
   if (input.openPrs > OPEN_PR_BACKLOG) {
     reasons.push(`open PR backlog of ${input.openPrs} (> ${OPEN_PR_BACKLOG})`);
   }
-  if (reasons.length > 0) {return { level: "P0", reasons };}
+  if (reasons.length > 0) {
+    return { level: "P0", reasons };
+  }
   if (input.openIssues > OPEN_ISSUE_BACKLOG) {
     return {
       level: "P1",
@@ -256,29 +258,45 @@ export async function aggregateWorkspaceStats(
 
   for (const row of issuesByState) {
     const entry = at(row.repoId);
-    if (!entry) {continue;}
+    if (!entry) {
+      continue;
+    }
     entry.issues += row._count._all;
-    if (row.state === "open") {entry.openIssues += row._count._all;}
+    if (row.state === "open") {
+      entry.openIssues += row._count._all;
+    }
   }
   for (const row of prsByState) {
     const entry = at(row.repoId);
-    if (!entry) {continue;}
+    if (!entry) {
+      continue;
+    }
     entry.pullRequests += row._count._all;
-    if (row.state === "open") {entry.openPrs += row._count._all;}
+    if (row.state === "open") {
+      entry.openPrs += row._count._all;
+    }
   }
   for (const row of mergedPrRows) {
     const entry = at(row.repoId);
-    if (entry) {entry.mergedPrs += row._count._all;}
+    if (entry) {
+      entry.mergedPrs += row._count._all;
+    }
   }
   for (const row of runsByConclusion) {
     const entry = at(row.repoId);
-    if (!entry) {continue;}
+    if (!entry) {
+      continue;
+    }
     entry.runs += row._count._all;
-    if (row.conclusion === "failure") {entry.failedRuns += row._count._all;}
+    if (row.conclusion === "failure") {
+      entry.failedRuns += row._count._all;
+    }
   }
   for (const row of docRows) {
     const entry = at(row.repoId);
-    if (entry) {entry.knowledgeDocs += row._count._all;}
+    if (entry) {
+      entry.knowledgeDocs += row._count._all;
+    }
   }
 
   const repos = repoIds

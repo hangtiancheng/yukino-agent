@@ -82,7 +82,9 @@ export async function runAiOpsStream(
   let failure: string | null = null;
 
   const dispatch = () => {
-    if (dataLines.length === 0) {return;}
+    if (dataLines.length === 0) {
+      return;
+    }
     const payload = dataLines.join("\n");
     dataLines = [];
     let json: unknown;
@@ -92,16 +94,19 @@ export async function runAiOpsStream(
       return;
     }
     const parsed = frameSchema.safeParse(json);
-    if (!parsed.success) {return;}
+    if (!parsed.success) {
+      return;
+    }
     const frame = parsed.data;
-    if (frame.type === "plan_created") {handlers.onPlan?.(frame.steps);}
-    else if (frame.type === "step_start")
-      {handlers.onStepStart?.(frame.index, frame.step);}
-    else if (frame.type === "step_done")
-      {handlers.onStepDone?.(frame.index, frame.output);}
-    else if (frame.type === "replan")
-      {handlers.onReplan?.(frame.done, frame.remaining);}
-    else if (frame.type === "done") {
+    if (frame.type === "plan_created") {
+      handlers.onPlan?.(frame.steps);
+    } else if (frame.type === "step_start") {
+      handlers.onStepStart?.(frame.index, frame.step);
+    } else if (frame.type === "step_done") {
+      handlers.onStepDone?.(frame.index, frame.output);
+    } else if (frame.type === "replan") {
+      handlers.onReplan?.(frame.done, frame.remaining);
+    } else if (frame.type === "done") {
       finalResult = {
         runId: frame.runId ?? null,
         status: frame.status,
@@ -116,7 +121,9 @@ export async function runAiOpsStream(
 
   for (;;) {
     const { done, value } = await reader.read();
-    if (done) {break;}
+    if (done) {
+      break;
+    }
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? "";
@@ -130,7 +137,9 @@ export async function runAiOpsStream(
   }
   dispatch();
 
-  if (failure !== null) {throw new AiOpsStreamError(failure);}
+  if (failure !== null) {
+    throw new AiOpsStreamError(failure);
+  }
   if (finalResult === null) {
     throw new AiOpsStreamError("stream ended without a result");
   }

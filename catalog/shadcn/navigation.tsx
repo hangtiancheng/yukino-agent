@@ -133,7 +133,10 @@ export const MenubarApi = {
     .strict(),
 };
 
-interface MenuDef { label?: unknown; items?: unknown }
+interface MenuDef {
+  label?: unknown;
+  items?: unknown;
+}
 
 export const Menubar = createComponentImplementation(
   MenubarApi,
@@ -193,7 +196,11 @@ export const NavigationMenuApi = {
     .strict(),
 };
 
-interface NavItemDef { label?: unknown; action?: unknown; child?: unknown }
+interface NavItemDef {
+  label?: unknown;
+  action?: unknown;
+  child?: unknown;
+}
 
 export const NavigationMenu = createComponentImplementation(
   NavigationMenuApi,
@@ -250,14 +257,18 @@ export const PaginationApi = {
 };
 
 function pageWindow(page: number, total: number): (number | "ellipsis")[] {
-  if (total <= 7) {return Array.from({ length: total }, (_, i) => i + 1);}
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
   const pages = new Set<number>([1, total, page - 1, page, page + 1]);
   const sorted = [...pages]
     .filter((p) => p >= 1 && p <= total)
     .sort((a, b) => a - b);
   const result: (number | "ellipsis")[] = [];
   for (let i = 0; i < sorted.length; i++) {
-    if (i > 0 && sorted[i] - sorted[i - 1] > 1) {result.push("ellipsis");}
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) {
+      result.push("ellipsis");
+    }
     result.push(sorted[i]);
   }
   return result;
@@ -271,7 +282,9 @@ export const Pagination = createComponentImplementation(
       Math.max(typeof props.page === "number" ? props.page : 1, 1),
       total,
     );
-    const go = (next: number) => { props.setPage(Math.min(Math.max(next, 1), total)); };
+    const go = (next: number) => {
+      props.setPage(Math.min(Math.max(next, 1), total));
+    };
     const atFirst = page <= 1;
     const atLast = page >= total;
 
@@ -296,7 +309,9 @@ export const Pagination = createComponentImplementation(
                 <PaginationLink
                   className="cursor-pointer"
                   isActive={entry === page}
-                  onClick={() => { go(entry); }}
+                  onClick={() => {
+                    go(entry);
+                  }}
                 >
                   {entry}
                 </PaginationLink>

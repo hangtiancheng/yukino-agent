@@ -30,7 +30,9 @@ export async function GET(request: Request, context: RouteContext) {
     );
     return ok({ path: relPath, count: entries.length, entries });
   } catch (e) {
-    if (e instanceof WorkspaceError) {return failRaw(e.status, e.message);}
+    if (e instanceof WorkspaceError) {
+      return failRaw(e.status, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 }

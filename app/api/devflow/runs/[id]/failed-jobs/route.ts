@@ -17,7 +17,9 @@ export async function GET(_request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const run = await prisma.workflowRun.findUnique({ where: { id } });
-    if (!run) {return failRaw(404, "Workflow run not found");}
+    if (!run) {
+      return failRaw(404, "Workflow run not found");
+    }
     const jobs = Array.isArray(run.jobs)
       ? (run.jobs as unknown as JobShape[])
       : [];

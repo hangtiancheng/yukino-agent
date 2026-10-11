@@ -1,4 +1,3 @@
-
 import { createComponentImplementation } from "@a2ui/react/v0_9";
 import { ChoicePickerApi } from "@a2ui/web_core/v0_9/basic_catalog";
 import { useId, useState } from "react";
@@ -10,7 +9,10 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-interface Option { label?: unknown; value?: unknown }
+interface Option {
+  label?: unknown;
+  value?: unknown;
+}
 
 export const ChoicePicker = createComponentImplementation(
   ChoicePickerApi,
@@ -20,9 +22,7 @@ export const ChoicePicker = createComponentImplementation(
     const errors = props.validationErrors;
     const hasError = !!errors && errors.length > 0;
 
-    const values: string[] = Array.isArray(props.value)
-      ? (props.value)
-      : [];
+    const values: string[] = Array.isArray(props.value) ? props.value : [];
     const exclusive = props.variant === "mutuallyExclusive";
 
     const toggle = (val: string) => {
@@ -51,7 +51,9 @@ export const ChoicePicker = createComponentImplementation(
           <Input
             placeholder="Filter options..."
             value={filter}
-            onChange={(e) => { setFilter(e.target.value); }}
+            onChange={(e) => {
+              setFilter(e.target.value);
+            }}
           />
         )}
         {props.displayStyle === "chips" ? (
@@ -61,7 +63,9 @@ export const ChoicePicker = createComponentImplementation(
             value={values}
             onValueChange={(groupValue) => {
               const next = groupValue;
-              if (!exclusive || next.length > 0) {props.setValue(next);}
+              if (!exclusive || next.length > 0) {
+                props.setValue(next);
+              }
             }}
             className="flex-wrap"
           >
@@ -74,7 +78,9 @@ export const ChoicePicker = createComponentImplementation(
         ) : exclusive ? (
           <RadioGroup
             value={values[0] ?? null}
-            onValueChange={(v) => { props.setValue([String(v)]); }}
+            onValueChange={(v) => {
+              props.setValue([String(v)]);
+            }}
           >
             {options.map((opt, i) => (
               <Field key={i} orientation="horizontal">
@@ -90,7 +96,9 @@ export const ChoicePicker = createComponentImplementation(
                 <Checkbox
                   id={`${id}-${i}`}
                   checked={values.includes(String(opt.value))}
-                  onCheckedChange={() => { toggle(String(opt.value)); }}
+                  onCheckedChange={() => {
+                    toggle(String(opt.value));
+                  }}
                 />
                 <Label htmlFor={`${id}-${i}`}>{String(opt.label)}</Label>
               </Field>

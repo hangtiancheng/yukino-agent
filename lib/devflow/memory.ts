@@ -1,7 +1,7 @@
 import { generateText, Output } from "ai";
 import { z } from "zod/v4";
 
-import type { Prisma} from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 import { type MemoryCandidate } from "@/generated/prisma/client";
 import { quickModel, providerOptions } from "@/lib/ai/models";
 import { config } from "@/lib/config";
@@ -60,13 +60,18 @@ export const FALLBACK_MESSAGE_CHARS = 160;
 const TOKEN_PATTERN = /[\u4e00-\u9fff]|[a-zA-Z0-9_-]+|[^\s]/g;
 
 export function estimateTokens(text: string): number {
-  if (!text) {return 0;}
+  if (!text) {
+    return 0;
+  }
   let total = 0;
   for (const token of text.match(TOKEN_PATTERN) ?? []) {
-    if (/^[\u4e00-\u9fff]$/.test(token)) {total += 1;}
-    else if (/^[a-zA-Z0-9_-]+$/.test(token)) {
+    if (/^[\u4e00-\u9fff]$/.test(token)) {
+      total += 1;
+    } else if (/^[a-zA-Z0-9_-]+$/.test(token)) {
       total += Math.max(1, Math.ceil(token.length / 4));
-    } else {total += 1;}
+    } else {
+      total += 1;
+    }
   }
   return total;
 }
@@ -77,8 +82,12 @@ export function clipToTokenBudget(
   suffix = "...",
 ): string {
   const clean = (text ?? "").trim();
-  if (maxTokens <= 0 || !clean) {return "";}
-  if (estimateTokens(clean) <= maxTokens) {return clean;}
+  if (maxTokens <= 0 || !clean) {
+    return "";
+  }
+  if (estimateTokens(clean) <= maxTokens) {
+    return clean;
+  }
   const approxChars = Math.max(32, maxTokens * 4);
   let clipped = clean.slice(0, approxChars).trimEnd();
   while (clipped && estimateTokens(clipped + suffix) > maxTokens) {
@@ -98,12 +107,18 @@ export function uniquePreserveOrder(
       .trim()
       .split(/\s+/)
       .join(" ");
-    if (!clean) {continue;}
+    if (!clean) {
+      continue;
+    }
     const key = clean.toLowerCase();
-    if (seen.has(key)) {continue;}
+    if (seen.has(key)) {
+      continue;
+    }
     seen.add(key);
     output.push(clean);
-    if (output.length >= limit) {break;}
+    if (output.length >= limit) {
+      break;
+    }
   }
   return output;
 }
@@ -278,7 +293,9 @@ export function fallbackSnapshot(
   for (const message of messages) {
     for (const rawLine of message.content.split("\n")) {
       const line = rawLine.trim().replace(/^[-*\t ]+/, "");
-      if (!line) {continue;}
+      if (!line) {
+        continue;
+      }
       const lower = line.toLowerCase();
       if (
         line.includes("?") ||
@@ -296,7 +313,9 @@ export function fallbackSnapshot(
       if (PREFERENCE_TOKENS.some((token) => lower.includes(token))) {
         userPreferences.push(line);
       }
-      if (line.length > 20) {facts.push(line);}
+      if (line.length > 20) {
+        facts.push(line);
+      }
     }
   }
   return normalizeSnapshot({
@@ -343,7 +362,9 @@ async function generateSnapshot(
       return res;
     });
     const parsed = MemorySnapshotSchema.safeParse(result.output ?? null);
-    if (!parsed.success) {return null;}
+    if (!parsed.success) {
+      return null;
+    }
     return normalizeSnapshot(parsed.data);
   } catch {
     return null;
@@ -382,7 +403,9 @@ export async function sealConversation(
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
   });
-  if (!conversation) {return null;}
+  if (!conversation) {
+    return null;
+  }
 
   const rows = await prisma.chatMessage.findMany({
     where: { conversationId },
@@ -390,7 +413,9 @@ export async function sealConversation(
     take: SEAL_TRANSCRIPT_LIMIT,
     select: { role: true, content: true, toolCalls: true },
   });
-  if (rows.length === 0) {return null;}
+  if (rows.length === 0) {
+    return null;
+  }
   const messages: TranscriptMessage[] = rows.reverse().map((row) => ({
     role: row.role,
     content: row.content,
@@ -484,9 +509,13 @@ export async function maybeSealAndMerge(
   conversationId: string,
 ): Promise<boolean> {
   const newMessages = await newMessagesSinceSeal(conversationId);
-  if (!shouldSeal(newMessages)) {return false;}
+  if (!shouldSeal(newMessages)) {
+    return false;
+  }
   const sealed = await sealConversation(conversationId);
-  if (!sealed) {return false;}
+  if (!sealed) {
+    return false;
+  }
   await mergeThreadMemory(repoId);
   return true;
 }
@@ -620,7 +649,9 @@ export function renderMemoryContext(input: {
       thread.summary,
       MEMORY_CONTEXT_LIMITS.threadSummaryTokens,
     );
-    if (summary) {lines.push(summary);}
+    if (summary) {
+      lines.push(summary);
+    }
     const decisions = thread.decisions.slice(
       0,
       MEMORY_CONTEXT_LIMITS.threadDecisions,
@@ -801,7 +832,10 @@ export async function proposeMemoryCandidate(
   return { candidate: toMemoryCandidateView(created), deduped: false };
 }
 
-const CANDIDATE_KIND_BY_FIELD: [MemoryCandidateKind, keyof Omit<MemorySnapshot, "summary">][] = [
+const CANDIDATE_KIND_BY_FIELD: [
+  MemoryCandidateKind,
+  keyof Omit<MemorySnapshot, "summary">,
+][] = [
   ["decision", "decisions"],
   ["fact", "facts"],
   ["task", "tasks"],
@@ -819,7 +853,9 @@ export async function captureCandidatesFromSnapshot(
   for (const [kind, field] of CANDIDATE_KIND_BY_FIELD) {
     for (const value of snapshot[field]) {
       const content = value.trim();
-      if (!content) {continue;}
+      if (!content) {
+        continue;
+      }
       const result = await proposeMemoryCandidate({
         repoId,
         conversationId,
@@ -828,7 +864,9 @@ export async function captureCandidatesFromSnapshot(
         origin,
         meta: { memoryUpdateKey: field },
       });
-      if (!result.deduped) {created += 1;}
+      if (!result.deduped) {
+        created += 1;
+      }
     }
   }
   return created;
@@ -862,7 +900,9 @@ export async function approveMemoryCandidate(
   const candidate = await prisma.memoryCandidate.findFirst({
     where: { id: candidateId, repoId },
   });
-  if (!candidate) {return null;}
+  if (!candidate) {
+    return null;
+  }
 
   if (candidate.status === "approved") {
     const meta = asRecord(candidate.meta);
@@ -927,7 +967,9 @@ export async function rejectMemoryCandidate(
   const candidate = await prisma.memoryCandidate.findFirst({
     where: { id: candidateId, repoId },
   });
-  if (!candidate) {return null;}
+  if (!candidate) {
+    return null;
+  }
   if (candidate.status === "rejected") {
     return toMemoryCandidateView(candidate);
   }
@@ -1044,11 +1086,12 @@ export function recordRecallEvent(input: RecallEventInput): void {
         metadataJson: JSON.parse(JSON.stringify(input.metadata ?? {})),
       },
     })
-    .catch((e) => { console.warn(
+    .catch((e) => {
+      console.warn(
         "[devflow:memory] recall event persistence failed:",
         e instanceof Error ? e.message : String(e),
-      ); },
-    );
+      );
+    });
 }
 
 export interface RecallEventView {
@@ -1130,7 +1173,9 @@ export async function searchRepoMemory(
   origin: MemorySearchOrigin = {},
 ): Promise<MemorySearchResult[]> {
   const trimmed = query.trim();
-  if (trimmed === "") {return [];}
+  if (trimmed === "") {
+    return [];
+  }
   const perScope = Math.max(limit, 8);
   const [kbDocs, itemDocs] = await Promise.all([
     scopedRetrieve(trimmed, perScope, kbFilter(repoId)).catch(() => []),

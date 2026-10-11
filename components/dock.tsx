@@ -72,7 +72,9 @@ function DockItem({
 
   const distance = useTransform(mouseX, (x) => {
     const bounds = tileRef.current?.getBoundingClientRect();
-    if (!bounds) {return Infinity;}
+    if (!bounds) {
+      return Infinity;
+    }
     return x - (bounds.x + bounds.width / 2);
   });
   const size = useSpring(
@@ -129,8 +131,12 @@ export default function Dock() {
     <div className="pointer-events-none fixed inset-x-0 bottom-3 z-50 flex justify-center">
       <nav
         aria-label={t("navigation")}
-        onMouseMove={(e) => { mouseX.set(e.clientX); }}
-        onMouseLeave={() => { mouseX.set(Infinity); }}
+        onMouseMove={(e) => {
+          mouseX.set(e.clientX);
+        }}
+        onMouseLeave={() => {
+          mouseX.set(Infinity);
+        }}
         className={cn(
           "pointer-events-auto flex items-end gap-2 rounded-2xl p-2 shadow-2xl backdrop-blur-xl",
           "bg-background/70 border border-white/40 dark:border-white/10",

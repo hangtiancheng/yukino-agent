@@ -15,7 +15,9 @@ export async function GET(_request: Request, context: RouteContext) {
       where: { id: docId },
       select: { id: true, repoId: true },
     });
-    if (!doc) {return failRaw(404, "Knowledge document not found");}
+    if (!doc) {
+      return failRaw(404, "Knowledge document not found");
+    }
     const chunks = await listDocumentChunks(doc.repoId, doc.id);
     return ok({ docId: doc.id, count: chunks.length, chunks });
   } catch (e) {

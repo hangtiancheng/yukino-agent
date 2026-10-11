@@ -4,13 +4,14 @@ import type { LanguageModel } from "ai";
 
 import { config } from "@/lib/config";
 
-
 function createAnthropicFetch(): typeof globalThis.fetch {
   const baseFetch = globalThis.fetch;
   return async (input, init) => {
     const res = await baseFetch(input, init);
     const contentType = res.headers.get("content-type") ?? "";
-    if (!contentType.includes("application/json")) {return res;}
+    if (!contentType.includes("application/json")) {
+      return res;
+    }
 
     const body = await res.text();
     let patched = body;
@@ -29,7 +30,9 @@ function createAnthropicFetch(): typeof globalThis.fetch {
             changed = true;
           }
         }
-        if (changed) {patched = JSON.stringify(json);}
+        if (changed) {
+          patched = JSON.stringify(json);
+        }
       }
     } catch {}
 

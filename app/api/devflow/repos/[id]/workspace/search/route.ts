@@ -41,7 +41,9 @@ export async function POST(request: Request, context: RouteContext) {
     );
     return ok({ query: parsed.data.query, count: hits.length, hits });
   } catch (e) {
-    if (e instanceof WorkspaceError) {return failRaw(e.status, e.message);}
+    if (e instanceof WorkspaceError) {
+      return failRaw(e.status, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 }

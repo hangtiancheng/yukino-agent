@@ -91,7 +91,9 @@ function buildSystemPrompt(
 }
 
 function skillCatalogSection(catalog: string): string {
-  if (catalog.trim() === "") {return "";}
+  if (catalog.trim() === "") {
+    return "";
+  }
   return `\n\n## Available skills\n${catalog.trim()}\nUse the load_skill tool with the skill name to read its full instructions before following them.`;
 }
 
@@ -218,7 +220,9 @@ export async function chat(id: string, question: string): Promise<ChatResult> {
   const reasoningParts: string[] = [];
   let turnIndex = 0;
   for (const step of result.steps) {
-    if (step.reasoningText) {reasoningParts.push(step.reasoningText);}
+    if (step.reasoningText) {
+      reasoningParts.push(step.reasoningText);
+    }
     for (const call of step.toolCalls) {
       const matched = step.toolResults.find(
         (r) => r.toolCallId === call.toolCallId,
@@ -311,11 +315,17 @@ export async function* processChatStreamParts(
 
   for await (const part of parts) {
     if (part.type === "text-delta") {
-      if (part.text === "") {continue;}
+      if (part.text === "") {
+        continue;
+      }
       full += part.text;
-      if (hooks.progress) {hooks.progress.text = full;}
+      if (hooks.progress) {
+        hooks.progress.text = full;
+      }
       const out = filter.push(part.text);
-      if (out.text) {yield { type: "text", content: out.text };}
+      if (out.text) {
+        yield { type: "text", content: out.text };
+      }
       for (const block of out.blocks) {
         const parsed = parseA2uiBlock(block);
         if (parsed.messages) {
@@ -333,7 +343,9 @@ export async function* processChatStreamParts(
         }
       }
     } else if (part.type === "reasoning-delta") {
-      if (part.text === "") {continue;}
+      if (part.text === "") {
+        continue;
+      }
       reasoning += part.text;
       yield { type: "reasoning", content: part.text };
     } else if (part.type === "tool-call") {
@@ -346,7 +358,9 @@ export async function* processChatStreamParts(
       };
     } else if (part.type === "tool-result") {
       const at = startedAt.get(part.toolCallId);
-      if (at !== undefined) {startedAt.delete(part.toolCallId);}
+      if (at !== undefined) {
+        startedAt.delete(part.toolCallId);
+      }
       yield {
         type: "tool",
         id: part.toolCallId,
@@ -363,7 +377,9 @@ export async function* processChatStreamParts(
       });
     } else if (part.type === "tool-error") {
       const at = startedAt.get(part.toolCallId);
-      if (at !== undefined) {startedAt.delete(part.toolCallId);}
+      if (at !== undefined) {
+        startedAt.delete(part.toolCallId);
+      }
       yield {
         type: "tool",
         id: part.toolCallId,

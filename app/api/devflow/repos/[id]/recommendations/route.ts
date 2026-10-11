@@ -17,7 +17,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const t = await getTranslations("devflow.recommendations");
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
-    if (!repo) {return fail(404, "repoNotFound");}
+    if (!repo) {
+      return fail(404, "repoNotFound");
+    }
 
     const params = request.nextUrl.searchParams;
     const parsed = z

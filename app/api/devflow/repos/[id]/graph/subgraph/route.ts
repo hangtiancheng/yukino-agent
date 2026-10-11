@@ -15,7 +15,9 @@ export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
-    if (!repo) {return fail(404, "repoNotFound");}
+    if (!repo) {
+      return fail(404, "repoNotFound");
+    }
 
     const query = Object.fromEntries(new URL(request.url).searchParams);
     const parsed = SubgraphQuerySchema.safeParse(query);

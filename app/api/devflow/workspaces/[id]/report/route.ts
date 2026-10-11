@@ -31,7 +31,9 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     user = await requirePermission("agent:run");
   } catch (e) {
-    if (e instanceof PermissionError) {return failRaw(403, e.message);}
+    if (e instanceof PermissionError) {
+      return failRaw(403, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 
@@ -51,16 +53,21 @@ export async function POST(request: Request, context: RouteContext) {
         generationMode: result.generationMode,
         repoReportsTriggered: result.repoReportsTriggered,
       },
-    }).catch((err) => { console.warn(
+    }).catch((err) => {
+      console.warn(
         "[devflow:audit] failed to record workspace.multi_repo_report:",
         err instanceof Error ? err.message : String(err),
-      ); },
-    );
+      );
+    });
     return ok(result);
   } catch (e) {
     if (e instanceof WorkspaceError) {
-      if (e.code === "notFound") {return fail(404, "workspaceNotFound");}
-      if (e.code === "noRepos") {return fail(400, "workspaceNoRepos");}
+      if (e.code === "notFound") {
+        return fail(404, "workspaceNotFound");
+      }
+      if (e.code === "noRepos") {
+        return fail(400, "workspaceNoRepos");
+      }
     }
     return failRaw(500, errorMessage(e));
   }

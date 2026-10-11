@@ -21,7 +21,9 @@ export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
-interface Ctx { params: Promise<{ id: string }> }
+interface Ctx {
+  params: Promise<{ id: string }>;
+}
 
 export async function POST(request: NextRequest, ctx: Ctx) {
   const t = await getTranslations("api.oncall");

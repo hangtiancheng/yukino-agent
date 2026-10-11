@@ -26,7 +26,9 @@ export async function PATCH(request: Request, context: RouteContext) {
     const feedback = await reviewFeedback(id, parsed.data);
     return ok(toFeedbackView(feedback));
   } catch (e) {
-    if (e instanceof FeedbackNotFoundError) {return failRaw(404, e.message);}
+    if (e instanceof FeedbackNotFoundError) {
+      return failRaw(404, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 }

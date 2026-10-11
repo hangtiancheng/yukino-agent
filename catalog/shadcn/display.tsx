@@ -1,10 +1,9 @@
 import { createComponentImplementation } from "@a2ui/react/v0_9";
-import type {
-  ResolvedChildRef} from "@a2ui/web_core/v0_9";
+import type { ResolvedChildRef } from "@a2ui/web_core/v0_9";
 import {
   ComponentIdSchema,
   DynamicNumberSchema,
-  DynamicStringSchema
+  DynamicStringSchema,
 } from "@a2ui/web_core/v0_9";
 import { z } from "zod/v3";
 
@@ -50,7 +49,6 @@ import { Spinner as UISpinner } from "@/components/ui/spinner";
 import { cn, weightStyle } from "@/lib/utils";
 
 import { ICON_NAME, COMMON } from "./common";
-
 
 export const AlertApi = {
   name: "Alert",

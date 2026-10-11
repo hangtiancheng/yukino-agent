@@ -121,10 +121,14 @@ interface MemoryCandidatePanel {
 }
 
 function parseCitations(value: unknown): CitationView[] {
-  if (!Array.isArray(value)) {return [];}
+  if (!Array.isArray(value)) {
+    return [];
+  }
   const citations: CitationView[] = [];
   for (const item of value) {
-    if (!item || typeof item !== "object") {continue;}
+    if (!item || typeof item !== "object") {
+      continue;
+    }
     const candidate = item as {
       docName?: unknown;
       score?: unknown;
@@ -290,7 +294,9 @@ export default function DevflowChatPage() {
         const items = await dfGet<ConversationSummary[]>(
           `/repos/${repoId}/conversations`,
         );
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setConversations(items);
         setActiveConversationId((prev) =>
           prev && items.some((c) => c.id === prev)
@@ -298,9 +304,13 @@ export default function DevflowChatPage() {
             : (items[0]?.id ?? null),
         );
       } catch {
-        if (!cancelled) {setConversations([]);}
+        if (!cancelled) {
+          setConversations([]);
+        }
       } finally {
-        if (!cancelled) {setConversationsLoading(false);}
+        if (!cancelled) {
+          setConversationsLoading(false);
+        }
       }
     })();
     return () => {
@@ -325,7 +335,9 @@ export default function DevflowChatPage() {
           );
         }
       } catch {
-        if (!cancelled) {setSuggestions(null);}
+        if (!cancelled) {
+          setSuggestions(null);
+        }
       }
     })();
     return () => {
@@ -352,7 +364,9 @@ export default function DevflowChatPage() {
             `/repos/${repoId}/memory/recall-events?limit=15`,
           ).catch(() => [] as RecallEventPanel[]),
         ]);
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setMemory(memoryData);
         setCandidates(candidateData);
         setRecallEvents(recallData);
@@ -381,12 +395,18 @@ export default function DevflowChatPage() {
         const messages = await dfGet<ChatMessageView[]>(
           `/conversations/${activeConversationId}/messages`,
         );
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setTurns(messages.map(toTurn));
       } catch {
-        if (!cancelled) {setTurns([]);}
+        if (!cancelled) {
+          setTurns([]);
+        }
       } finally {
-        if (!cancelled) {setMessagesLoading(false);}
+        if (!cancelled) {
+          setMessagesLoading(false);
+        }
       }
     })();
     return () => {
@@ -415,7 +435,9 @@ export default function DevflowChatPage() {
   const send = useCallback(
     async (text: string) => {
       const message = text.trim();
-      if (!message || !repoId || streaming) {return;}
+      if (!message || !repoId || streaming) {
+        return;
+      }
 
       setInput("");
       setStreaming(true);
@@ -467,7 +489,9 @@ export default function DevflowChatPage() {
         let buffer = "";
         while (true) {
           const { done, value } = await reader.read();
-          if (done) {break;}
+          if (done) {
+            break;
+          }
           buffer += decoder.decode(value, { stream: true });
           const events = buffer.split("\n\n");
           buffer = events.pop() ?? "";
@@ -479,7 +503,9 @@ export default function DevflowChatPage() {
               .filter((l) => l.startsWith("data: "))
               .map((l) => l.slice(6))
               .join("\n");
-            if (!dataText) {continue;}
+            if (!dataText) {
+              continue;
+            }
             if (event === "message") {
               patchLast((turn) => ({
                 ...turn,
@@ -498,8 +524,9 @@ export default function DevflowChatPage() {
                   const index = tools.findLastIndex(
                     (t) => t.state === "running",
                   );
-                  if (index >= 0)
-                    {tools[index] = { ...tools[index], state: "done" };}
+                  if (index >= 0) {
+                    tools[index] = { ...tools[index], state: "done" };
+                  }
                 }
                 return { ...turn, tools };
               });
@@ -537,7 +564,9 @@ export default function DevflowChatPage() {
               setConvReloadKey((k) => k + 1);
             } else if (event === "error") {
               const frame = parseErrorFrame(dataText);
-              if (!frame.persisted) {throw new Error(frame.message);}
+              if (!frame.persisted) {
+                throw new Error(frame.message);
+              }
               patchLast((turn) => ({
                 ...turn,
                 streaming: false,
@@ -572,7 +601,9 @@ export default function DevflowChatPage() {
   );
 
   const handleNewConversation = async () => {
-    if (!repoId) {return;}
+    if (!repoId) {
+      return;
+    }
     try {
       const conversation = await dfPost<ConversationSummary>(
         `/repos/${repoId}/conversations`,
@@ -606,7 +637,9 @@ export default function DevflowChatPage() {
     rating: "helpful" | "unhelpful",
     opts: { reason?: FeedbackReason; comment?: string } = {},
   ) => {
-    if (!repoId || !activeConversationId || !target.id) {return;}
+    if (!repoId || !activeConversationId || !target.id) {
+      return;
+    }
     try {
       const saved = await dfPost<FeedbackView>("/feedback", {
         repoId,
@@ -638,7 +671,9 @@ export default function DevflowChatPage() {
     void submitRating(target, "helpful");
 
   const handleUnhelpfulSubmit = async () => {
-    if (!ratingTarget) {return;}
+    if (!ratingTarget) {
+      return;
+    }
     setSubmittingFeedback(true);
     await submitRating(ratingTarget, "unhelpful", {
       reason,
@@ -653,7 +688,9 @@ export default function DevflowChatPage() {
     candidateId: string,
     action: "approve" | "reject",
   ) => {
-    if (!repoId) {return;}
+    if (!repoId) {
+      return;
+    }
     try {
       const result = await dfPatch<{
         candidate: MemoryCandidatePanel;
@@ -676,7 +713,9 @@ export default function DevflowChatPage() {
   };
 
   const handleMemorySearch = async () => {
-    if (!repoId || memoryQuery.trim() === "" || memorySearching) {return;}
+    if (!repoId || memoryQuery.trim() === "" || memorySearching) {
+      return;
+    }
     setMemorySearching(true);
     try {
       const result = await dfGet<{
@@ -701,7 +740,9 @@ export default function DevflowChatPage() {
   };
 
   const feedbackControls = (turn: ChatTurn) => {
-    if (turn.streaming || !turn.id) {return null;}
+    if (turn.streaming || !turn.id) {
+      return null;
+    }
     const rating = turn.feedback?.rating;
     return (
       <div className="mt-2 flex items-center gap-1">
@@ -712,7 +753,9 @@ export default function DevflowChatPage() {
             "h-7 px-2 text-xs",
             rating === "helpful" && "text-primary",
           )}
-          onClick={() => { handleHelpful(turn); }}
+          onClick={() => {
+            handleHelpful(turn);
+          }}
           disabled={streaming}
         >
           <ThumbsUp className="size-3.5" />
@@ -775,7 +818,9 @@ export default function DevflowChatPage() {
                   )}
                 >
                   <button
-                    onClick={() => { setActiveConversationId(conversation.id); }}
+                    onClick={() => {
+                      setActiveConversationId(conversation.id);
+                    }}
                     className="min-w-0 flex-1 text-left"
                   >
                     <div className="flex items-center gap-1.5">
@@ -817,7 +862,9 @@ export default function DevflowChatPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => { setMemoryOpen((open) => !open); }}
+                onClick={() => {
+                  setMemoryOpen((open) => !open);
+                }}
                 disabled={!repoId}
               >
                 <Brain className="size-3.5" />
@@ -967,9 +1014,13 @@ export default function DevflowChatPage() {
                 <div className="mt-1.5 flex items-center gap-1.5">
                   <input
                     value={memoryQuery}
-                    onChange={(e) => { setMemoryQuery(e.target.value); }}
+                    onChange={(e) => {
+                      setMemoryQuery(e.target.value);
+                    }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {void handleMemorySearch();}
+                      if (e.key === "Enter") {
+                        void handleMemorySearch();
+                      }
                     }}
                     placeholder={t("memorySearchPlaceholder")}
                     className="border-border bg-background placeholder:text-muted-foreground h-8 min-w-0 flex-1 rounded-md border px-2 text-xs outline-none"
@@ -1185,7 +1236,9 @@ export default function DevflowChatPage() {
             placeholder={repoId ? t("inputPlaceholder") : t("selectRepoFirst")}
             value={input}
             disabled={!repoId}
-            onChange={(e) => { setInput(e.target.value); }}
+            onChange={(e) => {
+              setInput(e.target.value);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -1215,7 +1268,9 @@ export default function DevflowChatPage() {
       <Dialog
         open={ratingTarget !== null}
         onOpenChange={(open) => {
-          if (!open) {setRatingTarget(null);}
+          if (!open) {
+            setRatingTarget(null);
+          }
         }}
       >
         <DialogContent>
@@ -1226,7 +1281,9 @@ export default function DevflowChatPage() {
           <div className="space-y-3 py-2">
             <Select
               value={reason}
-              onValueChange={(value) => { setReason(value!); }}
+              onValueChange={(value) => {
+                setReason(value!);
+              }}
             >
               <SelectTrigger aria-label={t("reasonLabel")}>
                 <SelectValue />
@@ -1243,13 +1300,17 @@ export default function DevflowChatPage() {
               rows={3}
               placeholder={t("optionalDetails")}
               value={comment}
-              onChange={(e) => { setComment(e.target.value); }}
+              onChange={(e) => {
+                setComment(e.target.value);
+              }}
             />
           </div>
           <DialogFooter>
             <Button
               variant="ghost"
-              onClick={() => { setRatingTarget(null); }}
+              onClick={() => {
+                setRatingTarget(null);
+              }}
               disabled={submittingFeedback}
             >
               {tc("cancel")}

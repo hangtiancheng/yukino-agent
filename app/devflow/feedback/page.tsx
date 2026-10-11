@@ -151,7 +151,9 @@ export default function DevflowFeedbackPage() {
           dfGet<FeedbackMetrics>(`/feedback/metrics?repoId=${repoId}`),
           dfGet<FeedbackView[]>(`/feedback?repoId=${repoId}&limit=200`),
         ]);
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setMetrics(m);
         setRows(list);
       } catch {
@@ -160,7 +162,9 @@ export default function DevflowFeedbackPage() {
           setRows([]);
         }
       } finally {
-        if (!cancelled) {setLoading(false);}
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
     return () => {
@@ -169,11 +173,14 @@ export default function DevflowFeedbackPage() {
   }, [repoId]);
 
   const filtered = useMemo(() => {
-    if (filter === "all") {return rows;}
-    if (filter === "open")
-      {return rows.filter(
+    if (filter === "all") {
+      return rows;
+    }
+    if (filter === "open") {
+      return rows.filter(
         (r) => r.reviewStatus === "open" || r.reviewStatus === "in_review",
-      );}
+      );
+    }
     return rows.filter(
       (r) => r.reviewStatus === "resolved" || r.reviewStatus === "dismissed",
     );
@@ -196,7 +203,9 @@ export default function DevflowFeedbackPage() {
   };
 
   const submitReview = async () => {
-    if (!reviewTarget) {return;}
+    if (!reviewTarget) {
+      return;
+    }
     setSubmitting(true);
     try {
       const updated = await dfPatch<FeedbackView>(
@@ -238,7 +247,9 @@ export default function DevflowFeedbackPage() {
                 key={f}
                 size="sm"
                 variant={filter === f ? "default" : "outline"}
-                onClick={() => { setFilter(f); }}
+                onClick={() => {
+                  setFilter(f);
+                }}
               >
                 {t(FILTER_KEYS[f])}
               </Button>
@@ -495,7 +506,9 @@ export default function DevflowFeedbackPage() {
               <Button
                 size="sm"
                 variant={reviewStatus === "resolved" ? "default" : "outline"}
-                onClick={() => { setReviewStatus("resolved"); }}
+                onClick={() => {
+                  setReviewStatus("resolved");
+                }}
               >
                 <CheckCircle2 className="size-3.5" />
                 {t("resolve")}
@@ -503,7 +516,9 @@ export default function DevflowFeedbackPage() {
               <Button
                 size="sm"
                 variant={reviewStatus === "dismissed" ? "default" : "outline"}
-                onClick={() => { setReviewStatus("dismissed"); }}
+                onClick={() => {
+                  setReviewStatus("dismissed");
+                }}
               >
                 <XCircle className="size-3.5" />
                 {t("dismiss")}
@@ -513,13 +528,17 @@ export default function DevflowFeedbackPage() {
               rows={3}
               placeholder={t("reviewNotePlaceholder")}
               value={reviewNote}
-              onChange={(e) => { setReviewNote(e.target.value); }}
+              onChange={(e) => {
+                setReviewNote(e.target.value);
+              }}
             />
           </div>
           <div className="flex justify-end gap-2">
             <Button
               variant="ghost"
-              onClick={() => { setReviewTarget(null); }}
+              onClick={() => {
+                setReviewTarget(null);
+              }}
               disabled={submitting}
             >
               {tc("cancel")}

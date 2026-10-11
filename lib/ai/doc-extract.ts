@@ -57,12 +57,12 @@ async function extractPdf(buffer: Buffer): Promise<string> {
   }
   const pages: string[] = [];
   let extractedChars = 0;
-  const perPage = Array.isArray(result.text)
-    ? result.text
-    : [result.text];
+  const perPage = Array.isArray(result.text) ? result.text : [result.text];
   for (let i = 0; i < perPage.length; i++) {
     const pageText = String(perPage[i] ?? "").trim();
-    if (pageText === "") {continue;}
+    if (pageText === "") {
+      continue;
+    }
     const content = `<!-- page: ${i + 1} -->\n${pageText}`;
     extractedChars += content.length + (pages.length > 0 ? 2 : 0);
     if (extractedChars > MAX_EXTRACTED_CHARS) {

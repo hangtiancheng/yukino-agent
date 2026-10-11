@@ -133,7 +133,9 @@ export function parseGitRemoteUrl(
   remoteUrl: string,
 ): { owner: string; name: string; host: string | null } | null {
   const value = remoteUrl.trim();
-  if (!value) {return null;}
+  if (!value) {
+    return null;
+  }
   let host: string | null = null;
   let urlPath = "";
   const scpLike = /^(?:[^@\s]+@)?([^:/\s]+):(.+)$/.exec(value);
@@ -154,15 +156,21 @@ export function parseGitRemoteUrl(
     .split("/")
     .map((part) => part.trim())
     .filter((part) => part !== "");
-  if (parts.length < 2) {return null;}
+  if (parts.length < 2) {
+    return null;
+  }
   const owner = parts[parts.length - 2];
   const name = parts[parts.length - 1].replace(/\.git$/i, "");
-  if (!owner || !name) {return null;}
+  if (!owner || !name) {
+    return null;
+  }
   return { owner, name, host: host ? host.toLowerCase() : null };
 }
 
 export function repoCheckoutPath(repo: Repository): string {
-  if (repo.checkoutMode === "local" && repo.localPath) {return repo.localPath;}
+  if (repo.checkoutMode === "local" && repo.localPath) {
+    return repo.localPath;
+  }
   const safeName = repo.fullName.replace(/[\\/]/g, "__");
   const parent =
     repo.checkoutMode !== "local" && repo.cloneParentDir
@@ -182,11 +190,17 @@ function cloneUrl(repo: Repository): string {
 }
 
 function cloneUrlWithToken(url: string, token: string | null): string {
-  if (!token) {return url;}
+  if (!token) {
+    return url;
+  }
   try {
     const parsed = new URL(url);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {return url;}
-    if (parsed.username) {return url;}
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return url;
+    }
+    if (parsed.username) {
+      return url;
+    }
     parsed.username = "x-access-token";
     parsed.password = token;
     return parsed.toString();
@@ -224,7 +238,9 @@ async function gitText(args: string[], cwd: string): Promise<string | null> {
 async function isGitWorkTree(dir: string): Promise<boolean> {
   try {
     const s = await stat(dir);
-    if (!s.isDirectory()) {return false;}
+    if (!s.isDirectory()) {
+      return false;
+    }
   } catch {
     return false;
   }
@@ -259,7 +275,9 @@ export interface WorkspaceStatus {
 export function syncCheckout(repo: Repository): Promise<SyncResult> {
   const map = syncMap();
   const existing = map.get(repo.id);
-  if (existing) {return existing;}
+  if (existing) {
+    return existing;
+  }
   const task = doSyncCheckout(repo).finally(() => map.delete(repo.id));
   map.set(repo.id, task);
   return task;
@@ -309,7 +327,9 @@ async function doSyncCheckout(repo: Repository): Promise<SyncResult> {
     await rm(target, { recursive: true, force: true });
   } catch {}
   const cloneArgs = ["clone", "--depth", "1"];
-  if (branch) {cloneArgs.push("--branch", branch);}
+  if (branch) {
+    cloneArgs.push("--branch", branch);
+  }
   cloneArgs.push(url, target);
   try {
     await runGit(cloneArgs, path.dirname(target));
@@ -344,7 +364,9 @@ export async function workspaceStatus(
 }
 
 export async function removeRepoCheckout(repo: Repository): Promise<string[]> {
-  if (repo.checkoutMode === "local") {return [];}
+  if (repo.checkoutMode === "local") {
+    return [];
+  }
   const roots = [
     workspaceRoot(),
     ...(repo.cloneParentDir ? [path.resolve(repo.cloneParentDir)] : []),
@@ -361,11 +383,17 @@ export async function removeRepoCheckout(repo: Repository): Promise<string[]> {
       () => [],
     );
     for (const entry of entries) {
-      if (!entry.isDirectory() && !entry.isSymbolicLink()) {continue;}
-      if (!entry.name.startsWith(`${repo.id}-`)) {continue;}
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) {
+        continue;
+      }
+      if (!entry.name.startsWith(`${repo.id}-`)) {
+        continue;
+      }
       const candidate = path.join(realRoot, entry.name);
       const real = await realpath(candidate).catch(() => null);
-      if (!real) {continue;}
+      if (!real) {
+        continue;
+      }
       const rel = path.relative(realRoot, real);
       if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
         continue;
@@ -378,10 +406,16 @@ export async function removeRepoCheckout(repo: Repository): Promise<string[]> {
 }
 
 function isTextFile(name: string): boolean {
-  if (SECRET_FILENAMES.has(name)) {return false;}
+  if (SECRET_FILENAMES.has(name)) {
+    return false;
+  }
   const lower = name.toLowerCase();
-  if (/\.(log|db|sqlite|sqlite3)$/.test(lower)) {return false;}
-  if (TEXT_FILENAMES.has(name)) {return true;}
+  if (/\.(log|db|sqlite|sqlite3)$/.test(lower)) {
+    return false;
+  }
+  if (TEXT_FILENAMES.has(name)) {
+    return true;
+  }
   const ext = path.extname(lower);
   return TEXT_EXTENSIONS.has(ext) || lower.endsWith("dockerfile");
 }
@@ -413,8 +447,12 @@ async function readTextBounded(
 ): Promise<string | null> {
   try {
     const data = await readFile(file);
-    if (data.length === 0 || data.length > maxBytes) {return null;}
-    if (data.subarray(0, 4096).includes(0)) {return null;}
+    if (data.length === 0 || data.length > maxBytes) {
+      return null;
+    }
+    if (data.subarray(0, 4096).includes(0)) {
+      return null;
+    }
     return data.toString("utf8");
   } catch {
     return null;
@@ -435,25 +473,37 @@ export async function listFiles(
   const parts = relParts(checkout, relPath);
   const root = path.resolve(checkout, ...parts);
   const s = await stat(root).catch(() => null);
-  if (!s) {throw new WorkspaceError("Path does not exist", 404);}
-  if (!s.isDirectory()) {throw new WorkspaceError("Path is not a directory");}
+  if (!s) {
+    throw new WorkspaceError("Path does not exist", 404);
+  }
+  if (!s.isDirectory()) {
+    throw new WorkspaceError("Path is not a directory");
+  }
 
   const cap = Math.max(1, Math.min(limit, 1000));
   const out: FileEntry[] = [];
   const walk = async (dir: string): Promise<void> => {
-    if (out.length >= cap) {return;}
+    if (out.length >= cap) {
+      return;
+    }
     const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
     entries.sort((a, b) => a.name.localeCompare(b.name));
     for (const entry of entries) {
-      if (out.length >= cap) {return;}
-      if (SKIP_DIRS.has(entry.name)) {continue;}
+      if (out.length >= cap) {
+        return;
+      }
+      if (SKIP_DIRS.has(entry.name)) {
+        continue;
+      }
       const abs = path.join(dir, entry.name);
       const rel = path.relative(checkout, abs).split(path.sep).join("/");
       if (entry.isDirectory()) {
         out.push({ path: rel, type: "dir", size: null });
         await walk(abs);
       } else if (entry.isFile()) {
-        if (SECRET_FILENAMES.has(entry.name)) {continue;}
+        if (SECRET_FILENAMES.has(entry.name)) {
+          continue;
+        }
         const st = await stat(abs).catch(() => null);
         out.push({ path: rel, type: "file", size: st ? st.size : null });
       }
@@ -478,11 +528,15 @@ export async function readCodeFile(
   opts: { startLine?: number; lineCount?: number } = {},
 ): Promise<FileContent> {
   const parts = relParts(checkout, relPath);
-  if (parts.length === 0) {throw new WorkspaceError("Path is required");}
+  if (parts.length === 0) {
+    throw new WorkspaceError("Path is required");
+  }
   const abs = path.resolve(checkout, ...parts);
   const name = parts[parts.length - 1];
   const s = await stat(abs).catch(() => null);
-  if (!s?.isFile()) {throw new WorkspaceError("File not found", 404);}
+  if (!s?.isFile()) {
+    throw new WorkspaceError("File not found", 404);
+  }
   if (!isTextFile(name)) {
     throw new WorkspaceError("Not a readable text file (binary or excluded)");
   }
@@ -517,7 +571,9 @@ export function queryTerms(query: string, limit = 16): string[] {
   for (const match of (query || "").matchAll(QUERY_TOKEN_RE)) {
     const value = match[0].trim();
     const normalized = value.toLowerCase();
-    if (normalized.length < 2 || seen.has(normalized)) {continue;}
+    if (normalized.length < 2 || seen.has(normalized)) {
+      continue;
+    }
     seen.add(normalized);
     const codeLike =
       /[_.$:/\\\-0-9]/.test(value) ||
@@ -528,7 +584,9 @@ export function queryTerms(query: string, limit = 16): string[] {
       normalized,
     ];
     fallback.push(candidate);
-    if (!STOP_TERMS.has(normalized)) {primary.push(candidate);}
+    if (!STOP_TERMS.has(normalized)) {
+      primary.push(candidate);
+    }
   }
   const chosen = primary.length ? primary : fallback;
   chosen.sort((a, b) => b[0] - a[0] || b[1] - a[1] || a[2].localeCompare(b[2]));
@@ -542,7 +600,9 @@ function scoreMatch(relPath: string, line: string, terms: string[]): number {
   let occurrences = 0;
   let pathHits = 0;
   for (const term of terms) {
-    if (lineText.includes(term) || pathText.includes(term)) {matched += 1;}
+    if (lineText.includes(term) || pathText.includes(term)) {
+      matched += 1;
+    }
     occurrences += Math.min(countOccurrences(lineText, term), 4);
     pathHits += countOccurrences(pathText, term);
   }
@@ -550,7 +610,9 @@ function scoreMatch(relPath: string, line: string, terms: string[]): number {
 }
 
 function countOccurrences(haystack: string, needle: string): number {
-  if (!needle) {return 0;}
+  if (!needle) {
+    return 0;
+  }
   let count = 0;
   let idx = haystack.indexOf(needle);
   while (idx !== -1) {
@@ -574,11 +636,15 @@ export async function searchCode(
   limit = 12,
 ): Promise<CodeSearchHit[]> {
   const terms = queryTerms(query);
-  if (terms.length === 0) {return [];}
+  if (terms.length === 0) {
+    return [];
+  }
   const parts = relParts(checkout, relPath ?? ".");
   const root = path.resolve(checkout, ...parts);
   const s = await stat(root).catch(() => null);
-  if (!s) {throw new WorkspaceError("Path does not exist", 404);}
+  if (!s) {
+    throw new WorkspaceError("Path does not exist", 404);
+  }
 
   const cappedLimit = Math.max(1, Math.min(limit, 50));
   const maxScan = config.devflow.workspace.maxScanFiles;
@@ -587,34 +653,50 @@ export async function searchCode(
   let scanned = 0;
 
   const walk = async (dir: string): Promise<void> => {
-    if (scanned >= maxScan || best.size >= cappedLimit * 8) {return;}
+    if (scanned >= maxScan || best.size >= cappedLimit * 8) {
+      return;
+    }
     const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
     for (const entry of entries) {
-      if (scanned >= maxScan || best.size >= cappedLimit * 8) {return;}
-      if (SKIP_DIRS.has(entry.name)) {continue;}
+      if (scanned >= maxScan || best.size >= cappedLimit * 8) {
+        return;
+      }
+      if (SKIP_DIRS.has(entry.name)) {
+        continue;
+      }
       const abs = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         await walk(abs);
       } else if (entry.isFile()) {
-        if (!isTextFile(entry.name)) {continue;}
+        if (!isTextFile(entry.name)) {
+          continue;
+        }
         scanned += 1;
         const rel = path.relative(checkout, abs).split(path.sep).join("/");
         const text = await readTextBounded(abs, maxBytes);
-        if (text === null) {continue;}
+        if (text === null) {
+          continue;
+        }
         const lines = text.split("\n");
         let bestHit: CodeSearchHit | null = null;
         for (let i = 0; i < lines.length; i++) {
           const score = scoreMatch(rel, lines[i], terms);
-          if (score <= 0) {continue;}
+          if (score <= 0) {
+            continue;
+          }
           const hit: CodeSearchHit = {
             path: rel,
             line: i + 1,
             snippet: lines[i].trim().slice(0, 320),
             score,
           };
-          if (!bestHit || hit.score > bestHit.score) {bestHit = hit;}
+          if (!bestHit || hit.score > bestHit.score) {
+            bestHit = hit;
+          }
         }
-        if (bestHit) {best.set(rel, bestHit);}
+        if (bestHit) {
+          best.set(rel, bestHit);
+        }
       }
     }
   };
@@ -665,6 +747,8 @@ export async function requireCheckout(repo: Repository): Promise<string> {
 
 export async function getRepoOrThrow(repoId: string): Promise<Repository> {
   const repo = await prisma.repository.findUnique({ where: { id: repoId } });
-  if (!repo) {throw new WorkspaceError("Repository not found", 404);}
+  if (!repo) {
+    throw new WorkspaceError("Repository not found", 404);
+  }
   return repo;
 }

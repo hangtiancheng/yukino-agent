@@ -83,13 +83,19 @@ function normalize(value: string): string {
 
 function short(value: string, maxLength = 22): string {
   const text = value.trim().replace(/\s+/g, " ");
-  if (text.length <= maxLength) {return text;}
+  if (text.length <= maxLength) {
+    return text;
+  }
   return `${text.slice(0, maxLength).trimEnd()}...`;
 }
 
 function sortTimestamp(value: Date | string | null | undefined): number {
-  if (!value) {return 0;}
-  if (value instanceof Date) {return value.getTime();}
+  if (!value) {
+    return 0;
+  }
+  if (value instanceof Date) {
+    return value.getTime();
+  }
   const parsed = Date.parse(String(value));
   return Number.isNaN(parsed) ? 0 : parsed;
 }
@@ -99,7 +105,9 @@ function dedupe(values: string[]): string[] {
   const seen = new Set<string>();
   for (const value of values) {
     const key = normalize(value);
-    if (key === "" || seen.has(key)) {continue;}
+    if (key === "" || seen.has(key)) {
+      continue;
+    }
     seen.add(key);
     out.push(value);
   }

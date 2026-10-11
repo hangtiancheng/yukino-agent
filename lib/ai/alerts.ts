@@ -77,10 +77,14 @@ export function fallbackSource(): AlertSourceConfig {
 
 export function parseAlertSources(raw: string): AlertSourceConfig[] {
   const trimmed = raw.trim();
-  if (trimmed === "") {return [fallbackSource()];}
+  if (trimmed === "") {
+    return [fallbackSource()];
+  }
   try {
     const parsed = z.array(alertSourceSchema).parse(JSON.parse(trimmed));
-    if (parsed.length === 0) {return [fallbackSource()];}
+    if (parsed.length === 0) {
+      return [fallbackSource()];
+    }
     return parsed;
   } catch {
     return [fallbackSource()];
@@ -101,22 +105,32 @@ function stringMap(
   value: Record<string, unknown> | undefined,
 ): Record<string, string> {
   const out: Record<string, string> = {};
-  if (!value) {return out;}
+  if (!value) {
+    return out;
+  }
   for (const [key, item] of Object.entries(value)) {
-    if (typeof item === "string") {out[key] = item;}
+    if (typeof item === "string") {
+      out[key] = item;
+    }
   }
   return out;
 }
 
 export function calculateDuration(activeAt: string): string {
   const t = Date.parse(activeAt);
-  if (Number.isNaN(t)) {return "unknown";}
+  if (Number.isNaN(t)) {
+    return "unknown";
+  }
   const ms = Date.now() - t;
   const h = Math.floor(ms / 3600000);
   const m = Math.floor((ms % 3600000) / 60000);
   const s = Math.floor((ms % 60000) / 1000);
-  if (h > 0) {return `${h}h${m}m${s}s`;}
-  if (m > 0) {return `${m}m${s}s`;}
+  if (h > 0) {
+    return `${h}h${m}m${s}s`;
+  }
+  if (m > 0) {
+    return `${m}m${s}s`;
+  }
   return `${s}s`;
 }
 
@@ -129,12 +143,16 @@ export function normalizeAlert(
       ? (raw.status.state ?? "")
       : "";
   const state = statusState || (raw.state ?? "");
-  if (state !== "firing" && state !== "active") {return null;}
+  if (state !== "firing" && state !== "active") {
+    return null;
+  }
 
   const labels = stringMap(raw.labels);
   const annotations = stringMap(raw.annotations);
   const alertName = labels.alertname ?? "";
-  if (alertName === "") {return null;}
+  if (alertName === "") {
+    return null;
+  }
   const service = labels.service ?? labels.job ?? "Unspecified service";
   const severity = labels.severity ?? "unknown";
   const activeAt = raw.startsAt ?? raw.activeAt ?? "";
@@ -237,7 +255,9 @@ export function dedupeAlerts(alerts: Alert[]): Alert[] {
   const seen = new Set<string>();
   const out: Alert[] = [];
   for (const alert of sorted) {
-    if (seen.has(alert.alert_name)) {continue;}
+    if (seen.has(alert.alert_name)) {
+      continue;
+    }
     seen.add(alert.alert_name);
     out.push(alert);
   }

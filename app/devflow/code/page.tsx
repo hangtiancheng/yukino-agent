@@ -102,7 +102,9 @@ export default function DevflowCodePage() {
           dfGet<WorkspaceStatus>(`/repos/${repoId}/workspace`),
           dfGet<ProjectIndexState>(`/repos/${repoId}/project-index`),
         ]);
-        if (cancelled) {return;}
+        if (cancelled) {
+          return;
+        }
         setWorkspace(ws);
         setIndexState(idx);
       } catch {
@@ -111,7 +113,9 @@ export default function DevflowCodePage() {
           setIndexState(null);
         }
       } finally {
-        if (!cancelled) {setStatusLoading(false);}
+        if (!cancelled) {
+          setStatusLoading(false);
+        }
       }
     })();
     return () => {
@@ -135,11 +139,17 @@ export default function DevflowCodePage() {
         }>(
           `/repos/${repoId}/workspace/files?path=${encodeURIComponent(browsePath)}&limit=300`,
         );
-        if (!cancelled) {setEntries(result.entries);}
+        if (!cancelled) {
+          setEntries(result.entries);
+        }
       } catch {
-        if (!cancelled) {setEntries([]);}
+        if (!cancelled) {
+          setEntries([]);
+        }
       } finally {
-        if (!cancelled) {setEntriesLoading(false);}
+        if (!cancelled) {
+          setEntriesLoading(false);
+        }
       }
     })();
     return () => {
@@ -149,7 +159,9 @@ export default function DevflowCodePage() {
 
   const openFile = useCallback(
     async (path: string, line?: number) => {
-      if (!repoId) {return;}
+      if (!repoId) {
+        return;
+      }
       setFileLoading(true);
       setFile(null);
       try {
@@ -168,7 +180,9 @@ export default function DevflowCodePage() {
   );
 
   const handleClone = async () => {
-    if (!repoId) {return;}
+    if (!repoId) {
+      return;
+    }
     setCloning(true);
     try {
       const ws = await dfPost<WorkspaceStatus>(
@@ -190,7 +204,9 @@ export default function DevflowCodePage() {
   };
 
   const handleIndex = async () => {
-    if (!repoId) {return;}
+    if (!repoId) {
+      return;
+    }
     setIndexing(true);
     try {
       const result = await dfPost<{
@@ -213,14 +229,18 @@ export default function DevflowCodePage() {
       const idx = await dfGet<ProjectIndexState>(
         `/repos/${repoId}/project-index`,
       ).catch(() => null);
-      if (idx) {setIndexState(idx);}
+      if (idx) {
+        setIndexState(idx);
+      }
     } finally {
       setIndexing(false);
     }
   };
 
   const handleSnooze = async () => {
-    if (!repoId) {return;}
+    if (!repoId) {
+      return;
+    }
     try {
       await dfPost<unknown>(`/repos/${repoId}/project-index`, {
         action: "snooze",
@@ -237,7 +257,9 @@ export default function DevflowCodePage() {
 
   const handleSearch = async () => {
     const query = searchQuery.trim();
-    if (!query || !repoId) {return;}
+    if (!query || !repoId) {
+      return;
+    }
     setSearching(true);
     setSearchError(null);
     try {
@@ -418,7 +440,9 @@ export default function DevflowCodePage() {
         <>
           <Tabs
             value={tab}
-            onValueChange={(v) => { setTab(v as "search" | "browse"); }}
+            onValueChange={(v) => {
+              setTab(v as "search" | "browse");
+            }}
           >
             <TabsList>
               <TabsTrigger value="search">{t("tabSearch")}</TabsTrigger>
@@ -430,9 +454,13 @@ export default function DevflowCodePage() {
                 <Input
                   placeholder={t("searchPlaceholder")}
                   value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); }}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                  }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {void handleSearch();}
+                    if (e.key === "Enter") {
+                      void handleSearch();
+                    }
                   }}
                   className="flex-1"
                 />
@@ -492,7 +520,9 @@ export default function DevflowCodePage() {
             <TabsContent value="browse" className="space-y-3">
               <div className="text-muted-foreground flex items-center gap-1 font-mono text-xs">
                 <button
-                  onClick={() => { setBrowsePath("."); }}
+                  onClick={() => {
+                    setBrowsePath(".");
+                  }}
                   className="hover:text-foreground"
                 >
                   {repo?.name}
@@ -510,7 +540,9 @@ export default function DevflowCodePage() {
                     variant="ghost"
                     size="sm"
                     className="ml-2 h-6 px-2 text-xs"
-                    onClick={() => { setBrowsePath(parentPath(browsePath)); }}
+                    onClick={() => {
+                      setBrowsePath(parentPath(browsePath));
+                    }}
                   >
                     {t("up")}
                   </Button>
@@ -531,10 +563,11 @@ export default function DevflowCodePage() {
                     entries.map((entry) => (
                       <button
                         key={entry.path}
-                        onClick={() => { entry.type === "dir"
+                        onClick={() => {
+                          entry.type === "dir"
                             ? setBrowsePath(entry.path)
-                            : void openFile(entry.path); }
-                        }
+                            : void openFile(entry.path);
+                        }}
                         className="hover:bg-accent/50 flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors"
                       >
                         {entry.type === "dir" ? (
@@ -582,7 +615,9 @@ export default function DevflowCodePage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => { setFile(null); }}
+                    onClick={() => {
+                      setFile(null);
+                    }}
                   >
                     <X className="size-4" />
                   </Button>

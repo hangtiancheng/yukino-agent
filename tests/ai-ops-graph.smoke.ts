@@ -74,7 +74,9 @@ if (process.env.AI_OPS_SMOKE_LIVE === "1") {
   const events = query ? runPlanExecuteReplan(query) : runPlanExecuteReplan();
   for await (const event of events) {
     console.log("[event]", JSON.stringify(event).slice(0, 400));
-    if (event.type === "done" || event.type === "error") {break;}
+    if (event.type === "done" || event.type === "error") {
+      break;
+    }
   }
 }
 

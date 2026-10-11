@@ -9,7 +9,9 @@ export async function GET(request: Request) {
   try {
     await requirePermission("settings:manage");
   } catch (e) {
-    if (e instanceof PermissionError) {return failRaw(403, e.message);}
+    if (e instanceof PermissionError) {
+      return failRaw(403, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 

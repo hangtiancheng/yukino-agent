@@ -7,7 +7,9 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const repoId = url.searchParams.get("repoId");
-    if (!repoId) {return fail(400, "repoIdQueryRequired");}
+    if (!repoId) {
+      return fail(400, "repoIdQueryRequired");
+    }
     const runs = await prisma.agentWorkflowRun.findMany({
       where: { repoId },
       orderBy: { createdAt: "desc" },

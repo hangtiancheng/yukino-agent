@@ -64,6 +64,8 @@ export function alignClass(align?: string) {
 }
 
 export function weightStyle(weight?: number): CSSProperties {
-  if (typeof weight !== "number") {return {};}
+  if (typeof weight !== "number") {
+    return {};
+  }
   return { flex: `${weight}`, minWidth: 0, minHeight: 0 };
 }

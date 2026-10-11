@@ -204,11 +204,17 @@ export default function DevflowWorkflowRunsPage() {
         const items = await dfGet<RunSummaryView[]>(
           `/workflow-runs?repoId=${repoId}`,
         );
-        if (!cancelled) {setRuns(items);}
+        if (!cancelled) {
+          setRuns(items);
+        }
       } catch {
-        if (!cancelled) {setRuns([]);}
+        if (!cancelled) {
+          setRuns([]);
+        }
       } finally {
-        if (!cancelled) {setRunsLoading(false);}
+        if (!cancelled) {
+          setRunsLoading(false);
+        }
       }
     })();
     return () => {
@@ -232,7 +238,9 @@ export default function DevflowWorkflowRunsPage() {
 
   const handlePlan = async () => {
     const trimmed = goal.trim();
-    if (!repoId || !trimmed || planning) {return;}
+    if (!repoId || !trimmed || planning) {
+      return;
+    }
     setPlanning(true);
     setPlan(null);
     setDetail(null);
@@ -262,7 +270,9 @@ export default function DevflowWorkflowRunsPage() {
   };
 
   const handleExecute = async () => {
-    if (!plan || executing) {return;}
+    if (!plan || executing) {
+      return;
+    }
     setExecuting(true);
     setMemo(null);
     setLiveObservation(null);
@@ -292,7 +302,9 @@ export default function DevflowWorkflowRunsPage() {
       let buffer = "";
       for (;;) {
         const { done, value } = await reader.read();
-        if (done) {break;}
+        if (done) {
+          break;
+        }
         buffer += decoder.decode(value, { stream: true });
         const events = buffer.split("\n\n");
         buffer = events.pop() ?? "";
@@ -304,7 +316,9 @@ export default function DevflowWorkflowRunsPage() {
             .filter((l) => l.startsWith("data: "))
             .map((l) => l.slice(6))
             .join("\n");
-          if (!dataText) {continue;}
+          if (!dataText) {
+            continue;
+          }
           try {
             handleSseEvent(event, dataText);
           } catch {}
@@ -363,7 +377,9 @@ export default function DevflowWorkflowRunsPage() {
         setLiveTasks((current) => {
           const next = { ...current };
           for (const taskId of payload.replannedClaims) {
-            if (!next[taskId]) {next[taskId] = { status: "pending" };}
+            if (!next[taskId]) {
+              next[taskId] = { status: "pending" };
+            }
           }
           return next;
         });
@@ -385,8 +401,12 @@ export default function DevflowWorkflowRunsPage() {
     try {
       const result = await dfGet<RunDetailView>(`/workflow-runs/${runId}`);
       setDetail(result);
-      if (result.finalAnswer) {setMemo(result.finalAnswer);}
-      if (result.observation) {setLiveObservation(result.observation);}
+      if (result.finalAnswer) {
+        setMemo(result.finalAnswer);
+      }
+      if (result.observation) {
+        setLiveObservation(result.observation);
+      }
       const states: Record<string, LiveTaskState> = {};
       for (const task of result.tasks) {
         states[task.taskId] = {
@@ -412,7 +432,9 @@ export default function DevflowWorkflowRunsPage() {
   };
 
   const displaySpec = useMemo<SpecView | null>(() => {
-    if (plan) {return plan.spec;}
+    if (plan) {
+      return plan.spec;
+    }
     return detail?.spec ?? null;
   }, [plan, detail]);
 
@@ -465,7 +487,9 @@ export default function DevflowWorkflowRunsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => { setRunsReloadKey((key) => key + 1); }}
+            onClick={() => {
+              setRunsReloadKey((key) => key + 1);
+            }}
             disabled={runsLoading}
           >
             {runsLoading ? (
@@ -495,7 +519,9 @@ export default function DevflowWorkflowRunsPage() {
                 }
                 value={goal}
                 disabled={!repoId || busy}
-                onChange={(e) => { setGoal(e.target.value); }}
+                onChange={(e) => {
+                  setGoal(e.target.value);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();

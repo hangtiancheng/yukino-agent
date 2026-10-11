@@ -326,7 +326,9 @@ export async function hybridSearch(
 }
 
 export async function getByIds(ids: string[]): Promise<MilvusHit[]> {
-  if (ids.length === 0) {return [];}
+  if (ids.length === 0) {
+    return [];
+  }
   if (!(await ensureLoaded())) {
     return [];
   }
@@ -383,7 +385,9 @@ export async function count(filter?: string): Promise<number> {
     timeout: TIMEOUT_MS,
   });
   checkStatus(res, "count");
-  if (!filter) {return res.data;}
+  if (!filter) {
+    return res.data;
+  }
   const queried = await connect().query({
     collection_name: COLLECTION,
     filter,

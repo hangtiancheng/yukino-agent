@@ -400,7 +400,9 @@ const realFileChecks = async (): Promise<void> => {
     const symbol = symbols[i];
     assert.ok(symbol.startLine >= 1 && symbol.startLine <= symbol.endLine);
     assert.ok(symbol.endLine <= totalLines);
-    if (i > 0) {assert.ok(symbol.startLine > (symbols[i - 1]?.startLine ?? 0));}
+    if (i > 0) {
+      assert.ok(symbol.startLine > (symbols[i - 1]?.startLine ?? 0));
+    }
   }
   checks += 1;
   console.log(
@@ -455,7 +457,9 @@ async function collect(
   hooks: AnalyzeStreamHooks<{ generationMode?: string }>,
 ): Promise<SseFrame[]> {
   const frames: SseFrame[] = [];
-  for await (const frame of analysisStreamFrames(hooks)) {frames.push(frame);}
+  for await (const frame of analysisStreamFrames(hooks)) {
+    frames.push(frame);
+  }
   return frames;
 }
 

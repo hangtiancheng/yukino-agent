@@ -39,7 +39,9 @@ export async function GET(_request: Request, context: RouteContext) {
       checkoutCloned: state.checkoutCloned,
     });
   } catch (e) {
-    if (e instanceof WorkspaceError) {return failRaw(e.status, e.message);}
+    if (e instanceof WorkspaceError) {
+      return failRaw(e.status, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 }
@@ -66,7 +68,9 @@ export async function POST(request: Request, context: RouteContext) {
     const result = await indexProject(repo);
     return ok(result);
   } catch (e) {
-    if (e instanceof WorkspaceError) {return failRaw(e.status, e.message);}
+    if (e instanceof WorkspaceError) {
+      return failRaw(e.status, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 }

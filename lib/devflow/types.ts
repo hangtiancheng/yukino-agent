@@ -71,19 +71,21 @@ export interface RunSummary {
   conclusion: string | null;
   htmlUrl: string | null;
   hasLogs: boolean;
-  jobs: {
-    id?: number;
-    name?: string;
-    status?: string;
-    conclusion?: string;
-    html_url?: string;
-    steps?: {
-      name?: string;
-      status?: string;
-      conclusion?: string;
-      number?: number;
-    }[];
-  }[] | null;
+  jobs:
+    | {
+        id?: number;
+        name?: string;
+        status?: string;
+        conclusion?: string;
+        html_url?: string;
+        steps?: {
+          name?: string;
+          status?: string;
+          conclusion?: string;
+          number?: number;
+        }[];
+      }[]
+    | null;
   githubCreatedAt: string | null;
   latestAnalysis: { id: string; createdAt: string } | null;
 }

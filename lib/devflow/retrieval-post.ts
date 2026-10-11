@@ -11,9 +11,12 @@ export function tokenize(text: string): string[] {
   const lowered = text.toLowerCase();
   const tokens: string[] = lowered.match(/[a-z0-9_-]+/g) ?? [];
   for (const segment of lowered.match(/[一-鿿]+/g) ?? []) {
-    for (const char of segment) {tokens.push(char);}
-    for (let i = 0; i + 1 < segment.length; i++)
-      {tokens.push(segment.slice(i, i + 2));}
+    for (const char of segment) {
+      tokens.push(char);
+    }
+    for (let i = 0; i + 1 < segment.length; i++) {
+      tokens.push(segment.slice(i, i + 2));
+    }
   }
   return tokens;
 }
@@ -22,15 +25,21 @@ export function fingerprint(text: string): string {
   const normalized = text
     .toLowerCase()
     .replace(/[^a-z0-9_\-\u4e00-\u9fff]+/g, "");
-  if (normalized === "") {return "";}
+  if (normalized === "") {
+    return "";
+  }
   return createHash("sha256").update(normalized, "utf8").digest("hex");
 }
 
 function jaccard(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 || b.size === 0) {return 0;}
+  if (a.size === 0 || b.size === 0) {
+    return 0;
+  }
   let intersection = 0;
   for (const token of a) {
-    if (b.has(token)) {intersection++;}
+    if (b.has(token)) {
+      intersection++;
+    }
   }
   const union = a.size + b.size - intersection;
   return intersection / Math.max(union, 1);
@@ -39,8 +48,12 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 function scopeKey(doc: RetrievedDoc): string {
   const docId = String(doc.metadata.doc_id ?? "");
   const parentId = String(doc.metadata.parent_id ?? "");
-  if (parentId) {return parentId;}
-  if (docId) {return docId;}
+  if (parentId) {
+    return parentId;
+  }
+  if (docId) {
+    return docId;
+  }
   return doc.source;
 }
 
@@ -55,14 +68,20 @@ export function dedupeNearDuplicates(docs: RetrievedDoc[]): RetrievedDoc[] {
   for (const doc of docs) {
     const fp = fingerprint(doc.content);
     let duplicate = fp !== "" ? (fingerprints.get(fp) ?? null) : null;
-    if (duplicate && !sameScope(doc, duplicate)) {duplicate = null;}
+    if (duplicate && !sameScope(doc, duplicate)) {
+      duplicate = null;
+    }
     if (!duplicate) {
       const currentTerms = new Set(tokenize(doc.content));
       for (const existing of kept) {
-        if (!sameScope(doc, existing)) {continue;}
+        if (!sameScope(doc, existing)) {
+          continue;
+        }
         const existingTerms =
           termSets.get(existing.id) ?? new Set(tokenize(existing.content));
-        if (currentTerms.size === 0 || existingTerms.size === 0) {continue;}
+        if (currentTerms.size === 0 || existingTerms.size === 0) {
+          continue;
+        }
         if (jaccard(currentTerms, existingTerms) >= NEAR_DUPLICATE_JACCARD) {
           duplicate = existing;
           break;
@@ -70,9 +89,13 @@ export function dedupeNearDuplicates(docs: RetrievedDoc[]): RetrievedDoc[] {
       }
       termSets.set(doc.id, currentTerms);
     }
-    if (duplicate) {continue;}
+    if (duplicate) {
+      continue;
+    }
     kept.push(doc);
-    if (fp !== "") {fingerprints.set(fp, doc);}
+    if (fp !== "") {
+      fingerprints.set(fp, doc);
+    }
   }
   return kept;
 }
@@ -82,26 +105,40 @@ export function limitPerParent(docs: RetrievedDoc[]): RetrievedDoc[] {
   const kept: RetrievedDoc[] = [];
   for (const doc of docs) {
     const parentId = String(doc.metadata.parent_id ?? "");
-    if (parentId !== "" && (counts.get(parentId) ?? 0) >= MAX_CHUNKS_PER_PARENT)
-      {continue;}
+    if (
+      parentId !== "" &&
+      (counts.get(parentId) ?? 0) >= MAX_CHUNKS_PER_PARENT
+    ) {
+      continue;
+    }
     kept.push(doc);
-    if (parentId !== "") {counts.set(parentId, (counts.get(parentId) ?? 0) + 1);}
+    if (parentId !== "") {
+      counts.set(parentId, (counts.get(parentId) ?? 0) + 1);
+    }
   }
   return kept;
 }
 
 function clip01(value: number): number {
-  if (!Number.isFinite(value)) {return 0;}
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
   return Math.min(1, Math.max(0, value));
 }
 
 function normalizeScores(docs: RetrievedDoc[]): number[] {
-  if (docs.length === 0) {return [];}
+  if (docs.length === 0) {
+    return [];
+  }
   let min = Infinity;
   let max = -Infinity;
   for (const doc of docs) {
-    if (doc.score < min) {min = doc.score;}
-    if (doc.score > max) {max = doc.score;}
+    if (doc.score < min) {
+      min = doc.score;
+    }
+    if (doc.score > max) {
+      max = doc.score;
+    }
   }
   if (!Number.isFinite(min) || !Number.isFinite(max) || max - min < 1e-12) {
     return docs.map(() => (Number.isFinite(max) && max > 0 ? 1 : 0));
@@ -154,8 +191,12 @@ export function heuristicScore(
   let titleHits = 0;
   let pathHits = 0;
   for (const term of terms) {
-    if (title.includes(term)) {titleHits++;}
-    if (path.includes(term)) {pathHits++;}
+    if (title.includes(term)) {
+      titleHits++;
+    }
+    if (path.includes(term)) {
+      pathHits++;
+    }
   }
   const compactQuery = query.toLowerCase().trim();
   const phraseBonus =
@@ -182,26 +223,45 @@ export function heuristicScore(
       sourceTypeBonus,
   );
   const reasons: string[] = [];
-  if (coverage > 0)
-    {reasons.push(`matched ${matchedCount}/${uniqueTerms.size} query terms`);}
-  if (titleHits > 0) {reasons.push("title match");}
-  if (pathHits > 0) {reasons.push("path match");}
+  if (coverage > 0) {
+    reasons.push(`matched ${matchedCount}/${uniqueTerms.size} query terms`);
+  }
+  if (titleHits > 0) {
+    reasons.push("title match");
+  }
+  if (pathHits > 0) {
+    reasons.push("path match");
+  }
   reasons.push("fused candidate");
-  if (dualRecallBonus > 0) {reasons.push("dual recall");}
-  if (freshnessBonus > 0) {reasons.push("fresh evidence");}
-  if (sourceTypeBonus > 0) {reasons.push("source type match");}
+  if (dualRecallBonus > 0) {
+    reasons.push("dual recall");
+  }
+  if (freshnessBonus > 0) {
+    reasons.push("fresh evidence");
+  }
+  if (sourceTypeBonus > 0) {
+    reasons.push("source type match");
+  }
   return { score, reason: reasons.join(", ") };
 }
 
 function freshness(doc: RetrievedDoc): number {
   for (const key of ["updated_at", "created_at", "merged_at", "closed_at"]) {
     const value = doc.metadata[key];
-    if (value === undefined || value === null || value === "") {continue;}
+    if (value === undefined || value === null || value === "") {
+      continue;
+    }
     const parsed = Date.parse(String(value));
-    if (Number.isNaN(parsed)) {continue;}
+    if (Number.isNaN(parsed)) {
+      continue;
+    }
     const ageDays = Math.max(0, (Date.now() - parsed) / 86_400_000);
-    if (ageDays <= 30) {return 0.04;}
-    if (ageDays <= 180) {return 0.02;}
+    if (ageDays <= 30) {
+      return 0.04;
+    }
+    if (ageDays <= 180) {
+      return 0.02;
+    }
     return 0;
   }
   return 0;
@@ -212,7 +272,9 @@ export function heuristicRerank(
   docs: RetrievedDoc[],
   limit: number,
 ): { ranked: RetrievedDoc[]; reasons: Map<string, string> } {
-  if (docs.length === 0) {return { ranked: [], reasons: new Map() };}
+  if (docs.length === 0) {
+    return { ranked: [], reasons: new Map() };
+  }
   const normalized = normalizeScores(docs);
   const topN = Math.min(Math.max(RERANK_TOP_N, limit), docs.length);
   const head = docs.slice(0, topN);
@@ -237,12 +299,18 @@ export async function expandSiblings(
   const need = new Set<string>();
   for (const doc of docs) {
     const siblings = doc.metadata.sibling_ids;
-    if (!Array.isArray(siblings)) {continue;}
+    if (!Array.isArray(siblings)) {
+      continue;
+    }
     for (const id of siblings) {
-      if (typeof id === "string" && id !== "" && id !== doc.id) {need.add(id);}
+      if (typeof id === "string" && id !== "" && id !== doc.id) {
+        need.add(id);
+      }
     }
   }
-  if (need.size === 0) {return docs;}
+  if (need.size === 0) {
+    return docs;
+  }
   let contentById: Map<string, string>;
   try {
     const hits = await getByIds([...need]);
@@ -265,16 +333,24 @@ export async function expandSiblings(
     const seen = new Set<string>();
     const fetchedIds: string[] = [];
     for (const id of ids) {
-      if (typeof id !== "string" || id === "") {continue;}
+      if (typeof id !== "string" || id === "") {
+        continue;
+      }
       const isCurrent = id === doc.id;
       const content = isCurrent ? doc.content : contentById.get(id);
-      if (!content) {continue;}
+      if (!content) {
+        continue;
+      }
       const fp = fingerprint(content);
       const dedupeKey = fp !== "" ? fp : content;
-      if (seen.has(dedupeKey)) {continue;}
+      if (seen.has(dedupeKey)) {
+        continue;
+      }
       seen.add(dedupeKey);
       parts.push(content);
-      if (!isCurrent) {fetchedIds.push(id);}
+      if (!isCurrent) {
+        fetchedIds.push(id);
+      }
     }
     if (fetchedIds.length === 0 || parts.length === 0) {
       expanded.push(doc);

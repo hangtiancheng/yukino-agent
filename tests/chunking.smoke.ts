@@ -80,11 +80,7 @@ def rotate_token(token: str) -> str:
     2,
     "markdown: fences balanced",
   );
-  assert.equal(
-    code.section_title,
-    "Refresh tokens",
-    "markdown: section title",
-  );
+  assert.equal(code.section_title, "Refresh tokens", "markdown: section title");
   assert.ok(
     (code.start_line ?? 0) <= (code.end_line ?? 0),
     "markdown: line range",
@@ -489,7 +485,9 @@ function main() {
   checkHeuristicRerank();
   checkAnswerGateConflict();
   checkTokenize();
-  void checkIndexPolicy().then(() => { console.log("CHUNKING SMOKE OK"); });
+  void checkIndexPolicy().then(() => {
+    console.log("CHUNKING SMOKE OK");
+  });
 }
 
 main();

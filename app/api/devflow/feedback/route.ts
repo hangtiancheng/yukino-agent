@@ -13,7 +13,9 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const repoId = url.searchParams.get("repoId");
-    if (!repoId) {return fail(400, "repoIdRequired");}
+    if (!repoId) {
+      return fail(400, "repoIdRequired");
+    }
     const conversationId = url.searchParams.get("conversationId");
     const limitRaw = Number.parseInt(
       url.searchParams.get("limit") ?? "200",
@@ -43,7 +45,9 @@ export async function POST(request: Request) {
     const feedback = await createFeedback(parsed.data);
     return ok(toFeedbackView(feedback), 201);
   } catch (e) {
-    if (e instanceof FeedbackNotFoundError) {return failRaw(404, e.message);}
+    if (e instanceof FeedbackNotFoundError) {
+      return failRaw(404, e.message);
+    }
     return failRaw(500, errorMessage(e));
   }
 }
