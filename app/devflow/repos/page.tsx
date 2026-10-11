@@ -166,7 +166,9 @@ function ConnectDialog({
             <Select
               value={mode}
               onValueChange={(v) => {
-                setMode(v!);
+                if (v !== null) {
+                  setMode(v);
+                }
               }}
             >
               <SelectTrigger>
@@ -230,7 +232,9 @@ function ConnectDialog({
                 <Select
                   value={provider}
                   onValueChange={(v) => {
-                    setProvider(v!);
+                    if (v !== null) {
+                      setProvider(v);
+                    }
                   }}
                 >
                   <SelectTrigger>
@@ -310,7 +314,12 @@ function ConnectDialog({
           >
             {tc("cancel")}
           </Button>
-          <Button onClick={connect} disabled={connecting}>
+          <Button
+            onClick={() => {
+              void connect();
+            }}
+            disabled={connecting}
+          >
             {connecting ? <RefreshCw className="animate-spin" /> : <Plus />}
             {connecting ? t("connect.connecting") : t("connect.connect")}
           </Button>

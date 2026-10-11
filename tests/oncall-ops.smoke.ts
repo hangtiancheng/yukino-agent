@@ -8,7 +8,6 @@ import {
   parseAlertmanagerAlerts,
   parsePrometheusAlerts,
   runReadinessChecks,
-  type Alert,
   type AlertSourceConfig,
 } from "@/lib/ai/alerts";
 import { buildAiOpsQuery } from "@/lib/ai/pipelines/plan-execute-replan";

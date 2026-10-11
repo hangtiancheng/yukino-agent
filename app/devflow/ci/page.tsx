@@ -49,7 +49,7 @@ export default function DevflowCiPage() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setLoading(true);
       try {
         const params = new URLSearchParams();
@@ -91,7 +91,7 @@ export default function DevflowCiPage() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setDebugLoading(true);
       try {
         const records = await dfGet<AnalysisRecord[]>(
@@ -290,7 +290,12 @@ export default function DevflowCiPage() {
                       </div>
                     </div>
                     {selected.conclusion === "failure" ? (
-                      <Button onClick={runDebug} disabled={debugging}>
+                      <Button
+                        onClick={() => {
+                          void runDebug();
+                        }}
+                        disabled={debugging}
+                      >
                         {debugging ? (
                           <RefreshCw className="animate-spin" />
                         ) : (

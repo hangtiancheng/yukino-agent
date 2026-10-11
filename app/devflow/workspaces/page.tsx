@@ -314,7 +314,7 @@ export default function DevflowWorkspacesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const items = await dfGet<WorkspaceListItem[]>("/workspaces");
         if (cancelled) {
@@ -343,7 +343,7 @@ export default function DevflowWorkspacesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!selectedId) {
         setDetail(null);
         return;

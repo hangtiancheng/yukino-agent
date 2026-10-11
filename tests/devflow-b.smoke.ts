@@ -37,7 +37,7 @@ async function main() {
   console.log("DEVFLOW-B SMOKE OK");
 }
 
-main().catch((e) => {
+main().catch((e: unknown) => {
   console.error("SMOKE FAILED:", e);
   process.exit(1);
 });

@@ -117,7 +117,7 @@ export function finalizeAiOpsRun(
         endedAt: new Date(),
       },
     })
-    .catch((e) => {
+    .catch((e: unknown) => {
       console.error("[ai_ops] run finalize failed:", e);
     });
 }

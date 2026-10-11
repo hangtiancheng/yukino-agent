@@ -78,7 +78,7 @@ export async function persistDiagnosticCase(
     alertName: alertName ?? "",
     summary: caseSummary(trimmed),
     fileName: name,
-  }).catch((e) => {
+  }).catch((e: unknown) => {
     console.error("[diagnostic-cases] case record upsert failed:", e);
   });
   return name;

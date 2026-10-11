@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     const event = request.headers.get("x-github-event");
     if (event && SYNC_EVENTS.has(event)) {
       const limit = config.devflow.autoSync.limit;
-      void syncRepository(repo.id, { limit }).catch((e) => {
+      void syncRepository(repo.id, { limit }).catch((e: unknown) => {
         console.warn(
           `[devflow:webhook] sync failed for ${fullName}:`,
           e instanceof Error ? e.message : String(e),

@@ -338,7 +338,7 @@ export async function syncRepository(
   ) {
     throw new Error(`GitHub sync failed — ${errors.join("; ")}`);
   }
-  void rebuildGraph(repoId).catch((e) => {
+  void rebuildGraph(repoId).catch((e: unknown) => {
     console.error(
       "[sync] knowledge graph rebuild failed:",
       e instanceof Error ? e.message : e,

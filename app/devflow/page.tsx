@@ -87,7 +87,7 @@ export default function DevflowDashboard() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setLoading(true);
       try {
         const data = await dfGet<DevflowStats>(
@@ -170,7 +170,9 @@ export default function DevflowDashboard() {
         }
         actions={
           <Button
-            onClick={handleSync}
+            onClick={() => {
+              void handleSync();
+            }}
             disabled={syncing || !repoId}
             variant="outline"
           >

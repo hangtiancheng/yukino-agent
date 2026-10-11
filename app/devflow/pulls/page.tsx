@@ -104,7 +104,7 @@ export default function DevflowPullsPage() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setLoading(true);
       try {
         const params = new URLSearchParams();
@@ -149,7 +149,7 @@ export default function DevflowPullsPage() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setReviewLoading(true);
       setChecklist(null);
       setChecklistOpen(false);
@@ -419,7 +419,12 @@ export default function DevflowPullsPage() {
                           ? t("checklist.generating")
                           : t("checklist.button")}
                       </Button>
-                      <Button onClick={runReview} disabled={reviewing}>
+                      <Button
+                        onClick={() => {
+                          void runReview();
+                        }}
+                        disabled={reviewing}
+                      >
                         {reviewing ? (
                           <RefreshCw className="animate-spin" />
                         ) : (
@@ -528,7 +533,11 @@ export default function DevflowPullsPage() {
 
       <Dialog
         open={checklistOpen}
-        onOpenChange={(o) => !o && setChecklistOpen(false)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setChecklistOpen(false);
+          }
+        }}
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>

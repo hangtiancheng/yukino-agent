@@ -75,8 +75,11 @@ export async function POST(request: Request) {
     const durationMs = Date.now() - started;
 
     const results = docs.map((doc) => ({
-      docId: String(doc.metadata.doc_id ?? ""),
-      docName: String(doc.metadata.doc_name ?? "unknown"),
+      docId: typeof doc.metadata.doc_id === "string" ? doc.metadata.doc_id : "",
+      docName:
+        typeof doc.metadata.doc_name === "string"
+          ? doc.metadata.doc_name
+          : "unknown",
       chunkIndex: Number(doc.metadata.chunk_index ?? 0),
       sourceType:
         typeof doc.metadata.source_type === "string"

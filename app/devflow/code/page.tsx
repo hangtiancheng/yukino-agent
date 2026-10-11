@@ -86,7 +86,7 @@ export default function DevflowCodePage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!repoId) {
         setWorkspace(null);
         setIndexState(null);
@@ -125,7 +125,7 @@ export default function DevflowCodePage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!repoId || !workspace?.cloned) {
         setEntries([]);
         return;
@@ -377,7 +377,9 @@ export default function DevflowCodePage() {
                       variant="ghost"
                       size="sm"
                       className="h-6 text-xs"
-                      onClick={handleSnooze}
+                      onClick={() => {
+                        void handleSnooze();
+                      }}
                     >
                       {t("snooze")}
                     </Button>
@@ -564,9 +566,11 @@ export default function DevflowCodePage() {
                       <button
                         key={entry.path}
                         onClick={() => {
-                          entry.type === "dir"
-                            ? setBrowsePath(entry.path)
-                            : void openFile(entry.path);
+                          if (entry.type === "dir") {
+                            setBrowsePath(entry.path);
+                          } else {
+                            void openFile(entry.path);
+                          }
                         }}
                         className="hover:bg-accent/50 flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors"
                       >

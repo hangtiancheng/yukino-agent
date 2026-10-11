@@ -19,7 +19,7 @@ export function useMarkdown(text: string) {
           setHtml(result);
         }
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error("[useMarkdown] render failed:", err);
       });
 

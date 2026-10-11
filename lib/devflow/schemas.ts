@@ -117,7 +117,7 @@ export const RepoConnectSchema = z
     owner: z.string().min(1).max(200).optional(),
     repo: z.string().min(1).max(200).optional(),
     provider: z.enum(["github", "github_compatible"]).default("github"),
-    apiBaseUrl: z.string().url().optional(),
+    apiBaseUrl: z.url().optional(),
     token: z.string().min(1).optional(),
     localPath: z.string().min(1).max(1000).optional(),
     cloneParentDir: z.string().min(1).max(1000).optional(),

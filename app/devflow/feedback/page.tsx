@@ -138,7 +138,7 @@ export default function DevflowFeedbackPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!repoId) {
         setMetrics(null);
         setRows([]);
@@ -439,7 +439,11 @@ export default function DevflowFeedbackPage() {
 
       <Dialog
         open={trace !== null || traceLoading}
-        onOpenChange={(o) => !o && setTrace(null)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setTrace(null);
+          }
+        }}
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -492,7 +496,11 @@ export default function DevflowFeedbackPage() {
 
       <Dialog
         open={reviewTarget !== null}
-        onOpenChange={(o) => !o && setReviewTarget(null)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setReviewTarget(null);
+          }
+        }}
       >
         <DialogContent>
           <DialogHeader>

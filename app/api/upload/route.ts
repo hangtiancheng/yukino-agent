@@ -90,7 +90,9 @@ export async function POST(request: Request) {
     let skipped = false;
     try {
       skipped = sha256(await readFile(target)) === sha256(buffer);
-    } catch {}
+    } catch {
+      // missing or unreadable target: not a skip, proceed to write
+    }
 
     let chunks = 0;
     if (!skipped) {

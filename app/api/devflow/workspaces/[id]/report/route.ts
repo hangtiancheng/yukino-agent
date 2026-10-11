@@ -53,7 +53,7 @@ export async function POST(request: Request, context: RouteContext) {
         generationMode: result.generationMode,
         repoReportsTriggered: result.repoReportsTriggered,
       },
-    }).catch((err) => {
+    }).catch((err: unknown) => {
       console.warn(
         "[devflow:audit] failed to record workspace.multi_repo_report:",
         err instanceof Error ? err.message : String(err),

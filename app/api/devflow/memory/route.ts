@@ -16,7 +16,7 @@ async function resolveRepoId(request: Request): Promise<string | null> {
   if (fromQuery.success) {
     return fromQuery.data.repoId;
   }
-  const body = await request.json().catch(() => null);
+  const body: unknown = await request.json().catch(() => null);
   const fromBody = MemoryRepoQuerySchema.safeParse(body);
   return fromBody.success ? fromBody.data.repoId : null;
 }

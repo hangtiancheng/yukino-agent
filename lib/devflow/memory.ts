@@ -1086,7 +1086,7 @@ export function recordRecallEvent(input: RecallEventInput): void {
         metadataJson: JSON.parse(JSON.stringify(input.metadata ?? {})),
       },
     })
-    .catch((e) => {
+    .catch((e: unknown) => {
       console.warn(
         "[devflow:memory] recall event persistence failed:",
         e instanceof Error ? e.message : String(e),

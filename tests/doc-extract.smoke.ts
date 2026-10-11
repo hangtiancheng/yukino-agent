@@ -126,7 +126,7 @@ async function main() {
   console.log("DOC-EXTRACT SMOKE OK");
 }
 
-main().catch((e) => {
+main().catch((e: unknown) => {
   console.error("DOC-EXTRACT SMOKE FAILED:", e);
   process.exit(1);
 });

@@ -95,7 +95,7 @@ export default function DevflowDraftsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setLoading(true);
       try {
         const params = new URLSearchParams();
@@ -140,7 +140,7 @@ export default function DevflowDraftsPage() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setAuditLoading(true);
       try {
         const params = new URLSearchParams({ limit: "50" });

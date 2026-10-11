@@ -84,7 +84,7 @@ export async function POST(request: Request) {
         title: input.title,
         riskLevel: input.riskLevel,
       },
-    }).catch((e) => {
+    }).catch((e: unknown) => {
       console.warn(
         "[devflow:audit] failed to record draft creation:",
         e instanceof Error ? e.message : String(e),

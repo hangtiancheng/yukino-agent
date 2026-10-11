@@ -73,7 +73,7 @@ export default function DevflowIssuesPage() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setLoading(true);
       try {
         const params = new URLSearchParams();
@@ -118,7 +118,7 @@ export default function DevflowIssuesPage() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setAnalysisLoading(true);
       setSimilarOpen(false);
       setSimilarHits(null);
@@ -383,7 +383,12 @@ export default function DevflowIssuesPage() {
                             ? t("similar.hide")
                             : t("similar.button")}
                       </Button>
-                      <Button onClick={runAnalysis} disabled={analyzing}>
+                      <Button
+                        onClick={() => {
+                          void runAnalysis();
+                        }}
+                        disabled={analyzing}
+                      >
                         {analyzing ? (
                           <RefreshCw className="animate-spin" />
                         ) : (

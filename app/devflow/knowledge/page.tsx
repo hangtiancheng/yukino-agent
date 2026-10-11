@@ -239,7 +239,7 @@ export default function DevflowKnowledgePage() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setDocsLoading(true);
       setTestResults(null);
       setTestDuration(null);
@@ -272,7 +272,7 @@ export default function DevflowKnowledgePage() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setConfig(null);
       setConfigStored(false);
       setIndexResult(null);

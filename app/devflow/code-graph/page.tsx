@@ -129,7 +129,7 @@ export default function DevflowCodeGraphPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!repoId) {
         setWorkspace(null);
         setStatusLoading(false);
@@ -164,7 +164,7 @@ export default function DevflowCodeGraphPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!repoId) {
         setSymbols([]);
         setRelations([]);

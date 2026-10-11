@@ -29,9 +29,13 @@ async function gitTextAt(args: string[], cwd: string): Promise<string> {
   } catch (e) {
     const msg = errorMessage(e);
     if (msg.includes("ENOENT")) {
-      throw new Error("git executable not found; cannot inspect a local repo");
+      throw new Error("git executable not found; cannot inspect a local repo", {
+        cause: e,
+      });
     }
-    throw new Error(`Failed to inspect local repository: ${msg}`);
+    throw new Error(`Failed to inspect local repository: ${msg}`, {
+      cause: e,
+    });
   }
 }
 
@@ -164,7 +168,9 @@ export async function POST(request: Request) {
       let remoteUrl = "";
       try {
         remoteUrl = await gitTextAt(["remote", "get-url", "origin"], localPath);
-      } catch {}
+      } catch {
+        // no origin remote: fall back to the local path naming below
+      }
       const remoteInfo = remoteUrl ? parseGitRemoteUrl(remoteUrl) : null;
       if (remoteInfo) {
         owner = remoteInfo.owner;

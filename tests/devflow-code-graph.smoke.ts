@@ -641,7 +641,7 @@ async function main(): Promise<void> {
 
 main()
   .then(() => process.exit(0))
-  .catch((e) => {
+  .catch((e: unknown) => {
     console.error("SMOKE FAILED:", e);
     process.exit(1);
   });

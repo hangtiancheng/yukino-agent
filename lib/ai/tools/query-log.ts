@@ -102,7 +102,7 @@ function withTimeout<T>(
         clearTimeout(timer);
         resolve(value);
       },
-      (err) => {
+      (err: unknown) => {
         clearTimeout(timer);
         reject(err);
       },
@@ -119,7 +119,8 @@ async function connectAndList(conn: ResolvedConnection): Promise<{
   const transport =
     conn.transport === "http"
       ? new StreamableHTTPClientTransport(url, { requestInit })
-      : new SSEClientTransport(url, { requestInit });
+      : // eslint-disable-next-line @typescript-eslint/no-deprecated
+        new SSEClientTransport(url, { requestInit });
   const client = new Client(
     { name: "yukino-agent", version: "1.0.0" },
     { capabilities: {} },

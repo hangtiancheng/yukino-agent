@@ -36,7 +36,9 @@ export async function PATCH(request: Request, context: RouteContext) {
         targetType: "action_draft",
         targetId: id,
         status: "denied",
-      }).catch(() => {});
+      }).catch(() => {
+        // audit write failure must not mask the 403 response
+      });
       return failRaw(403, e.message);
     }
     return failRaw(500, errorMessage(e));
@@ -57,7 +59,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         executionResult: draft.executionResult ?? null,
         errorMessage: draft.errorMessage ?? null,
       },
-    }).catch((e) => {
+    }).catch((e: unknown) => {
       console.warn(
         "[devflow:audit] failed to record draft action:",
         e instanceof Error ? e.message : String(e),

@@ -194,7 +194,7 @@ export default function DevflowWorkflowRunsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!repoId) {
         setRuns([]);
         return;
@@ -290,11 +290,15 @@ export default function DevflowWorkflowRunsPage() {
         body: JSON.stringify({ runId: plan.runId }),
       });
       if (!response.ok || !response.body) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(
-          (payload as { message?: string } | null)?.message ??
-            `${response.status}`,
-        );
+        const payload: unknown = await response.json().catch(() => null);
+        const serverMessage =
+          payload !== null &&
+          typeof payload === "object" &&
+          "message" in payload &&
+          typeof payload.message === "string"
+            ? payload.message
+            : null;
+        throw new Error(serverMessage ?? `${response.status}`);
       }
 
       const reader = response.body.getReader();
@@ -321,7 +325,9 @@ export default function DevflowWorkflowRunsPage() {
           }
           try {
             handleSseEvent(event, dataText);
-          } catch {}
+          } catch {
+            // malformed SSE frame: skip it and keep consuming the stream
+          }
         }
       }
     } catch (e) {

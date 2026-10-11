@@ -67,7 +67,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       targetType: "workspace",
       targetId: workspace.id,
       requestJson: parsed.data,
-    }).catch((err) => {
+    }).catch((err: unknown) => {
       console.warn(
         "[devflow:audit] failed to record workspace.update:",
         err instanceof Error ? err.message : String(err),
@@ -113,7 +113,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
       targetType: "workspace",
       targetId: id,
       requestJson: { name: workspace.name, repoIds: workspace.repoIds },
-    }).catch((err) => {
+    }).catch((err: unknown) => {
       console.warn(
         "[devflow:audit] failed to record workspace.delete:",
         err instanceof Error ? err.message : String(err),

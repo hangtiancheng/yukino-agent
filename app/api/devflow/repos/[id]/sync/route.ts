@@ -11,7 +11,7 @@ interface RouteContext {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const body = await request.json().catch(() => ({}));
+    const body: unknown = await request.json().catch(() => ({}));
     const parsed = RepoSyncSchema.safeParse(body);
     if (!parsed.success) {
       return await fail(400, "invalidRequest", {

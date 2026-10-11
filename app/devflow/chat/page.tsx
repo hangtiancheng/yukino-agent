@@ -227,7 +227,9 @@ function parseErrorFrame(dataText: string): {
         persisted: true,
       };
     }
-  } catch {}
+  } catch {
+    // malformed error frame: fall back to the raw text below
+  }
   return { message: dataText, persisted: false };
 }
 
@@ -283,7 +285,7 @@ export default function DevflowChatPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!repoId) {
         setConversations([]);
         setActiveConversationId(null);
@@ -320,7 +322,7 @@ export default function DevflowChatPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!repoId) {
         setSuggestions(null);
         return;
@@ -347,7 +349,7 @@ export default function DevflowChatPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!repoId) {
         setMemory(null);
         setCandidates([]);
@@ -385,7 +387,7 @@ export default function DevflowChatPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!activeConversationId) {
         setTurns([]);
         return;
@@ -477,9 +479,16 @@ export default function DevflowChatPage() {
           signal: controller.signal,
         });
         if (!response.ok || !response.body) {
-          const payload = await response.json().catch(() => null);
+          const payload: unknown = await response.json().catch(() => null);
+          const serverMessage =
+            payload !== null &&
+            typeof payload === "object" &&
+            "message" in payload &&
+            typeof payload.message === "string"
+              ? payload.message
+              : null;
           throw new Error(
-            (payload as { message?: string } | null)?.message ??
+            serverMessage ??
               t("chatRequestFailed", { status: response.status }),
           );
         }
@@ -1282,7 +1291,9 @@ export default function DevflowChatPage() {
             <Select
               value={reason}
               onValueChange={(value) => {
-                setReason(value!);
+                if (value !== null) {
+                  setReason(value);
+                }
               }}
             >
               <SelectTrigger aria-label={t("reasonLabel")}>

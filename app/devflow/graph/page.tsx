@@ -113,8 +113,7 @@ function ringLayout(
   }
   const hop = new Map<string, number>([[centerKey, 0]]);
   const queue: string[] = [centerKey];
-  for (let head = 0; head < queue.length; head++) {
-    const key = queue[head];
+  for (const key of queue) {
     const distance = hop.get(key) ?? 0;
     for (const next of adjacency.get(key) ?? []) {
       if (hop.has(next)) {
@@ -183,7 +182,7 @@ export default function DevflowGraphPage() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setSummaryLoading(true);
       setSubgraph(null);
       setQuery("");
@@ -225,7 +224,7 @@ export default function DevflowGraphPage() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setSubLoading(true);
       try {
         const params = new URLSearchParams({

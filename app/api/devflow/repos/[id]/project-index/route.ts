@@ -50,7 +50,7 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const repo = await getRepoOrThrow(id);
-    const body = await request.json().catch(() => null);
+    const body: unknown = await request.json().catch(() => null);
     const snooze = ProjectIndexSnoozeSchema.safeParse(body);
     if (snooze.success) {
       const snoozedUntil = new Date(Date.now() + snooze.data.days * 86_400_000);

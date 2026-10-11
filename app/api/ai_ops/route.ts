@@ -43,7 +43,9 @@ export async function POST(request: Request) {
       );
     }
     body = parsed.data;
-  } catch {}
+  } catch {
+    // unreadable body: proceed with an empty query
+  }
 
   const { query, alert } = buildAiOpsQuery({
     query: body.query,
@@ -58,7 +60,7 @@ export async function POST(request: Request) {
       pushRunEvent(events, event);
       if (event.type === "done") {
         void persistDiagnosticCase(event.result, event.detail, alertName).catch(
-          (e) => {
+          (e: unknown) => {
             console.error("[ai_ops] diagnostic case persistence failed:", e);
           },
         );

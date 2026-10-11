@@ -90,16 +90,27 @@ export default function Home() {
               <OncallSettings />
               <LanguageSwitcher className="bg-background/80 shadow-sm backdrop-blur-sm" />
             </div>
-            <AIOpsBtn onClick={handleAIOps} disabled={isStreaming} />
+            <AIOpsBtn
+              onClick={() => {
+                void handleAIOps();
+              }}
+              disabled={isStreaming}
+            />
             <ChatContainer
               messages={messages}
               isStreaming={isStreaming}
               sessionId={sessionId}
               mode={mode}
               onModeChange={setMode}
-              onSend={sendMessage}
-              onA2uiAction={sendA2uiAction}
-              onUpload={handleUpload}
+              onSend={(text) => {
+                void sendMessage(text);
+              }}
+              onA2uiAction={(messageIndex, action) => {
+                void sendA2uiAction(messageIndex, action);
+              }}
+              onUpload={(file) => {
+                void handleUpload(file);
+              }}
             />
             <ActiveAlertsPanel
               disabled={isStreaming}

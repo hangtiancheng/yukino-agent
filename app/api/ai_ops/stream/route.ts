@@ -39,7 +39,9 @@ export async function POST(request: Request) {
       );
     }
     body = parsed.data;
-  } catch {}
+  } catch {
+    // unreadable body: proceed with an empty query
+  }
 
   const { query, alert } = buildAiOpsQuery({
     query: body.query,
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
               event.result,
               event.detail,
               alertName,
-            ).catch((e) => {
+            ).catch((e: unknown) => {
               console.error("[ai_ops:stream] case persistence failed:", e);
             });
             const status =
@@ -108,7 +110,9 @@ export async function POST(request: Request) {
       } finally {
         try {
           controller.close();
-        } catch {}
+        } catch {
+          // controller already closed by a disconnect
+        }
       }
     },
   });

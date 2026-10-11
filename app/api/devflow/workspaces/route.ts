@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       targetType: "workspace",
       targetId: workspace.id,
       requestJson: parsed.data,
-    }).catch((err) => {
+    }).catch((err: unknown) => {
       console.warn(
         "[devflow:audit] failed to record workspace.create:",
         err instanceof Error ? err.message : String(err),

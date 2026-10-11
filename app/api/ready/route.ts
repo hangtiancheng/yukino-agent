@@ -15,7 +15,7 @@ type BaseCheckName =
   | "mcp";
 
 interface CheckResult {
-  name: BaseCheckName | string;
+  name: string;
   ok: boolean;
   latencyMs: number;
   detail: string;
@@ -33,7 +33,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 async function check(
-  name: BaseCheckName | string,
+  name: BaseCheckName,
   fn: () => Promise<{ ok: boolean; detail: string }>,
 ): Promise<CheckResult> {
   const started = Date.now();
