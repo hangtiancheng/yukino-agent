@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/select";
 import { Switch as UISwitch } from "@/components/ui/switch";
 import { Toggle as UIToggle } from "@/components/ui/toggle";
+import { asString } from "@/lib/text";
 import { weightStyle } from "@/lib/utils";
 
 import { COMMON } from "./common";
@@ -73,12 +74,12 @@ const toOptions = (raw: unknown): { label: string; value: string }[] => {
   const seen = new Set<string>();
   const result: { label: string; value: string }[] = [];
   for (const o of Array.isArray(raw) ? (raw as OptionDef[]) : []) {
-    const value = String(o.value ?? "");
+    const value = asString(o.value);
     if (seen.has(value)) {
       continue;
     }
     seen.add(value);
-    result.push({ label: String(o.label ?? ""), value });
+    result.push({ label: asString(o.label), value });
   }
   return result;
 };
@@ -231,7 +232,7 @@ export const Command = createComponentImplementation(
           {groups.map((group, i) => (
             <CommandGroup
               key={i}
-              heading={group.heading ? String(group.heading) : undefined}
+              heading={group.heading ? asString(group.heading) : undefined}
             >
               {((group.items ?? []) as CommandItemDef[]).map((item, j) => (
                 <CommandItem
@@ -242,7 +243,7 @@ export const Command = createComponentImplementation(
                       : undefined
                   }
                 >
-                  {String(item.label ?? "")}
+                  {asString(item.label)}
                 </CommandItem>
               ))}
             </CommandGroup>

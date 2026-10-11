@@ -63,6 +63,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { asString } from "@/lib/text";
 
 import { MENU_ENTRY, COMMON } from "./common";
 interface MenuEntryDef {
@@ -174,7 +175,7 @@ export const ContextMenu = createComponentImplementation(
                   : undefined
               }
             >
-              {String(item.label ?? "")}
+              {asString(item.label)}
             </ContextMenuItem>
           ))}
         </ContextMenuGroup>
@@ -259,7 +260,7 @@ export const DropdownMenu = createComponentImplementation(
                   : undefined
               }
             >
-              {String(item.label ?? "")}
+              {asString(item.label)}
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>

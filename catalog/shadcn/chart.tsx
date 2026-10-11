@@ -6,11 +6,12 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Line,
   LineChart,
   Pie,
+  type PieSectorShapeProps,
   PieChart,
+  Sector,
   XAxis,
 } from "recharts";
 import { z } from "zod/v3";
@@ -23,6 +24,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { asString } from "@/lib/text";
 import { weightStyle } from "@/lib/utils";
 
 import { COMMON } from "./common";
@@ -76,6 +78,10 @@ const PALETTE = [
   "var(--chart-5)",
 ];
 
+const PieSlice = (props: PieSectorShapeProps) => (
+  <Sector {...props} fill={PALETTE[props.index % PALETTE.length]} />
+);
+
 export const Chart = createComponentImplementation(ChartApi, ({ props }) => {
   const data = (Array.isArray(props.data) ? props.data : []) as Record<
     string,
@@ -100,16 +106,12 @@ export const Chart = createComponentImplementation(ChartApi, ({ props }) => {
   };
 
   if (props.variant === "pie") {
-    const key = String(series[0]?.key ?? "value");
+    const key = asString(series[0]?.key, "value");
     return (
       <ChartContainer {...containerProps}>
         <PieChart>
           <ChartTooltip content={<ChartTooltipContent nameKey={xKey} />} />
-          <Pie data={data} dataKey={key} nameKey={xKey}>
-            {data.map((_, i) => (
-              <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-            ))}
-          </Pie>
+          <Pie data={data} dataKey={key} nameKey={xKey} shape={PieSlice} />
         </PieChart>
       </ChartContainer>
     );

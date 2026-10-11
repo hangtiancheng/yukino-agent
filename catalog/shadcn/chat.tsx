@@ -49,6 +49,7 @@ import {
   QuestionnaireSubmit,
   QuestionnaireTitle,
 } from "@/components/ui/questionnaire";
+import { asString } from "@/lib/text";
 import { weightStyle } from "@/lib/utils";
 
 import { ICON_NAME, COMMON } from "./common";
@@ -352,19 +353,19 @@ export const Questionnaire = createComponentImplementation(
           }
         }}
         items={items.map((item, i) => ({
-          name: String(item.name ?? `question-${i}`),
+          name: asString(item.name, `question-${i}`),
           required: !item.optional,
           ...(item.input || toChoices(item.choices).length === 0
             ? {}
             : {
                 choices: toChoices(item.choices).map((c) => ({
-                  value: String(c.value ?? ""),
+                  value: asString(c.value),
                 })),
               }),
         }))}
       >
         {items.map((item, i) => {
-          const name = String(item.name ?? `question-${i}`);
+          const name = asString(item.name, `question-${i}`);
           const raw = item.value;
           const selected = Array.isArray(raw)
             ? (raw as unknown[]).map(String)
@@ -390,12 +391,10 @@ export const Questionnaire = createComponentImplementation(
               multiple={!!item.multiple}
               required={!item.optional}
             >
-              <QuestionnaireTitle>
-                {String(item.title ?? "")}
-              </QuestionnaireTitle>
+              <QuestionnaireTitle>{asString(item.title)}</QuestionnaireTitle>
               {item.description ? (
                 <QuestionnaireDescription>
-                  {String(item.description)}
+                  {asString(item.description)}
                 </QuestionnaireDescription>
               ) : null}
               {useInput ? (
@@ -406,7 +405,7 @@ export const Questionnaire = createComponentImplementation(
               ) : (
                 <QuestionnaireChoices>
                   {toChoices(item.choices).map((choice, j) => {
-                    const value = String(choice.value ?? "");
+                    const value = asString(choice.value);
                     return (
                       <QuestionnaireChoice
                         key={j}
@@ -416,10 +415,10 @@ export const Questionnaire = createComponentImplementation(
                           toggle(value, e.target.checked);
                         }}
                       >
-                        {String(choice.label ?? value)}
+                        {asString(choice.label, value)}
                         {choice.description ? (
                           <QuestionnaireChoiceDescription>
-                            {String(choice.description)}
+                            {asString(choice.description)}
                           </QuestionnaireChoiceDescription>
                         ) : null}
                       </QuestionnaireChoice>

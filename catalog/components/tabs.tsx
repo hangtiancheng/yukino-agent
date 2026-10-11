@@ -7,6 +7,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { asString } from "@/lib/text";
 
 interface Tab {
   title?: unknown;
@@ -26,7 +27,7 @@ export const Tabs = createComponentImplementation(
         <TabsList>
           {tabs.map((tab, i) => (
             <TabsTrigger key={i} value={i}>
-              {String(tab.title ?? "")}
+              {asString(tab.title)}
             </TabsTrigger>
           ))}
         </TabsList>

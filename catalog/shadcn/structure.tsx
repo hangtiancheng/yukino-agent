@@ -43,6 +43,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { asString } from "@/lib/text";
 import { cn } from "@/lib/utils";
 import { weightStyle } from "@/lib/utils";
 
@@ -84,7 +85,7 @@ export const Accordion = createComponentImplementation(
       <UIAccordion style={weightStyle(props.weight)}>
         {items.map((item, i) => (
           <AccordionItem key={i} value={i}>
-            <AccordionTrigger>{String(item.title ?? "")}</AccordionTrigger>
+            <AccordionTrigger>{asString(item.title)}</AccordionTrigger>
             <AccordionContent>
               {typeof item.child === "string" ? buildChild(item.child) : null}
             </AccordionContent>
@@ -320,7 +321,7 @@ export const Table = createComponentImplementation(TableApi, ({ props }) => {
         <TableHeader>
           <TableRow>
             {columns.map((col, i) => (
-              <TableHead key={i}>{String(col.header ?? "")}</TableHead>
+              <TableHead key={i}>{asString(col.header)}</TableHead>
             ))}
           </TableRow>
         </TableHeader>
@@ -333,7 +334,7 @@ export const Table = createComponentImplementation(TableApi, ({ props }) => {
                   <TableCell key={ci}>
                     {typeof cell === "object" && cell !== null
                       ? JSON.stringify(cell)
-                      : String(cell ?? "")}
+                      : asString(cell)}
                   </TableCell>
                 );
               })}

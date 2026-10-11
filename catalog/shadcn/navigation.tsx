@@ -41,6 +41,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { asString } from "@/lib/text";
 import { cn, weightStyle } from "@/lib/utils";
 
 import { MENU_ENTRY, COMMON } from "./common";
@@ -88,7 +89,7 @@ export const Breadcrumb = createComponentImplementation(
               <Fragment key={i}>
                 <BreadcrumbItem>
                   {isLast ? (
-                    <BreadcrumbPage>{String(item.label ?? "")}</BreadcrumbPage>
+                    <BreadcrumbPage>{asString(item.label)}</BreadcrumbPage>
                   ) : (
                     <BreadcrumbLink
                       className="cursor-pointer"
@@ -98,7 +99,7 @@ export const Breadcrumb = createComponentImplementation(
                           : undefined
                       }
                     >
-                      {String(item.label ?? "")}
+                      {asString(item.label)}
                     </BreadcrumbLink>
                   )}
                 </BreadcrumbItem>
@@ -147,7 +148,7 @@ export const Menubar = createComponentImplementation(
       <UIMenubar style={weightStyle(props.weight)}>
         {menus.map((menu, i) => (
           <MenubarMenu key={i}>
-            <MenubarTrigger>{String(menu.label ?? "")}</MenubarTrigger>
+            <MenubarTrigger>{asString(menu.label)}</MenubarTrigger>
             <MenubarContent>
               <MenubarGroup>
                 {((menu.items ?? []) as MenuEntryDef[]).map((item, j) => (
@@ -163,7 +164,7 @@ export const Menubar = createComponentImplementation(
                         : undefined
                     }
                   >
-                    {String(item.label ?? "")}
+                    {asString(item.label)}
                   </MenubarItem>
                 ))}
               </MenubarGroup>
@@ -217,7 +218,7 @@ export const NavigationMenu = createComponentImplementation(
               {typeof item.child === "string" ? (
                 <>
                   <NavigationMenuTrigger>
-                    {String(item.label ?? "")}
+                    {asString(item.label)}
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
                     {buildChild(item.child)}
@@ -232,7 +233,7 @@ export const NavigationMenu = createComponentImplementation(
                       : undefined
                   }
                 >
-                  {String(item.label ?? "")}
+                  {asString(item.label)}
                 </NavigationMenuLink>
               )}
             </NavigationMenuItem>
@@ -298,7 +299,11 @@ export const Pagination = createComponentImplementation(
                 atFirst && "pointer-events-none opacity-50",
               )}
               aria-disabled={atFirst || undefined}
-              onClick={() => !atFirst && go(page - 1)}
+              onClick={() => {
+                if (!atFirst) {
+                  go(page - 1);
+                }
+              }}
             />
           </PaginationItem>
           {pageWindow(page, total).map((entry, i) => (
@@ -325,7 +330,11 @@ export const Pagination = createComponentImplementation(
                 atLast && "pointer-events-none opacity-50",
               )}
               aria-disabled={atLast || undefined}
-              onClick={() => !atLast && go(page + 1)}
+              onClick={() => {
+                if (!atLast) {
+                  go(page + 1);
+                }
+              }}
             />
           </PaginationItem>
         </PaginationContent>
