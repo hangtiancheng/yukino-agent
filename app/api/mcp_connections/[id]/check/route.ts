@@ -13,7 +13,7 @@ const CORS_HEADERS = {
 
 const adhocSchema = z.object({
   transport: z.enum(["sse", "http"]).optional(),
-  url: z.string().url().optional(),
+  url: z.url().optional(),
   headers: z.record(z.string(), z.string()).optional(),
 });
 

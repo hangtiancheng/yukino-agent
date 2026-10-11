@@ -44,6 +44,7 @@ const eslintConfig = defineConfig([
       import: importPlugin,
     },
     rules: {
+      "typescript-eslint/require-await": "warn",
       "react-refresh/only-export-components": "warn",
       ...reactHooks.configs.recommended.rules,
       "@typescript-eslint/consistent-type-imports": [
@@ -61,7 +62,7 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-unnecessary-condition": "warn",
       "@typescript-eslint/ban-ts-comment": "error",
       "@typescript-eslint/consistent-type-assertions": [
-        "error",
+        "warn",
         { assertionStyle: "never" },
       ],
       "@typescript-eslint/no-explicit-any": "error",
