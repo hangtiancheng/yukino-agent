@@ -14,6 +14,11 @@ import { searchKnowledge } from "@/lib/devflow/rag";
 import { analyzeIssue, debugRun, reviewPull } from "./analysis";
 import { generateWeeklyReport } from "./report";
 import {
+  agentNameForTaskType,
+  executeWorkflow,
+  planWorkflow,
+} from "./workflow";
+import {
   listFiles,
   readCodeFile,
   requireCheckout,
@@ -974,6 +979,67 @@ function buildTools(
               createdAt: m.createdAt.toISOString(),
               content: clipBody(m.content, 4000),
             })),
+          });
+        } catch (e) {
+          return pack({ error: e instanceof Error ? e.message : String(e) });
+        }
+      },
+    }),
+    run_engineering_workflow: tool({
+      description:
+        "Run a bounded multi-agent engineering workflow (Planner -> parallel task agents -> Observer -> Synthesis) over the repository's synced issues/PRs/CI. Use for merge-readiness, current blockers, priority planning, or any cross-cutting decision that needs Issue + PR + CI + knowledge synthesis. Read-only: it never writes to GitHub. Returns a decision memo plus a workflow run id; it can take a while on large repositories.",
+      inputSchema: z.object({
+        goal: z
+          .string()
+          .min(1)
+          .max(2000)
+          .describe(
+            "The engineering question or objective to investigate, e.g. 'Is PR #42 ready to merge?' or 'What are the current blockers for the v2 release?'",
+          ),
+      }),
+      execute: async ({ goal }) => {
+        try {
+          const planned = await planWorkflow(repoId, goal);
+          if (!planned) {
+            return pack({
+              error:
+                "Repository not found or it has no synced data to plan over.",
+            });
+          }
+          const run = await prisma.agentWorkflowRun.create({
+            data: {
+              repoId,
+              conversationId,
+              goal,
+              specJson: planned.spec as object,
+              status: "running",
+              tasks: {
+                create: planned.spec.claims.map((claim) => ({
+                  taskId: claim.id,
+                  agentName: agentNameForTaskType(claim.task_type),
+                  taskType: claim.task_type,
+                  claimJson: claim as object,
+                  status: "pending",
+                })),
+              },
+            },
+          });
+          const outcome = await executeWorkflow({ runId: run.id });
+          const finished = await prisma.agentWorkflowRun.findUnique({
+            where: { id: run.id },
+          });
+          return pack({
+            workflow_run_id: run.id,
+            status: outcome.status,
+            generation_mode: planned.generationMode,
+            task_count: outcome.metrics.taskCount,
+            success_count: outcome.metrics.successCount,
+            failed_count: outcome.metrics.failedCount,
+            skipped_count: outcome.metrics.skippedCount,
+            replan_count: outcome.metrics.replanCount,
+            duration_ms: outcome.metrics.durationMs,
+            memo: clipBody(finished?.finalAnswer ?? "", 12_000),
+            note: "The full task timeline is available on the Workflow Runs page.",
           });
         } catch (e) {
           return pack({ error: e instanceof Error ? e.message : String(e) });

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { stat } from "node:fs/promises";
 import { z } from "zod/v4";
 import { prisma } from "@/lib/db";
 import { config } from "@/lib/config";
@@ -7,6 +8,7 @@ import {
   getRepoOrThrow,
   listFiles,
   readCodeFile,
+  repoCheckoutPath,
   requireCheckout,
   workspaceStatus,
 } from "./workspace";
@@ -500,6 +502,96 @@ export async function searchSymbols(
     take: limit * 2,
   });
   return rankSymbolMatches(rows, query).slice(0, limit);
+}
+
+export interface CodeRelationView {
+  id: string;
+  sourceName: string | null;
+  targetName: string;
+  type: string;
+  path: string | null;
+  line: number | null;
+}
+
+export interface CodeExcerpt {
+  path: string;
+  symbol: string;
+  startLine: number;
+  endLine: number;
+  snippet: string;
+}
+
+export interface CodeGraphSearchResult {
+  query: string;
+  symbols: CodeSymbol[];
+  relations: CodeRelationView[];
+  documents: CodeExcerpt[];
+}
+
+const EXCERPT_LINE_COUNT = 7;
+const EXCERPT_MAX_CHARS = 1200;
+
+export async function searchCodeGraph(
+  repoId: string,
+  filters: SymbolSearchFilters = {},
+): Promise<CodeGraphSearchResult> {
+  const limit = Math.min(Math.max(filters.limit ?? 50, 1), 200);
+  const query = filters.query?.trim() ?? "";
+  const symbols = await searchSymbols(repoId, { ...filters, limit });
+
+  const names = [...new Set(symbols.map((symbol) => symbol.name))];
+  let relations: CodeRelationView[] = [];
+  if (names.length > 0) {
+    const rows = await prisma.codeRelation.findMany({
+      where: {
+        repoId,
+        prNumber: null,
+        OR: [{ sourceName: { in: names } }, { targetName: { in: names } }],
+      },
+      orderBy: [{ path: "asc" }],
+      take: limit * 4,
+    });
+    relations = rows.map((row) => ({
+      id: row.id,
+      sourceName: row.sourceName,
+      targetName: row.targetName,
+      type: row.type,
+      path: row.path,
+      line: metaLine(row.meta),
+    }));
+  }
+
+  const documents: CodeExcerpt[] = [];
+  const repo = await prisma.repository
+    .findUnique({ where: { id: repoId } })
+    .catch(() => null);
+  if (repo) {
+    const checkout = repoCheckoutPath(repo);
+    const checkoutStat = await stat(checkout).catch(() => null);
+    if (checkoutStat?.isDirectory()) {
+      for (const symbol of symbols) {
+        if (documents.length >= limit) break;
+        if (symbol.startLine === null) continue;
+        try {
+          const excerpt = await readCodeFile(checkout, symbol.path, {
+            startLine: symbol.startLine,
+            lineCount: EXCERPT_LINE_COUNT,
+          });
+          documents.push({
+            path: symbol.path,
+            symbol: symbol.name,
+            startLine: excerpt.startLine,
+            endLine: excerpt.endLine,
+            snippet: excerpt.content.slice(0, EXCERPT_MAX_CHARS),
+          });
+        } catch {
+          // The file is missing from the checkout or unreadable; skip its excerpt.
+        }
+      }
+    }
+  }
+
+  return { query, symbols, relations, documents };
 }
 
 export function normalizeFilePath(filePath: string): string {

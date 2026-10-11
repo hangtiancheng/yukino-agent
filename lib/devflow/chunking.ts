@@ -296,7 +296,7 @@ function overlapBlocks(blocks: Block[], overlap: number): Block[] {
       offset - Math.min(64, Math.max(16, allowance * 2)),
     );
     const lookback = b.text.slice(lookbackStart, offset);
-    const sentenceBoundaries = [...lookback.matchAll(/[。！？.!?；;]\s*/g)];
+    const sentenceBoundaries = [...lookback.matchAll(/[。！？.!?; ;]\s*/g)];
     const wordBoundaries = [...lookback.matchAll(/\s+/g)];
     let fragmentOffset: number;
     if (sentenceBoundaries.length > 0) {
@@ -312,7 +312,7 @@ function overlapBlocks(blocks: Block[], overlap: number): Block[] {
         offset,
         offset + Math.min(48, Math.max(8, Math.floor(allowance / 3))),
       );
-      const boundary = /\s+|[。！？.!?；;]\s*/.exec(boundaryWindow);
+      const boundary = /\s+|[。！？.!?; ;]\s*/.exec(boundaryWindow);
       fragmentOffset = boundary
         ? offset + boundary.index + boundary[0].length
         : offset;

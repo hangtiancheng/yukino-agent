@@ -146,7 +146,7 @@ function checkPreservation() {
     {
       role: "user",
       content:
-        "The build fails in src/lib/retriever.ts:42 with TypeError.\nRun pnpm test to reproduce.\n决定：先修复 rerank 降级路径",
+        "The build fails in src/lib/retriever.ts:42 with TypeError.\nRun pnpm test to reproduce.\n决定: 先修复 rerank 降级路径",
     },
     { role: "assistant", content: "ok" },
   ];
@@ -201,18 +201,18 @@ function checkSummaryBuilding() {
   const formatted = formatCompactionSummary(
     "<analysis>thinking</analysis>\n<summary>line1\n\n\n\nline2</summary>",
   );
-  assert.ok(formatted.startsWith("摘要："));
+  assert.ok(formatted.startsWith("摘要: "));
   assert.ok(formatted.includes("line1\n\nline2"), "3+ newlines collapsed");
   assert.ok(!formatted.includes("<analysis>"));
 
   const fallback = fallbackCompactionSummary([
     {
       role: "user",
-      content: "请修复 src/a.ts 的报错\n决定：采用方案 B\nTODO: 补充测试",
+      content: "请修复 src/a.ts 的报错\n决定: 采用方案 B\nTODO: 补充测试",
     },
     {
       role: "assistant",
-      content: "已完成修复，这是一条足够长的助手回复内容用于进入事实列表。",
+      content: "已完成修复, 这是一条足够长的助手回复内容用于进入事实列表",
     },
   ]);
   assert.ok(fallback.includes("User intent:"));

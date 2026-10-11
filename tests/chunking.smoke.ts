@@ -25,11 +25,11 @@ function doc(
 
 function checkPlain() {
   const text =
-    "第一段说明登录流程。".repeat(8) +
+    "第一段说明登录流程".repeat(8) +
     "\n\n" +
-    "第二段说明刷新令牌。".repeat(8) +
+    "第二段说明刷新令牌".repeat(8) +
     "\n\n" +
-    "第三段说明退出流程。".repeat(8);
+    "第三段说明退出流程".repeat(8);
   const chunks = chunkDocument(text, "notes.txt", 190, 20);
   assert.ok(chunks.length >= 2, "plain: multiple chunks");
   assert.ok(

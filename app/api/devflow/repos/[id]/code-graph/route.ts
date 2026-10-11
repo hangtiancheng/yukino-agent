@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { rebuildCodeGraph, searchSymbols } from "@/lib/devflow/code-graph";
+import { rebuildCodeGraph, searchCodeGraph } from "@/lib/devflow/code-graph";
 import { errorMessage, fail, failRaw, ok } from "@/lib/devflow/http";
 import { getRepoOrThrow, WorkspaceError } from "@/lib/devflow/workspace";
 
@@ -31,11 +31,13 @@ export async function GET(request: Request, context: RouteContext) {
       });
     }
     await getRepoOrThrow(id);
-    const symbols = await searchSymbols(id, parsed.data);
+    const result = await searchCodeGraph(id, parsed.data);
     return ok({
-      query: parsed.data.query ?? "",
-      count: symbols.length,
-      symbols,
+      query: result.query,
+      count: result.symbols.length,
+      symbols: result.symbols,
+      relations: result.relations,
+      documents: result.documents,
     });
   } catch (e) {
     if (e instanceof WorkspaceError) return failRaw(e.status, e.message);

@@ -99,7 +99,22 @@ Restored on top of the initial port:
   the synced GitHub content index; successor of `devflow_search_evidence`),
   `read_conversation_transcript` (verbatim transcript reading that reaches past
   the context window; successor of `devflow_get_thread_context`) and the existing
-  `memory_recall` / `memory_propose`. Each recall audits a `RecallEvent` row.
+  `memory_recall` / `memory_propose`. Each recall audits a `RecallEvent` row. The
+  third legacy tool, `devflow_read_session_events` (sealed-session recall), is
+  covered by `memory_recall` + `read_conversation_transcript`, since sealing now
+  persists `ConversationMemory` snapshots instead of separate sealed sessions.
+- Code-graph search relations + code excerpts — the legacy
+  `GET /repos/{id}/code-graph/search` returned matched symbols together with the
+  import/call/define relations between them and a short code excerpt per symbol;
+  the port returns all three again (`searchCodeGraph` in `lib/devflow/code-graph.ts`)
+  and the Code Graph page renders them. Excerpts are read from the managed
+  checkout, so they appear once the repository is cloned (Code page).
+- DevFlow chat workflow tool — the legacy chat agent could autonomously run a
+  bounded multi-agent engineering review (`workflow.run_engineering_review`); the
+  chat agent exposes this again as the `run_engineering_workflow` tool, which
+  plans bounded claims, runs the task agents in parallel, observes and synthesizes
+  a decision memo, and persists an `AgentWorkflowRun` (the same runtime that backs
+  the Workflow Runs page).
 
 Deliberate divergences:
 
@@ -151,6 +166,12 @@ DevFlow (from `DevFlow-AI`):
   chat history; the Milvus GitHub content index (semantic search over synced
   issues / PRs / CI logs) supersedes it in
   `GET /api/devflow/repos/:id/memory/search`.
+- **Search metadata filters not ported** — legacy `POST /api/search` (and the
+  retrieval-test request) accepted structured entity metadata filters
+  (label / path / module / state / start_date / end_date) applied to GitHub
+  issue/PR/CI documents; the port's `POST /api/devflow/knowledge/search` filters by
+  scope (kb / item / project) and `sourceType` instead. These filters were never
+  surfaced in the legacy UI and do not map onto the Milvus source-prefix model.
 - **Streaming-only chat** — legacy also exposed a non-streaming `POST /api/chat`;
   the port streams SSE exclusively.
 - **`thinking_delta` second-LLM stream not ported** (documented in

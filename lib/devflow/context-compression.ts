@@ -438,7 +438,7 @@ export function ensureCompactionSummaryPreservesKeyFacts(
     return { summary: clipToTokenBudget(summary, maxTokens), report };
   }
   const appendix = [
-    "保真补充：",
+    "保真补充: ",
     ...missing.slice(0, 12).map((item) => `- ${clipToTokenBudget(item, 96)}`),
   ].join("\n");
   const bodyBudget = Math.max(160, maxTokens - estimateTokens(appendix) - 12);
@@ -457,18 +457,18 @@ export function ensureCompactionSummaryPreservesKeyFacts(
 // ---------------------------------------------------------------------------
 // Compaction summary building (ported).
 // ---------------------------------------------------------------------------
-export const COMPACT_SUMMARY_SYSTEM_PROMPT = `请在上下文压缩后，为 DevFlow AI 创建一份可延续工作的摘要。
-目标不是单纯减少 token，而是为软件工程 Agent 保留工作连续性。
+export const COMPACT_SUMMARY_SYSTEM_PROMPT = `请在上下文压缩后, 为 DevFlow AI 创建一份可延续工作的摘要;
+目标不是单纯减少 token, 而是为软件工程 Agent 保留工作连续性
 
-请用纯文本返回以下部分：
-1. 用户意图和明确要求。
-2. 当前工作面：现在正在处理什么；如相关，请包含仓库、文件、函数、命令、测试和 UI 状态。
-3. 持久决策和约束。
-4. 重要事实、代码引用、错误和修复。
-5. 待办任务和下一步，并以最近一次用户请求为依据。
+请用纯文本返回以下部分: 
+1. 用户意图和明确要求
+2. 当前工作面: 现在正在处理什么; 如相关, 请包含仓库、文件、函数、命令、测试和 UI 状态
+3. 持久决策和约束
+4. 重要事实、代码引用、错误和修复
+5. 待办任务和下一步, 并以最近一次用户请求为依据
 
-当文件路径、标识符、日期、命令、错误消息和用户偏好很重要时，请保留原文。
-不要编造细节。如果某个细节只存在于可以重新生成的工具输出中，请说明它可以通过相关工具恢复。`;
+当文件路径、标识符、日期、命令、错误消息和用户偏好很重要时, 请保留原文;
+不要编造细节, 如果某个细节只存在于可以重新生成的工具输出中, 请说明它可以通过相关工具恢复`;
 
 export function buildCompactionSummaryPayload(
   messages: readonly HistoryMessage[],
@@ -497,7 +497,7 @@ export function formatCompactionSummary(summary: string): string {
   let formatted = String(summary ?? "").trim();
   formatted = formatted.replace(/<analysis>[\s\S]*?<\/analysis>/gi, "").trim();
   const match = /<summary>([\s\S]*?)<\/summary>/i.exec(formatted);
-  if (match) formatted = `摘要：\n${match[1].trim()}`;
+  if (match) formatted = `摘要: \n${match[1].trim()}`;
   return formatted.replace(/\n{3,}/g, "\n\n").trim();
 }
 
@@ -671,7 +671,7 @@ export function renderStructuredMemory(
 ): string {
   const sections: string[] = [];
   const summary = String(memory.summary ?? "").trim();
-  if (summary) sections.push(`摘要：\n${summary}`);
+  if (summary) sections.push(`摘要: \n${summary}`);
   const groups: Array<[string, string[]]> = [
     ["事实", stringList(memory.facts)],
     ["决策", stringList(memory.decisions)],

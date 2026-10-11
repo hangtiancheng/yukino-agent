@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { GitBranch, Network, RefreshCw, Search, Share2 } from "lucide-react";
+import {
+  FileCode2,
+  GitBranch,
+  Network,
+  RefreshCw,
+  Search,
+  Share2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,10 +39,29 @@ interface SymbolRow {
   commitSha: string | null;
 }
 
+interface RelationRow {
+  id: string;
+  sourceName: string | null;
+  targetName: string;
+  type: string;
+  path: string | null;
+  line: number | null;
+}
+
+interface ExcerptRow {
+  path: string;
+  symbol: string;
+  startLine: number;
+  endLine: number;
+  snippet: string;
+}
+
 interface SymbolSearchResponse {
   query: string;
   count: number;
   symbols: SymbolRow[];
+  relations: RelationRow[];
+  documents: ExcerptRow[];
 }
 
 interface RebuildSummary {
@@ -92,6 +118,8 @@ export default function DevflowCodeGraphPage() {
   const [language, setLanguage] = useState("");
   const [committed, setCommitted] = useState<CommittedFilters | null>(null);
   const [symbols, setSymbols] = useState<SymbolRow[]>([]);
+  const [relations, setRelations] = useState<RelationRow[]>([]);
+  const [documents, setDocuments] = useState<ExcerptRow[]>([]);
   const [symbolsLoading, setSymbolsLoading] = useState(false);
 
   const [impactInput, setImpactInput] = useState("");
@@ -110,6 +138,8 @@ export default function DevflowCodeGraphPage() {
       setSummary(null);
       setCommitted(null);
       setSymbols([]);
+      setRelations([]);
+      setDocuments([]);
       setImpact(null);
       try {
         const ws = await dfGet<WorkspaceStatus>(`/repos/${repoId}/workspace`);
@@ -130,6 +160,8 @@ export default function DevflowCodeGraphPage() {
     (async () => {
       if (!repoId) {
         setSymbols([]);
+        setRelations([]);
+        setDocuments([]);
         return;
       }
       setSymbolsLoading(true);
@@ -142,10 +174,16 @@ export default function DevflowCodeGraphPage() {
         const result = await dfGet<SymbolSearchResponse>(
           `/repos/${repoId}/code-graph?${params.toString()}`,
         );
-        if (!cancelled) setSymbols(result.symbols);
+        if (!cancelled) {
+          setSymbols(result.symbols);
+          setRelations(result.relations ?? []);
+          setDocuments(result.documents ?? []);
+        }
       } catch (e) {
         if (!cancelled) {
           setSymbols([]);
+          setRelations([]);
+          setDocuments([]);
           notify.error(e instanceof Error ? e.message : String(e));
         }
       } finally {
@@ -364,6 +402,80 @@ export default function DevflowCodeGraphPage() {
             <EmptyDescription>{t("emptyDescription")}</EmptyDescription>
           </Empty>
         )}
+
+        {relations.length > 0 ? (
+          <div className="mt-5 space-y-2">
+            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              {t("relationsTitle", { count: relations.length })}
+            </p>
+            <div className="border-border bg-card overflow-hidden rounded-lg border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-muted-foreground border-border border-b text-left text-xs">
+                    <th className="px-3 py-2 font-medium">{t("colSource")}</th>
+                    <th className="px-3 py-2 font-medium">
+                      {t("colRelation")}
+                    </th>
+                    <th className="px-3 py-2 font-medium">{t("colTarget")}</th>
+                    <th className="px-3 py-2 font-medium">
+                      {t("colLocation")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-border divide-y">
+                  {relations.map((relation) => (
+                    <tr key={relation.id} className="hover:bg-accent/40">
+                      <td className="px-3 py-1.5 font-mono text-xs">
+                        {relation.sourceName ?? "—"}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <Badge variant="outline" className="text-[10px]">
+                          {relation.type}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-1.5 font-mono text-xs">
+                        {relation.targetName}
+                      </td>
+                      <td className="text-muted-foreground max-w-72 truncate px-3 py-1.5 font-mono text-xs">
+                        {relation.path ?? "—"}
+                        {relation.line !== null ? `:${relation.line}` : ""}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
+
+        {documents.length > 0 ? (
+          <div className="mt-5 space-y-2">
+            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              {t("documentsTitle", { count: documents.length })}
+            </p>
+            <div className="space-y-2">
+              {documents.map((doc) => (
+                <div
+                  key={`${doc.path}:${doc.startLine}`}
+                  className="border-border bg-card overflow-hidden rounded-lg border"
+                >
+                  <div className="border-border bg-muted/40 text-muted-foreground flex items-center gap-2 border-b px-3 py-1.5 font-mono text-xs">
+                    <FileCode2 className="size-3.5 shrink-0" />
+                    <span className="truncate">
+                      {doc.path}:{doc.startLine}-{doc.endLine}
+                    </span>
+                    <Badge variant="secondary" className="ml-auto text-[10px]">
+                      {doc.symbol}
+                    </Badge>
+                  </div>
+                  <pre className="text-foreground/90 max-h-56 overflow-auto px-3 py-2 font-mono text-xs leading-relaxed whitespace-pre">
+                    {doc.snippet}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <Card>

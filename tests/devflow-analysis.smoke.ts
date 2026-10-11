@@ -208,7 +208,7 @@ check(
     const llm: IssueAnalysis = {
       ...ruleAnalysis,
       suggested_owner: "布偶猫",
-      owner_reason: "仓库文档里提到了布偶猫。",
+      owner_reason: "仓库文档里提到了布偶猫",
       summary: "LLM summary",
     };
     const merged = mergeIssueAnalysis(llm, ruleAnalysis, allowList);

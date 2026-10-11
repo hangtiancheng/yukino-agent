@@ -6,16 +6,12 @@ export const config = {
     think: {
       model: process.env.OPENAI_THINK_MODEL ?? "deepseek-flash",
       apiKey: process.env.OPENAI_THINK_API_KEY ?? "",
-      baseURL:
-        process.env.OPENAI_THINK_BASE_URL ??
-        "https://ark.cn-beijing.volces.com/api/v3",
+      baseURL: process.env.OPENAI_THINK_BASE_URL ?? "https://api.deepseek.com",
     },
     quick: {
       model: process.env.OPENAI_QUICK_MODEL ?? "deepseek-flash",
       apiKey: process.env.OPENAI_QUICK_API_KEY ?? "",
-      baseURL:
-        process.env.OPENAI_QUICK_BASE_URL ??
-        "https://ark.cn-beijing.volces.com/api/v3",
+      baseURL: process.env.OPENAI_QUICK_BASE_URL ?? "https://api.deepseek.com",
     },
   },
   anthropic: {

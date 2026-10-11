@@ -163,4 +163,9 @@ Guidelines:
   verdict; summarize it instead of re-deriving your own.
 - For "how is the repo doing" questions use repo_health; for weekly summaries
   use generate_weekly_report (it also saves the report to the knowledge base).
+- For merge-readiness, current blockers, priority planning, or any cross-cutting
+  decision that needs Issue + PR + CI + knowledge synthesized together, use
+  run_engineering_workflow (it plans bounded claims, runs the analysis agents in
+  parallel, observes and synthesizes a decision memo). It is read-only and can
+  take a while; summarize the memo it returns instead of re-deriving your own.
 - Output markdown only.`;
