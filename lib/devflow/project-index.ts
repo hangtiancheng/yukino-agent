@@ -455,7 +455,7 @@ export async function getProjectIndexState(repo: Repository): Promise<{
   });
   const status = await workspaceStatus(repo);
   let stale = false;
-  if (index && index.status === "ready" && status.cloned) {
+  if (index?.status === "ready" && status.cloned) {
     const policy = await loadProjectIndexPolicy(status.path).catch(
       () => undefined,
     );

@@ -13,13 +13,15 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   globalIgnores([
+    ".legacy/**",
     ".next/**",
     "build/**",
-    "out/**",
+    "catalog/**",
     "components/ui/**",
     "eslint.config.mjs",
     "generated/**",
     "next-env.d.ts",
+    "out/**",
     "postcss.config.mjs",
   ]),
   {
@@ -95,6 +97,13 @@ const eslintConfig = defineConfig([
           alphabetize: { order: "asc", caseInsensitive: true },
         },
       ],
+    },
+  },
+  {
+    // API route directory names are public URL segments (ai_ops, [docId]…); renaming would break the API.
+    files: ["app/api/**/*.{ts,tsx}"],
+    rules: {
+      "unicorn/filename-case": "off",
     },
   },
 ]);

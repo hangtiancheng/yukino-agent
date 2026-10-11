@@ -18,7 +18,7 @@ export async function GET(_request: Request, context: RouteContext) {
       },
     });
     if (!run) {
-      return fail(404, "workflowRunNotFound");
+      return await fail(404, "workflowRunNotFound");
     }
     return ok({
       id: run.id,

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       Object.fromEntries(url.searchParams),
     );
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }

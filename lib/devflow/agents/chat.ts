@@ -1339,7 +1339,7 @@ export async function* devflowChatStream(
   if (result.compressionStats) {
     meta.compressionStats = result.compressionStats;
   }
-  if (compaction !== null && compaction.attempted) {
+  if (compaction?.attempted) {
     meta.progressiveCompaction = {
       compacted: compaction.compacted ?? false,
       reason: compaction.reason ?? null,

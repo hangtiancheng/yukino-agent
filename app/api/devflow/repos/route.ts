@@ -98,7 +98,7 @@ export async function POST(request: Request) {
   try {
     const parsed = RepoConnectSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }
@@ -217,8 +217,10 @@ export async function POST(request: Request) {
       } catch (e) {
         if (e instanceof GitHubApiError) {
           return e.status === 404
-            ? fail(404, "repoNotFoundOnGithub", { repo: `${owner}/${repo}` })
-            : fail(400, "githubConnectionFailed", { error: e.message });
+            ? await fail(404, "repoNotFoundOnGithub", {
+                repo: `${owner}/${repo}`,
+              })
+            : await fail(400, "githubConnectionFailed", { error: e.message });
         }
         throw e;
       }

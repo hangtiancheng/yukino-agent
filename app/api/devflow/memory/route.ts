@@ -25,11 +25,11 @@ export async function GET(request: Request) {
   try {
     const repoId = await resolveRepoId(request);
     if (!repoId) {
-      return fail(400, "repoIdQueryRequired");
+      return await fail(400, "repoIdQueryRequired");
     }
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
     return ok(await getRepoMemoryOverview(repoId));
   } catch (e) {
@@ -41,11 +41,11 @@ export async function PUT(request: Request) {
   try {
     const repoId = await resolveRepoId(request);
     if (!repoId) {
-      return fail(400, "repoIdQueryRequired");
+      return await fail(400, "repoIdQueryRequired");
     }
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
     return ok(await mergeThreadMemory(repoId));
   } catch (e) {

@@ -158,7 +158,7 @@ async function getToolsForConnection(
 ): Promise<ConnectionCacheEntry> {
   const sig = signature(conn);
   const cached = cache.get(conn.id);
-  if (cached && cached.signature === sig) {
+  if (cached?.signature === sig) {
     return cached;
   }
 

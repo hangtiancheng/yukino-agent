@@ -439,7 +439,7 @@ export default function DevflowIssuesPage() {
                       <p className="text-destructive py-2 text-sm">
                         {similarError}
                       </p>
-                    ) : similarHits && similarHits.length === 0 ? (
+                    ) : similarHits?.length === 0 ? (
                       <p className="text-muted-foreground py-4 text-center text-sm italic">
                         {t("similar.empty")}
                       </p>

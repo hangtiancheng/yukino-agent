@@ -39,14 +39,14 @@ export async function POST(request: Request) {
     const raw = Buffer.from(await request.arrayBuffer());
     const signature = request.headers.get("x-hub-signature-256");
     if (!verifySignature(raw, signature)) {
-      return fail(401, "invalidWebhookSignature");
+      return await fail(401, "invalidWebhookSignature");
     }
 
     let payload: unknown;
     try {
       payload = JSON.parse(raw.toString("utf8"));
     } catch {
-      return fail(400, "invalidJsonBody");
+      return await fail(400, "invalidJsonBody");
     }
 
     const repository = (

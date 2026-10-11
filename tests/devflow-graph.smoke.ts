@@ -413,11 +413,11 @@ async function live(): Promise<void> {
     const bobEdge = rows.find(
       (r) => r.relation === "assigned_to" && r.toType === "team_member",
     );
-    assert.ok(bobEdge && bobEdge.toId === member.id);
+    assert.ok(bobEdge?.toId === member.id);
     const carolEdge = rows.find(
       (r) => r.relation === "assigned_to" && r.toType === "github_user",
     );
-    assert.ok(carolEdge && carolEdge.toId === "carol");
+    assert.ok(carolEdge?.toId === "carol");
     assert.equal(rows.find((r) => r.relation === "resolves")?.confidence, 0.9);
     assert.equal(rows.find((r) => r.relation === "documents")?.confidence, 0.8);
     assert.equal(rows.find((r) => r.relation === "decides")?.confidence, 0.6);

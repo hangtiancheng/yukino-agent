@@ -17,7 +17,7 @@ export async function GET(_request: Request, context: RouteContext) {
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
     return ok(await graphSummary(id));
   } catch (e) {
@@ -30,14 +30,14 @@ export async function POST(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
 
     const parsed = GraphActionSchema.safeParse(
       await request.json().catch(() => null),
     );
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }

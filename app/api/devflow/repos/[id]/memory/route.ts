@@ -13,7 +13,7 @@ export async function GET(_request: Request, context: RouteContext) {
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
     return ok(await getRepoMemoryOverview(id));
   } catch (e) {

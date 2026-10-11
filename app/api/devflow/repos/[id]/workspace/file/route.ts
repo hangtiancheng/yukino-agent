@@ -27,7 +27,7 @@ export async function GET(request: Request, context: RouteContext) {
     const url = new URL(request.url);
     const relPath = url.searchParams.get("path");
     if (!relPath) {
-      return fail(400, "pathRequired");
+      return await fail(400, "pathRequired");
     }
     const checkout = await requireCheckout(repo);
     const file = await readCodeFile(checkout, relPath, {

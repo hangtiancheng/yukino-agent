@@ -53,7 +53,7 @@ export default function AIOpsBtn({ onClick, disabled }: AIOpsButtonProps) {
 
   const handlePointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
-    if (!drag || drag.pointerId !== e.pointerId) {
+    if (drag?.pointerId !== e.pointerId) {
       return;
     }
     if (
@@ -78,7 +78,7 @@ export default function AIOpsBtn({ onClick, disabled }: AIOpsButtonProps) {
 
   const handlePointerEnd = (e: ReactPointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
-    if (!drag || drag.pointerId !== e.pointerId) {
+    if (drag?.pointerId !== e.pointerId) {
       return;
     }
     suppressClickRef.current = drag.dragged;

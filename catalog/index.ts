@@ -23,7 +23,7 @@ import { Video } from "./components/video";
 import { shadcnExtensionComponents } from "./shadcn";
 
 export const SHADCN_CATALOG_ID =
-  "https://raw.githubusercontent.com/hangtiancheng/a2ui/main/packages/shadcn/catalog.json";
+  "https://raw.githubusercontent.com/hangtiancheng/yukino-agent/main/lib/a2ui/prompt/schemas/catalog.json";
 
 const components: ReactComponentImplementation[] = [
   Text,

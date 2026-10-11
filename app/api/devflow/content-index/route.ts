@@ -16,11 +16,11 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const repoId = url.searchParams.get("repoId");
     if (!repoId) {
-      return fail(400, "repoIdQueryRequired");
+      return await fail(400, "repoIdQueryRequired");
     }
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
     const started = Date.now();
     const chunksByType = await countContentByType(repoId);
@@ -38,14 +38,14 @@ export async function POST(request: Request) {
   try {
     const parsed = PostSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }
     const { repoId } = parsed.data;
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
     const result = await indexRepositoryContent(repoId);
     return ok(result);

@@ -15,15 +15,15 @@ export async function GET(request: Request, context: RouteContext) {
     const conversation = await prisma.conversation.findUnique({
       where: { id },
     });
-    if (!conversation || conversation.status !== "active") {
-      return fail(404, "conversationNotFound");
+    if (conversation?.status !== "active") {
+      return await fail(404, "conversationNotFound");
     }
     const url = new URL(request.url);
     const parsed = ConversationMessagesQuerySchema.safeParse(
       Object.fromEntries(url.searchParams),
     );
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const body: unknown = await request.json();
     const parsed = SearchBodySchema.safeParse(body);
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
         : kbFilter(repoId);
     } else {
       if (docId) {
-        return fail(400, "invalidRequest", {
+        return await fail(400, "invalidRequest", {
           detail: "docId is only supported with the kb scope",
         });
       }

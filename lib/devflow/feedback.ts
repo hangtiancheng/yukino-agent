@@ -171,7 +171,7 @@ export async function createFeedback(
   const conversation = await prisma.conversation.findUnique({
     where: { id: input.conversationId },
   });
-  if (!repo || !conversation || conversation.repoId !== repo.id) {
+  if (!repo || conversation?.repoId !== repo.id) {
     throw new FeedbackNotFoundError("Project conversation not found");
   }
   const message = await prisma.chatMessage.findFirst({
@@ -193,9 +193,7 @@ export async function createFeedback(
 
   const notify =
     input.rating === "unhelpful" &&
-    (!existing ||
-      existing.rating !== "unhelpful" ||
-      existing.notifiedAt === null);
+    (existing?.rating !== "unhelpful" || existing.notifiedAt === null);
 
   const baseData = {
     rating: input.rating,

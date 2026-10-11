@@ -107,7 +107,7 @@ export async function executeDraft(draftId: string) {
         throw new Error(`Unknown draft type: ${draft.draftType}`);
     }
 
-    return prisma.actionDraft.update({
+    return await prisma.actionDraft.update({
       where: { id: draftId },
       data: {
         status: "executed",

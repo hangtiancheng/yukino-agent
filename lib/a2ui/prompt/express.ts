@@ -167,7 +167,7 @@ export class ExpressPromptGenerator implements PromptGenerator {
           ) {
             const subKeys = subKeyLines(propSchema.properties);
             const last = propDetails[propDetails.length - 1];
-            if (last !== undefined && last.startsWith(`  - ${p}:`)) {
+            if (last?.startsWith(`  - ${p}:`)) {
               propDetails[propDetails.length - 1] =
                 `${last}\n    Map keys:\n${subKeys.join("\n")}`;
             } else {
@@ -187,7 +187,7 @@ export class ExpressPromptGenerator implements PromptGenerator {
             ) {
               const subKeys = subKeyLines(itemsSchema.properties);
               const last = propDetails[propDetails.length - 1];
-              if (last !== undefined && last.startsWith(`  - ${p}:`)) {
+              if (last?.startsWith(`  - ${p}:`)) {
                 propDetails[propDetails.length - 1] =
                   `${last}\n    List of maps keys:\n${subKeys.join("\n")}`;
               } else {

@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const repoId = url.searchParams.get("repoId");
     if (!repoId) {
-      return fail(400, "repoIdQueryRequired");
+      return await fail(400, "repoIdQueryRequired");
     }
     const limitParam = Number(url.searchParams.get("limit") ?? "20");
     const limit = Number.isFinite(limitParam)
@@ -51,14 +51,14 @@ export async function POST(request: Request) {
   try {
     const parsed = PostSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }
     const { repoId, query, topK } = parsed.data;
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
 
     const config = await getKnowledgeConfig(repoId);
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       docs = await scopedRetrieve(query, effectiveTopK, kbFilter(repoId));
       docs = await applyScoreThreshold(docs, query, kbFilter(repoId), config);
     } catch {
-      return fail(503, "vectorSearchUnavailable");
+      return await fail(503, "vectorSearchUnavailable");
     }
     const durationMs = Date.now() - started;
 

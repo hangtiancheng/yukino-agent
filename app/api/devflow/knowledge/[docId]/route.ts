@@ -15,7 +15,7 @@ export async function GET(_request: Request, context: RouteContext) {
       where: { id: docId },
     });
     if (!doc) {
-      return fail(404, "docNotFound");
+      return await fail(404, "docNotFound");
     }
     return ok({
       id: doc.id,

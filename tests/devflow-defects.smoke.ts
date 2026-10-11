@@ -327,7 +327,7 @@ async function live(): Promise<void> {
     const pi = await prisma.projectIndex.findUnique({
       where: { repoId: repo.id },
     });
-    assert.ok(pi && pi.snoozedUntil && pi.snoozedUntil.getTime() > Date.now());
+    assert.ok(pi?.snoozedUntil && pi.snoozedUntil.getTime() > Date.now());
     ok("project-index snooze upsert persists snoozedUntil");
 
     await prisma.repository.delete({ where: { id: repo.id } });

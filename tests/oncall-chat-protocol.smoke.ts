@@ -128,7 +128,7 @@ async function checkStreamProtocol() {
     .join("");
   assert.equal(visible, "All clear. ", "filter strips the block from text");
   const a2ui = events.find((e) => e.type === "a2ui");
-  assert.ok(a2ui && a2ui.type === "a2ui" && a2ui.messages.length > 0);
+  assert.ok(a2ui?.type === "a2ui" && a2ui.messages.length > 0);
 
   assert.equal(final.text, `All clear. ${block}`);
   assert.equal(final.reasoning, "checking alerts then answer");

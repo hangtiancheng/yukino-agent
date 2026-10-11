@@ -27,7 +27,7 @@ export async function GET(request: Request, context: RouteContext) {
       Object.fromEntries(new URL(request.url).searchParams),
     );
     if (!parsed.success) {
-      return fail(400, "invalidQuery", {
+      return await fail(400, "invalidQuery", {
         detail: parsed.error.issues[0]?.message ?? "invalid parameters",
       });
     }

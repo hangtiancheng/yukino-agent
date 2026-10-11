@@ -14,7 +14,7 @@ export async function POST(request: Request, context: RouteContext) {
     const body = await request.json().catch(() => ({}));
     const parsed = RepoSyncSchema.safeParse(body);
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }

@@ -16,13 +16,13 @@ export async function GET(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
     const parsed = RecallEventListQuerySchema.safeParse(
       Object.fromEntries(new URL(request.url).searchParams),
     );
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }

@@ -643,7 +643,7 @@ export function observeWorkflow(
 
   const prResult = byType(results, "pr_review");
   const ciResult = byType(results, "ci_debug");
-  if (ciResult && ciResult.output.is_merge_blocking === true) {
+  if (ciResult?.output.is_merge_blocking === true) {
     findings.push(
       finding({
         finding_type: "ci_merge_gate",
@@ -674,8 +674,7 @@ export function observeWorkflow(
   }
   if (
     prResult &&
-    ciResult &&
-    ciResult.output.is_merge_blocking === true &&
+    ciResult?.output.is_merge_blocking === true &&
     prResult.output.merge_recommendation === "approve"
   ) {
     findings.push(
@@ -877,7 +876,7 @@ function memoNextSteps(
           .filter((item) => item.trim().length > 0)
       : [];
 
-  if (ciResult && ciResult.output.is_merge_blocking === true) {
+  if (ciResult?.output.is_merge_blocking === true) {
     const debugSteps = strings(ciResult.output.debug_steps);
     steps.push(
       ...(debugSteps.length > 0
@@ -1357,7 +1356,7 @@ export async function executeWorkflow(
         runAnalysis(claim.task_type, resolved.id, entities),
         timeoutMs,
       );
-      return finish(
+      return await finish(
         {
           ...base,
           status: "success",

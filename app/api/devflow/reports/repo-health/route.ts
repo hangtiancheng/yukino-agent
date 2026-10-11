@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   try {
     const parsed = BodySchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       where: { id: parsed.data.repoId },
     });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
     const [openIssues, openPrs, failedCi, mergedPrs7d] = await Promise.all([
       prisma.issue.count({ where: { repoId: repo.id, state: "open" } }),

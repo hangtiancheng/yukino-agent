@@ -366,7 +366,7 @@ export default function DevflowGraphPage() {
 
       {summaryLoading && !summary ? <Skeleton className="h-40 w-full" /> : null}
 
-      {repoId && summary && summary.edgeCount === 0 ? (
+      {repoId && summary?.edgeCount === 0 ? (
         <Card>
           <CardContent className="text-muted-foreground pt-6 text-sm">
             {t("emptyGraph")}

@@ -16,8 +16,8 @@ export async function DELETE(_request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const target = await prisma.conversation.findUnique({ where: { id } });
-    if (!target || target.status !== "active") {
-      return fail(404, "conversationNotFound");
+    if (target?.status !== "active") {
+      return await fail(404, "conversationNotFound");
     }
     const replacement = await deleteConversation(target.repoId, id);
     const conversations = await listConversations(target.repoId);

@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
 
     const params = request.nextUrl.searchParams;
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         limit: params.get("limit") ?? undefined,
       });
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }

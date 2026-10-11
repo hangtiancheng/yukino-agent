@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const repoId = url.searchParams.get("repoId");
     if (!repoId) {
-      return fail(400, "repoIdQueryRequired");
+      return await fail(400, "repoIdQueryRequired");
     }
     const docs = await listKnowledgeDocuments(repoId);
     return ok(
@@ -42,17 +42,17 @@ export async function POST(request: Request) {
     const repoId = form.get("repoId");
     const file = form.get("file");
     if (typeof repoId !== "string" || !repoId) {
-      return fail(400, "repoIdFormRequired");
+      return await fail(400, "repoIdFormRequired");
     }
     if (!(file instanceof File)) {
-      return fail(400, "fileFieldRequired");
+      return await fail(400, "fileFieldRequired");
     }
     if (file.size > MAX_UPLOAD_BYTES) {
-      return fail(413, "fileTooLarge");
+      return await fail(413, "fileTooLarge");
     }
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       return failRaw(415, errorMessage(e));
     }
     if (!content.trim()) {
-      return fail(422, "fileEmptyAfterExtraction");
+      return await fail(422, "fileEmptyAfterExtraction");
     }
 
     const chunkConfig = await getKnowledgeConfig(repoId);

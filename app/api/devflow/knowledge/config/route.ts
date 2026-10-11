@@ -14,11 +14,11 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const repoId = url.searchParams.get("repoId");
     if (!repoId) {
-      return fail(400, "repoIdQueryRequired");
+      return await fail(400, "repoIdQueryRequired");
     }
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
     const config = await getKnowledgeConfig(repoId);
     return ok({ repoId, config, stored: await hasStoredConfig(repoId) });
@@ -38,14 +38,14 @@ export async function PUT(request: Request) {
   try {
     const parsed = KnowledgeConfigUpdateSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }
     const { repoId, ...rest } = parsed.data;
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
 
     const patch: Partial<KnowledgeConfigValues> = {};

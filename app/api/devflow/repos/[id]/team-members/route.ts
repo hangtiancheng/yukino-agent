@@ -18,7 +18,7 @@ export async function GET(_request: Request, context: RouteContext) {
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
     const members = await listTeamMembers(id);
     return ok(members.map(teamMemberView));
@@ -32,23 +32,23 @@ export async function POST(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const repo = await prisma.repository.findUnique({ where: { id } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
 
     const parsed = TeamMemberCreateSchema.safeParse(
       await request.json().catch(() => null),
     );
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }
     const outcome = await createTeamMember(id, parsed.data);
     if (!outcome.ok) {
       if (outcome.error === "duplicate") {
-        return fail(409, "teamMemberExists");
+        return await fail(409, "teamMemberExists");
       }
-      return fail(404, "teamMemberNotFound");
+      return await fail(404, "teamMemberNotFound");
     }
     return ok(teamMemberView(outcome.member), 201);
   } catch (e) {

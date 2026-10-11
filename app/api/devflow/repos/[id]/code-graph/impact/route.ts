@@ -21,7 +21,7 @@ export async function GET(request: Request, context: RouteContext) {
       Object.fromEntries(new URL(request.url).searchParams),
     );
     if (!parsed.success) {
-      return fail(400, "invalidQuery", {
+      return await fail(400, "invalidQuery", {
         detail: "files must be a comma-separated list of repo-relative paths",
       });
     }
@@ -30,7 +30,7 @@ export async function GET(request: Request, context: RouteContext) {
       .map((item) => item.trim())
       .filter(Boolean);
     if (files.length === 0) {
-      return fail(400, "invalidQuery", {
+      return await fail(400, "invalidQuery", {
         detail: "files must contain at least one path",
       });
     }

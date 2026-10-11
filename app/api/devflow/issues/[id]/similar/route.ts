@@ -19,13 +19,13 @@ export async function GET(_request: Request, context: RouteContext) {
     const { id } = await context.params;
     const issue = await prisma.issue.findUnique({ where: { id } });
     if (!issue) {
-      return fail(404, "issueNotFound");
+      return await fail(404, "issueNotFound");
     }
     const repo = await prisma.repository.findUnique({
       where: { id: issue.repoId },
     });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
 
     const query = `${issue.title}\n${issue.body ?? ""}`;
@@ -37,7 +37,7 @@ export async function GET(_request: Request, context: RouteContext) {
         contentScopeFilter(issue.repoId, "issue"),
       );
     } catch {
-      return fail(503, "vectorSearchUnavailable");
+      return await fail(503, "vectorSearchUnavailable");
     }
     return ok(
       mapSimilarHits(docs, {

@@ -26,7 +26,7 @@ export async function GET(_request: Request, context: RouteContext) {
     const { id } = await context.params;
     const workspace = await prisma.workspace.findUnique({ where: { id } });
     if (!workspace) {
-      return fail(404, "workspaceNotFound");
+      return await fail(404, "workspaceNotFound");
     }
     const stats = await aggregateWorkspaceStats(id);
     return ok({ workspace: toWorkspaceView(workspace), stats });

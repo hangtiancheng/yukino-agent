@@ -196,9 +196,7 @@ function splitLongCodeFence(b: Block, maxChars: number): Block[] {
   const opener = marker;
   const lastLine = lines[lines.length - 1];
   const hasCloser =
-    lines.length > 1 &&
-    lastLine !== undefined &&
-    lastLine.trimStart().startsWith(marker);
+    lines.length > 1 && lastLine?.trimStart().startsWith(marker);
   const body = hasCloser ? lines.slice(1, -1) : lines.slice(1);
   const closing = marker;
   const wrapperSize = opener.length + closing.length + 2;

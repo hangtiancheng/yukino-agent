@@ -24,10 +24,10 @@ export async function POST(request: Request) {
       select: { id: true, status: true },
     });
     if (!run) {
-      return fail(404, "workflowRunNotFound");
+      return await fail(404, "workflowRunNotFound");
     }
     if (run.status !== "running") {
-      return fail(409, "workflowRunNotRunnable");
+      return await fail(409, "workflowRunNotRunnable");
     }
   } catch (e) {
     return failRaw(500, errorMessage(e));

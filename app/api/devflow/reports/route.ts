@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   try {
     const parsed = WeeklyReportSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }

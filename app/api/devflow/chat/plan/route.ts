@@ -14,19 +14,19 @@ export async function POST(request: Request) {
       await request.json().catch(() => null),
     );
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }
     const { repoId, goal } = parsed.data;
     const repo = await prisma.repository.findUnique({ where: { id: repoId } });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
 
     const planned = await planWorkflow(repoId, goal);
     if (!planned) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
 
     const run = await prisma.agentWorkflowRun.create({

@@ -132,7 +132,7 @@ export async function updateTeamMember(
   const existing = await prisma.teamMember.findUnique({
     where: { id: memberId },
   });
-  if (!existing || existing.repoId !== repoId) {
+  if (existing?.repoId !== repoId) {
     return { ok: false, error: "notFound" };
   }
   const member = await prisma.teamMember.update({
@@ -158,7 +158,7 @@ export async function deleteTeamMember(
   const existing = await prisma.teamMember.findUnique({
     where: { id: memberId },
   });
-  if (!existing || existing.repoId !== repoId) {
+  if (existing?.repoId !== repoId) {
     return { ok: false, error: "notFound" };
   }
   const member = await prisma.teamMember.delete({ where: { id: memberId } });

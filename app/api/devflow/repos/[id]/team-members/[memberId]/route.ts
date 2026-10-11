@@ -22,20 +22,20 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { id, memberId } = await context.params;
     if (!(await repoExists(id))) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
 
     const parsed = TeamMemberUpdateSchema.safeParse(
       await request.json().catch(() => null),
     );
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }
     const outcome = await updateTeamMember(id, memberId, parsed.data);
     if (!outcome.ok) {
-      return fail(404, "teamMemberNotFound");
+      return await fail(404, "teamMemberNotFound");
     }
     return ok(teamMemberView(outcome.member));
   } catch (e) {
@@ -47,12 +47,12 @@ export async function DELETE(_request: Request, context: RouteContext) {
   try {
     const { id, memberId } = await context.params;
     if (!(await repoExists(id))) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
 
     const outcome = await deleteTeamMember(id, memberId);
     if (!outcome.ok) {
-      return fail(404, "teamMemberNotFound");
+      return await fail(404, "teamMemberNotFound");
     }
     return ok(teamMemberView(outcome.member));
   } catch (e) {

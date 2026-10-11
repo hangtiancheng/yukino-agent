@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   try {
     const parsed = DraftCreateSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return fail(400, "invalidRequest", {
+      return await fail(400, "invalidRequest", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       where: { id: input.repoId },
     });
     if (!repo) {
-      return fail(404, "repoNotFound");
+      return await fail(404, "repoNotFound");
     }
 
     const draft = await prisma.actionDraft.create({

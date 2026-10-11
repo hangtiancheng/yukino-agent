@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const repoId = url.searchParams.get("repoId");
     if (!repoId) {
-      return fail(400, "repoIdRequired");
+      return await fail(400, "repoIdRequired");
     }
     const conversationId = url.searchParams.get("conversationId");
     const limitRaw = Number.parseInt(

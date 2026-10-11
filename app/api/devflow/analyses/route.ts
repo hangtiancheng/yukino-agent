@@ -20,7 +20,7 @@ export async function GET(request: Request) {
       limit: url.searchParams.get("limit") ?? undefined,
     });
     if (!parsed.success) {
-      return fail(400, "invalidQuery", {
+      return await fail(400, "invalidQuery", {
         detail: parsed.error.issues.map((i) => i.message).join(", "),
       });
     }
