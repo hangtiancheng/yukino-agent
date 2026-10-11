@@ -1106,6 +1106,18 @@ export const MemorySearchQuerySchema = z.object({
 });
 
 /**
+ * Who triggered a {@link searchRepoMemory} call. The workspace memory panel
+ * records a manual search; the chat agent records the legacy
+ * `devflow_search_evidence` tool name so the recall audit trail keeps the same
+ * shape it had before the memory MCP server was replaced by in-process tools.
+ */
+export interface MemorySearchOrigin {
+  toolName?: string;
+  scope?: string;
+  surface?: string;
+}
+
+/**
  * Hybrid memory/evidence search across the repository's semantic scopes:
  * knowledge-base documents (incl. memory notes) and the synced GitHub
  * content index (issues / PRs / failed CI logs). Records a recall event so
@@ -1116,6 +1128,7 @@ export async function searchRepoMemory(
   query: string,
   limit = 8,
   conversationId?: string | null,
+  origin: MemorySearchOrigin = {},
 ): Promise<MemorySearchResult[]> {
   const trimmed = query.trim();
   if (trimmed === "") return [];
@@ -1146,7 +1159,7 @@ export async function searchRepoMemory(
   recordRecallEvent({
     repoId,
     conversationId,
-    toolName: "manual_memory_search",
+    toolName: origin.toolName ?? "manual_memory_search",
     query: trimmed,
     results: merged,
     citations: merged.map((item) => ({
@@ -1154,9 +1167,9 @@ export async function searchRepoMemory(
       id: item.sourceId,
       title: item.title,
     })),
-    scope: "project",
+    scope: origin.scope ?? "project",
     mode: "hybrid",
-    metadata: { limit, surface: "workspace_memory" },
+    metadata: { limit, surface: origin.surface ?? "workspace_memory" },
   });
   return merged;
 }

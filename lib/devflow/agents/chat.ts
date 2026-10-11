@@ -39,6 +39,7 @@ import {
   maybeSealAndMerge,
   proposeMemoryCandidate,
   recordRecallEvent,
+  searchRepoMemory,
   MEMORY_CANDIDATE_KINDS,
 } from "@/lib/devflow/memory";
 import { DEVFLOW_CHAT_SYSTEM_PROMPT } from "./prompts";
@@ -105,6 +106,18 @@ export function projectDocCitations(
       docName: hit.path,
       score: hit.score,
       source: "project_docs",
+    }));
+}
+
+export function evidenceCitations(
+  hits: readonly { title: string; score: number }[],
+): ChatCitation[] {
+  return hits
+    .filter((hit) => hit.title)
+    .map((hit) => ({
+      docName: hit.title,
+      score: hit.score,
+      source: "evidence",
     }));
 }
 
@@ -869,6 +882,98 @@ function buildTools(
             status: result.candidate.status,
             deduped: result.deduped,
             note: "Candidate is pending human approval; it joins the knowledge base only after approval on the Chat page memory panel.",
+          });
+        } catch (e) {
+          return pack({ error: e instanceof Error ? e.message : String(e) });
+        }
+      },
+    }),
+    search_evidence: tool({
+      description:
+        "Semantic recall across the repository's knowledge base AND the synced GitHub content index (issues, pull requests, sanitized failed-CI logs). Use it to remember past issues/PRs, recurring CI failures, uploaded docs, weekly reports, or approved decisions when the structured lookups (list_issues / get_pull / list_ci_runs) are not enough.",
+      inputSchema: z.object({
+        query: z.string().min(1),
+        limit: z.number().int().min(1).max(20).default(8),
+      }),
+      execute: async ({ query, limit }) => {
+        try {
+          const results = await searchRepoMemory(
+            repoId,
+            query,
+            limit,
+            conversationId,
+            {
+              toolName: "devflow_search_evidence",
+              scope: "conversation",
+              surface: "chat_agent",
+            },
+          );
+          citations.push(...evidenceCitations(results));
+          return pack({
+            count: results.length,
+            results: results.map((r) => ({
+              title: r.title,
+              type: r.sourceType,
+              score: Number(r.score.toFixed(4)),
+              snippet: r.snippet,
+            })),
+          });
+        } catch (e) {
+          return pack({ error: e instanceof Error ? e.message : String(e) });
+        }
+      },
+    }),
+    read_conversation_transcript: tool({
+      description:
+        "Read the verbatim user/assistant transcript of THIS conversation, including messages older than the current context window. Optionally filter by keyword and page backwards with beforeMessageId. Use when the user asks what was said or decided earlier, or needs an exact quote.",
+      inputSchema: z.object({
+        keyword: z.string().max(200).optional(),
+        limit: z.number().int().min(1).max(100).default(30),
+        beforeMessageId: z.string().min(1).optional(),
+      }),
+      execute: async ({ keyword, limit, beforeMessageId }) => {
+        try {
+          const rows = await listMessages(
+            conversationId,
+            200,
+            beforeMessageId ?? null,
+          );
+          const transcript = rows.filter(
+            (m) => m.role === "user" || m.role === "assistant",
+          );
+          const kw = keyword?.trim().toLowerCase() ?? "";
+          const filtered =
+            kw === ""
+              ? transcript
+              : transcript.filter((m) => m.content.toLowerCase().includes(kw));
+          const page = filtered.slice(-limit);
+          recordRecallEvent({
+            repoId,
+            conversationId,
+            toolName: "devflow_get_thread_context",
+            query: keyword ?? "",
+            results: page.map((m) => ({
+              id: m.id,
+              role: m.role,
+              snippet: clipBody(m.content, 300),
+            })),
+            scope: "conversation",
+            mode: "exact_transcript",
+            metadata: {
+              limit,
+              keyword: keyword ?? null,
+              beforeMessageId: beforeMessageId ?? null,
+            },
+          });
+          return pack({
+            count: page.length,
+            hasMore: filtered.length > page.length,
+            messages: page.map((m) => ({
+              id: m.id,
+              role: m.role,
+              createdAt: m.createdAt.toISOString(),
+              content: clipBody(m.content, 4000),
+            })),
           });
         } catch (e) {
           return pack({ error: e instanceof Error ? e.message : String(e) });

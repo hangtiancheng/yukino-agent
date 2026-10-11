@@ -7,6 +7,7 @@ import {
   strongQuerySignals,
 } from "@/lib/devflow/rag";
 import { parseRerankResults } from "@/lib/ai/rerank";
+import { evidenceCitations } from "@/lib/devflow/agents/chat";
 import {
   FeedbackListQuerySchema,
   FeedbackUpsertSchema,
@@ -252,6 +253,32 @@ function checkMemorySchemas() {
   console.log("memory schemas: 5 assertions passed");
 }
 
+function checkEvidenceCitations() {
+  const hits = [
+    {
+      title: "Fix login timeout",
+      score: 0.82,
+      sourceType: "issue",
+      sourceId: "1",
+      snippet: "x",
+    },
+    {
+      title: "",
+      score: 0.5,
+      sourceType: "ci_log",
+      sourceId: "2",
+      snippet: "y",
+    },
+  ];
+  const citations = evidenceCitations(hits);
+  assert.equal(citations.length, 1, "empty titles dropped");
+  assert.equal(citations[0].docName, "Fix login timeout");
+  assert.equal(citations[0].source, "evidence");
+  assert.equal(citations[0].score, 0.82);
+  assert.deepEqual(evidenceCitations([]), [], "no hits -> no citations");
+  console.log("evidence citations: 5 assertions passed");
+}
+
 try {
   checkSanitize();
   checkAnswerGate();
@@ -259,6 +286,7 @@ try {
   checkFeedbackSchemas();
   await checkScoreThreshold();
   checkMemorySchemas();
+  checkEvidenceCitations();
   console.log("MIGRATION-RESTORATION SMOKE OK");
 } catch (e) {
   console.error("SMOKE FAILED:", e);

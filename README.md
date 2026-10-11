@@ -94,6 +94,12 @@ Restored on top of the initial port:
   PlanExecuteEvent trail (plan / step start / step output / replans), the
   lightweight successor of the legacy evidence-chain tables, rendered in the ops
   panel run history.
+- DevFlow chat memory tools — the legacy memory MCP server's stdio tools are now
+  in-process chat tools: `search_evidence` (semantic recall over the repo KB AND
+  the synced GitHub content index; successor of `devflow_search_evidence`),
+  `read_conversation_transcript` (verbatim transcript reading that reaches past
+  the context window; successor of `devflow_get_thread_context`) and the existing
+  `memory_recall` / `memory_propose`. Each recall audits a `RecallEvent` row.
 
 Deliberate divergences:
 
@@ -127,11 +133,20 @@ DevFlow (from `DevFlow-AI`):
 - **Evaluation suites not ported** — the agent/RAG eval runner (incl. the ragas
   integration) and its UI depend on the Python eval ecosystem; retrieval quality
   is covered here by the retrieval-test runs on the Knowledge page instead.
+- **Single embedding contract** — legacy let each repo KB pick its own embedding
+  provider / model / dimensions (`GET /api/rag/models` + a per-KB embedding
+  contract with validation); here one global embedding config
+  (`EMBEDDING_PROVIDER` + `lib/config.ts`) serves the whole app, so the per-KB
+  model catalog and embedding-contract validation are gone. Retrieval method /
+  rerank / topK / score threshold / chunk size + overlap stay per-repo
+  configurable via `GET|PUT /api/devflow/knowledge/config`.
 - **PR worktree snapshots removed** — `worktree_manager` (snapshot / worktree /
   cleanup endpoints) is replaced by the read-only managed-clone design
   (`lib/devflow/workspace.ts`).
 - **MCP stdio surfaces removed** — the legacy memory MCP server and the skills
-  `mcp-status` probe are replaced by in-process tools.
+  `mcp-status` probe are replaced by in-process tools (the memory tools are
+  listed under "Restored" above; `mcp-status` is moot because DevFlow tools run
+  in-process, not over stdio).
 - **EvidenceItem table removed** — legacy rebuilt a keyword evidence index from
   chat history; the Milvus GitHub content index (semantic search over synced
   issues / PRs / CI logs) supersedes it in

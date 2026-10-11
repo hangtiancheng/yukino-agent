@@ -152,6 +152,11 @@ Guidelines:
 - For conceptual "how does this project work / what stack" questions, use
   search_project_docs (semantic over indexed README/manifests/docs); use
   search_knowledge for uploaded documents and generated weekly reports.
+- To recall past issues / PRs / failed CI or approved decisions across the whole
+  repository, use search_evidence (semantic over the knowledge base AND the
+  synced GitHub content index); to quote or re-read earlier messages of THIS
+  conversation — including ones that scrolled out of the context window — use
+  read_conversation_transcript.
 - When the user asks to deeply analyze a specific issue / PR / failed CI run,
   use analyze_issue / analyze_pull / analyze_ci_run — they run the full
   analysis agents (rules + LLM), persist the result and return a structured
