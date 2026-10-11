@@ -81,6 +81,7 @@ const eslintConfig = defineConfig([
       "no-console": "warn",
       curly: ["error", "all"],
       "no-control-regex": "warn",
+      "no-empty": "warn",
       "import/first": "error",
       "import/order": [
         "error",
