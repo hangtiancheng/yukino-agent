@@ -2,8 +2,8 @@
   "meta": {
     "title": "Yukino Agent",
     "description": "Yukino Agent — AI intelligent OnCall assistant",
-    "devflowTitle": "DevFlow — Yukino Agent",
-    "devflowDescription": "AI engineering collaboration workspace: GitHub issues, pull requests, CI debugging, knowledge base and reports."
+    "devFlowTitle": "DevFlow — Yukino Agent",
+    "devFlowDescription": "AI engineering collaboration workspace: GitHub issues, pull requests, CI debugging, knowledge base and reports."
   },
   "common": {
     "switchLanguage": "Switch language",
@@ -17,7 +17,7 @@
   "dock": {
     "navigation": "Primary",
     "oncall": "OnCall Agent",
-    "devflow": "DevFlow",
+    "devFlow": "DevFlow",
     "gallery": "A2UI Gallery",
     "knowledge": "Knowledge base"
   },
@@ -32,8 +32,8 @@
     "recent": "Recent",
     "newChat": "New chat",
     "delete": "Delete",
-    "devflowWorkspace": "DevFlow Workspace",
-    "devflowWorkspaceTooltip": "DevFlow workspace",
+    "devFlowWorkspace": "DevFlow Workspace",
+    "devFlowWorkspaceTooltip": "DevFlow workspace",
     "tools": "Tools",
     "uploadFile": "Upload file",
     "chatMode": "Chat mode",
@@ -101,7 +101,7 @@
       "replanContinue": "Replan: {count} step(s) remaining"
     }
   },
-  "devflow": {
+  "devFlow": {
     "title": "DevFlow",
     "subtitle": "Engineering Copilot",
     "toggleTheme": "Toggle theme",
@@ -974,7 +974,7 @@
       "emptyDescription": "Rebuild to extract symbols (functions, classes, types) and imports/calls/defines relations from the checkout.",
       "impactTitle": "Change impact (one hop)",
       "impactDescription": "Given changed files, list their symbols and the other files/symbols that depend on them.",
-      "impactPlaceholder": "Changed files, comma-separated, e.g. lib/devflow/workspace.ts,lib/db.ts",
+      "impactPlaceholder": "Changed files, comma-separated, e.g. lib/dev-flow/workspace.ts,lib/db.ts",
       "impactRun": "Analyze impact",
       "impactNone": "No symbols found in the given files, or nothing depends on them.",
       "changedSymbols": "Symbols in changed files ({count})",
@@ -983,7 +983,7 @@
     }
   },
   "api": {
-    "devflow": {
+    "devFlow": {
       "repoNotFound": "Repository not found",
       "repoNotFoundOnGithub": "Repository {repo} not found (or the token cannot see it).",
       "githubConnectionFailed": "GitHub connection failed: {error}",

@@ -10,6 +10,6 @@ export async function register(): Promise<void> {
   } catch (e) {
     console.error("[instrumentation] startup knowledge indexing failed:", e);
   }
-  const { startAutoSyncLoop } = await import("@/lib/devflow/scheduler");
+  const { startAutoSyncLoop } = await import("@/lib/dev-flow/scheduler");
   startAutoSyncLoop();
 }

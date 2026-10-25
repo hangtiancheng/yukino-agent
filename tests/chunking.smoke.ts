@@ -5,14 +5,14 @@ import {
   chunkCodeText,
   chunkPrFiles,
   siblingIdsByParent,
-} from "@/lib/devflow/chunking";
-import { evaluateAnswerGate } from "@/lib/devflow/rag";
+} from "@/lib/dev-flow/chunking";
+import { evaluateAnswerGate } from "@/lib/dev-flow/rag";
 import {
   dedupeNearDuplicates,
   limitPerParent,
   heuristicRerank,
   tokenize,
-} from "@/lib/devflow/retrieval-post";
+} from "@/lib/dev-flow/retrieval-post";
 import type { RetrievedDoc } from "@/lib/milvus/retriever";
 
 function doc(
@@ -405,7 +405,7 @@ function checkTokenize() {
 
 async function checkIndexPolicy() {
   const { parseIndexPolicyYaml, policyAllows, policyDigest, globToRegExp } =
-    await import("@/lib/devflow/project-index");
+    await import("@/lib/dev-flow/project-index");
 
   const policy = parseIndexPolicyYaml(
     [

@@ -5,18 +5,18 @@ import {
   FeedbackUpsertSchema,
 } from "@/lib/ai/feedback";
 import { parseRerankResults } from "@/lib/ai/rerank";
-import { evidenceCitations } from "@/lib/devflow/agents/chat";
+import { evidenceCitations } from "@/lib/dev-flow/agents/chat";
 import {
   MemorySearchQuerySchema,
   RecallEventListQuerySchema,
-} from "@/lib/devflow/memory";
+} from "@/lib/dev-flow/memory";
 import {
   applyScoreThreshold,
   evaluateAnswerGate,
   KB_CONFIG_FALLBACK,
   strongQuerySignals,
-} from "@/lib/devflow/rag";
-import { sanitizeCiLog } from "@/lib/devflow/sanitize";
+} from "@/lib/dev-flow/rag";
+import { sanitizeCiLog } from "@/lib/dev-flow/sanitize";
 
 function checkSanitize() {
   const raw = [

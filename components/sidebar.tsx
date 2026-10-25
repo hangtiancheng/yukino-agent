@@ -124,11 +124,11 @@ export default function Sidebar({
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  tooltip={t("devflowWorkspaceTooltip")}
-                  render={<Link href="/devflow" />}
+                  tooltip={t("devFlowWorkspaceTooltip")}
+                  render={<Link href="/dev-flow" />}
                 >
                   <FolderGit2 />
-                  <span>{t("devflowWorkspace")}</span>
+                  <span>{t("devFlowWorkspace")}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

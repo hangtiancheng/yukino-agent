@@ -1,0 +1,45 @@
+import { z } from "zod/v4";
+
+import { impactForFiles } from "@/lib/dev-flow/code-graph";
+import { errorMessage, fail, failRaw, ok } from "@/lib/dev-flow/http";
+import { getRepoOrThrow, WorkspaceError } from "@/lib/dev-flow/workspace";
+
+export { OPTIONS } from "@/lib/dev-flow/http";
+
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
+const ImpactQuerySchema = z.object({
+  files: z.string().trim().min(1).max(4000),
+});
+
+export async function GET(request: Request, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const parsed = ImpactQuerySchema.safeParse(
+      Object.fromEntries(new URL(request.url).searchParams),
+    );
+    if (!parsed.success) {
+      return await fail(400, "invalidQuery", {
+        detail: "files must be a comma-separated list of repo-relative paths",
+      });
+    }
+    const files = parsed.data.files
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (files.length === 0) {
+      return await fail(400, "invalidQuery", {
+        detail: "files must contain at least one path",
+      });
+    }
+    await getRepoOrThrow(id);
+    return ok(await impactForFiles(id, files));
+  } catch (e) {
+    if (e instanceof WorkspaceError) {
+      return failRaw(e.status, e.message);
+    }
+    return failRaw(500, errorMessage(e));
+  }
+}

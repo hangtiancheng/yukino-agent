@@ -2,8 +2,8 @@
   "meta": {
     "title": "Yukino Agent",
     "description": "Yukino Agent —— OnCall 助手",
-    "devflowTitle": "DevFlow — Yukino Agent",
-    "devflowDescription": "Agent 研发工作台: 聚合 GitHub 议题、拉取请求、CI 调试、知识库与周报"
+    "devFlowTitle": "DevFlow — Yukino Agent",
+    "devFlowDescription": "Agent 研发工作台: 聚合 GitHub 议题、拉取请求、CI 调试、知识库与周报"
   },
   "common": {
     "switchLanguage": "切换语言",
@@ -17,7 +17,7 @@
   "dock": {
     "navigation": "主导航",
     "oncall": "OnCall 助手",
-    "devflow": "DevFlow",
+    "devFlow": "DevFlow",
     "gallery": "A2UI 组件库",
     "knowledge": "知识库"
   },
@@ -32,8 +32,8 @@
     "recent": "最近对话",
     "newChat": "新对话",
     "delete": "删除",
-    "devflowWorkspace": "DevFlow 工作台",
-    "devflowWorkspaceTooltip": "DevFlow 工作台",
+    "devFlowWorkspace": "DevFlow 工作台",
+    "devFlowWorkspaceTooltip": "DevFlow 工作台",
     "tools": "工具",
     "uploadFile": "上传文件",
     "chatMode": "对话模式",
@@ -101,7 +101,7 @@
       "replanContinue": "重规划: 还剩 {count} 步"
     }
   },
-  "devflow": {
+  "devFlow": {
     "title": "DevFlow",
     "subtitle": "研发 Agent",
     "toggleTheme": "切换主题",
@@ -974,7 +974,7 @@
       "emptyDescription": "点击重建, 从检出代码中抽取符号 (函数、类、类型) 与 imports/calls/defines 关系.",
       "impactTitle": "变更影响 (一跳)",
       "impactDescription": "输入变更文件, 列出其中的符号以及依赖这些符号的其他文件/符号.",
-      "impactPlaceholder": "变更文件, 逗号分隔, 如 lib/devflow/workspace.ts,lib/db.ts",
+      "impactPlaceholder": "变更文件, 逗号分隔, 如 lib/dev-flow/workspace.ts,lib/db.ts",
       "impactRun": "分析影响",
       "impactNone": "给定文件中没有符号, 或没有其他文件/符号依赖它们.",
       "changedSymbols": "变更文件中的符号 ({count})",
@@ -983,7 +983,7 @@
     }
   },
   "api": {
-    "devflow": {
+    "devFlow": {
       "repoNotFound": "仓库不存在",
       "repoNotFoundOnGithub": "GitHub 上不存在仓库 {repo}, 或令牌无权访问",
       "githubConnectionFailed": "GitHub 连接失败: {error}",

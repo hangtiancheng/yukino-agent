@@ -77,32 +77,33 @@ export const config = {
     apiBaseUrl: process.env.GITHUB_API_BASE_URL ?? "https://api.github.com",
     webhookSecret: process.env.GITHUB_WEBHOOK_SECRET ?? "",
   },
-  devflow: {
-    secret: process.env.DEVFLOW_SECRET ?? "devflow-local-dev-secret",
+  devFlow: {
+    secret: process.env.DEV_FLOW_SECRET ?? "dev-flow-local-dev-secret",
     autoSync: {
-      enabled: process.env.DEVFLOW_AUTO_SYNC_ENABLED === "true",
+      enabled: process.env.DEV_FLOW_AUTO_SYNC_ENABLED === "true",
       intervalSeconds: Number.parseInt(
-        process.env.DEVFLOW_AUTO_SYNC_INTERVAL_SECONDS ?? "900",
+        process.env.DEV_FLOW_AUTO_SYNC_INTERVAL_SECONDS ?? "900",
         10,
       ),
-      limit: Number.parseInt(process.env.DEVFLOW_AUTO_SYNC_LIMIT ?? "30", 10),
+      limit: Number.parseInt(process.env.DEV_FLOW_AUTO_SYNC_LIMIT ?? "30", 10),
     },
     feedback: {
-      feishuWebhookUrl: process.env.DEVFLOW_FEISHU_WEBHOOK_URL ?? "",
-      traceBaseUrl: process.env.DEVFLOW_FEEDBACK_TRACE_BASE_URL ?? "",
+      feishuWebhookUrl: process.env.DEV_FLOW_FEISHU_WEBHOOK_URL ?? "",
+      traceBaseUrl: process.env.DEV_FLOW_FEEDBACK_TRACE_BASE_URL ?? "",
     },
     workspace: {
-      checkoutDir: process.env.DEVFLOW_REPO_CHECKOUT_DIR ?? "./data/workspaces",
+      checkoutDir:
+        process.env.DEV_FLOW_REPO_CHECKOUT_DIR ?? "./data/workspaces",
       gitTimeoutMs: Number.parseInt(
-        process.env.DEVFLOW_GIT_TIMEOUT_MS ?? "180000",
+        process.env.DEV_FLOW_GIT_TIMEOUT_MS ?? "180000",
         10,
       ),
       maxFileBytes: Number.parseInt(
-        process.env.DEVFLOW_MAX_FILE_BYTES ?? "300000",
+        process.env.DEV_FLOW_MAX_FILE_BYTES ?? "300000",
         10,
       ),
       maxScanFiles: Number.parseInt(
-        process.env.DEVFLOW_MAX_SCAN_FILES ?? "2000",
+        process.env.DEV_FLOW_MAX_SCAN_FILES ?? "2000",
         10,
       ),
     },

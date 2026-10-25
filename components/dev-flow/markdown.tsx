@@ -1,0 +1,32 @@
+"use client";
+
+import { code } from "@streamdown/code";
+import { Streamdown } from "streamdown";
+
+interface DevFlowMarkdownProps {
+  content: string;
+  className?: string;
+  streaming?: boolean;
+}
+
+export default function DevFlowMarkdown({
+  content,
+  className,
+  streaming = false,
+}: DevFlowMarkdownProps) {
+  return (
+    <Streamdown
+      mode={streaming ? "streaming" : "static"}
+      isAnimating={streaming}
+      caret="circle"
+      plugins={{ code }}
+      shikiTheme={["github-light", "github-dark"]}
+      className={
+        className ??
+        "text-foreground max-w-none text-sm leading-relaxed wrap-break-word"
+      }
+    >
+      {content}
+    </Streamdown>
+  );
+}

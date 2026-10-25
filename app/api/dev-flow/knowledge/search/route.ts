@@ -1,0 +1,77 @@
+import { z } from "zod/v4";
+
+import { contentScopeFilter } from "@/lib/dev-flow/content-index";
+import { errorMessage, fail, failRaw, ok } from "@/lib/dev-flow/http";
+import { projectFilter } from "@/lib/dev-flow/project-index";
+import {
+  kbFilter,
+  kbSource,
+  searchKnowledge,
+  getKnowledgeConfig,
+} from "@/lib/dev-flow/rag";
+import { KnowledgeSearchSchema } from "@/lib/dev-flow/schemas";
+import { quote } from "@/lib/milvus/client";
+
+export { OPTIONS } from "@/lib/dev-flow/http";
+
+const SearchBodySchema = KnowledgeSearchSchema.extend({
+  docId: z.string().min(1).optional(),
+  scope: z.enum(["kb", "item", "project"]).optional(),
+  sourceType: z.string().min(1).max(80).optional(),
+});
+
+const TopKProbeSchema = z.object({ topK: z.number().optional() });
+
+export async function POST(request: Request) {
+  try {
+    const body: unknown = await request.json();
+    const parsed = SearchBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return await fail(400, "invalidRequest", {
+        detail: parsed.error.issues.map((i) => i.message).join(", "),
+      });
+    }
+    const { repoId, query, docId, scope, sourceType } = parsed.data;
+    const probe = TopKProbeSchema.safeParse(body);
+    const providedTopK = probe.success && probe.data.topK !== undefined;
+    const topK = providedTopK
+      ? parsed.data.topK
+      : (await getKnowledgeConfig(repoId)).topK;
+
+    let filter: string;
+    if ((scope ?? "kb") === "kb") {
+      filter = docId
+        ? `source == ${quote(kbSource(repoId, docId))}`
+        : kbFilter(repoId);
+    } else {
+      if (docId) {
+        return await fail(400, "invalidRequest", {
+          detail: "docId is only supported with the kb scope",
+        });
+      }
+      filter =
+        scope === "item" ? contentScopeFilter(repoId) : projectFilter(repoId);
+    }
+
+    const started = Date.now();
+    const hits = await searchKnowledge(repoId, query, topK, {
+      filter,
+      sourceType,
+    });
+    return ok({
+      query,
+      durationMs: Date.now() - started,
+      hits: hits.map((hit) => ({
+        docId: hit.docId,
+        docName: hit.docName,
+        chunkIndex: hit.chunkIndex,
+        score: Number(hit.score.toFixed(4)),
+        content: hit.content,
+        sectionTitle: hit.sectionTitle,
+        sourceType: hit.sourceType,
+      })),
+    });
+  } catch (e) {
+    return failRaw(500, errorMessage(e));
+  }
+}

@@ -39,10 +39,10 @@ const DOCK_ITEMS: DockItemDef[] = [
     isActive: (p) => p === "/",
   },
   {
-    href: "/devflow",
-    labelKey: "devflow",
+    href: "/dev-flow",
+    labelKey: "devFlow",
     icon: FolderGit2,
-    isActive: (p) => p.startsWith("/devflow"),
+    isActive: (p) => p.startsWith("/dev-flow"),
   },
   {
     href: "/knowledge",

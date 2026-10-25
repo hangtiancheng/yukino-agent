@@ -5,7 +5,7 @@ import { useTranslations, useFormatter } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod/v4";
 
-import { notify } from "@/components/devflow/notify";
+import { notify } from "@/components/dev-flow/notify";
 import Dock from "@/components/dock";
 import {
   AlertDialog,

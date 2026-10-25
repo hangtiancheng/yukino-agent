@@ -67,7 +67,7 @@ Prometheus port: `9090`. Grafana port: `3000` (`3000` under Docker is the Next.j
 ## Notes
 
 - On first use, upload a doc file via the "..." menu so the RAG knowledge base has content; otherwise retrieval returns empty. Uploads land in `FILE_DIR` and are indexed immediately (re-indexed on every startup).
-- Hybrid search (dense + BM25, RRF-fused) runs inside Milvus; setting `RERANK_API_KEY` adds a second-stage rerank via the Aliyun DashScope text-rerank endpoint (see `.env.example`). Unfiltered retrieval excludes `devflow:*` sources so DevFlow repo knowledge never leaks into OnCall answers.
+- Hybrid search (dense + BM25, RRF-fused) runs inside Milvus; setting `RERANK_API_KEY` adds a second-stage rerank via the Aliyun DashScope text-rerank endpoint (see `.env.example`). Unfiltered retrieval excludes `dev_flow:*` sources so DevFlow repo knowledge never leaks into OnCall answers.
 - Finished AI Ops reports are persisted back into the knowledge base as diagnostic case documents, so future chats and diagnoses retrieve past incidents.
 - Tool definitions follow a three-layer split: `schemas.ts` (zod) → `operations.ts` (pure functions) → `index.ts` (AI SDK `tool` wrapper).
 
@@ -82,7 +82,7 @@ feature-complete except for the deliberate divergences listed below.
 
 Restored on top of the initial port:
 
-- DevFlow progressive context compression (`lib/devflow/context-compression.ts`,
+- DevFlow progressive context compression (`lib/dev-flow/context-compression.ts`,
   a port of `context_compression.py` + `ProgressiveContextManager`): token-pressure
   stages, token-budgeted history windowing, LLM compaction into persisted
   compact-boundary messages with session-memory / extractive fallbacks, key-fact
@@ -96,17 +96,17 @@ Restored on top of the initial port:
   panel run history.
 - DevFlow chat memory tools — the legacy memory MCP server's stdio tools are now
   in-process chat tools: `search_evidence` (semantic recall over the repo KB AND
-  the synced GitHub content index; successor of `devflow_search_evidence`),
+  the synced GitHub content index; successor of `dev_flow_search_evidence`),
   `read_conversation_transcript` (verbatim transcript reading that reaches past
-  the context window; successor of `devflow_get_thread_context`) and the existing
+  the context window; successor of `dev_flow_get_thread_context`) and the existing
   `memory_recall` / `memory_propose`. Each recall audits a `RecallEvent` row. The
-  third legacy tool, `devflow_read_session_events` (sealed-session recall), is
+  third legacy tool, `dev_flow_read_session_events` (sealed-session recall), is
   covered by `memory_recall` + `read_conversation_transcript`, since sealing now
   persists `ConversationMemory` snapshots instead of separate sealed sessions.
 - Code-graph search relations + code excerpts — the legacy
   `GET /repos/{id}/code-graph/search` returned matched symbols together with the
   import/call/define relations between them and a short code excerpt per symbol;
-  the port returns all three again (`searchCodeGraph` in `lib/devflow/code-graph.ts`)
+  the port returns all three again (`searchCodeGraph` in `lib/dev-flow/code-graph.ts`)
   and the Code Graph page renders them. Excerpts are read from the managed
   checkout, so they appear once the repository is cloned (Code page).
 - DevFlow chat workflow tool — the legacy chat agent could autonomously run a
@@ -122,8 +122,8 @@ Restored on top of the initial port:
   gate and the LLM call. The initial port fed whole chunks instead, which for CJK
   content (1 char ≈ 1 token) cost ~3x the tokens and diluted the signal. Restored
   as `extractRelevantSnippet` + `compressRetrievalResults` in
-  `lib/devflow/context-compression.ts`, applied by `searchKnowledge`
-  (`lib/devflow/rag.ts`) and by the `search_project_docs` chat tool. One deliberate
+  `lib/dev-flow/context-compression.ts`, applied by `searchKnowledge`
+  (`lib/dev-flow/rag.ts`) and by the `search_project_docs` chat tool. One deliberate
   improvement over the legacy: the sentence splitter also breaks after CJK 。！？
   without requiring trailing whitespace (the legacy `SENTENCE_SPLIT_PATTERN` never
   split space-less CJK prose, so the snippet degraded to a head clip that could
@@ -170,18 +170,18 @@ DevFlow (from `DevFlow-AI`):
   the legacy `run_basic_eval` (issue-triage category accuracy, PR key-file
   coverage, CI pytest-failure detection, output-schema validation, skill-registry
   coverage) are not exposed as a runtime eval feature but are covered by the
-  offline smoke suites (`tests/devflow-analysis.smoke.ts`,
-  `tests/devflow-skills.smoke.ts`, `tests/devflow-context-compression.smoke.ts`).
+  offline smoke suites (`tests/dev-flow-analysis.smoke.ts`,
+  `tests/dev-flow-skills.smoke.ts`, `tests/dev-flow-context-compression.smoke.ts`).
 - **Single embedding contract** — legacy let each repo KB pick its own embedding
   provider / model / dimensions (`GET /api/rag/models` + a per-KB embedding
   contract with validation); here one global embedding config
   (`EMBEDDING_PROVIDER` + `lib/config.ts`) serves the whole app, so the per-KB
   model catalog and embedding-contract validation are gone. Retrieval method /
   rerank / topK / score threshold / chunk size + overlap stay per-repo
-  configurable via `GET|PUT /api/devflow/knowledge/config`.
+  configurable via `GET|PUT /api/dev-flow/knowledge/config`.
 - **PR worktree snapshots removed** — `worktree_manager` (snapshot / worktree /
   cleanup endpoints) is replaced by the read-only managed-clone design
-  (`lib/devflow/workspace.ts`).
+  (`lib/dev-flow/workspace.ts`).
 - **MCP stdio surfaces removed** — the legacy memory MCP server and the skills
   `mcp-status` probe are replaced by in-process tools (the memory tools are
   listed under "Restored" above; `mcp-status` is moot because DevFlow tools run
@@ -189,17 +189,17 @@ DevFlow (from `DevFlow-AI`):
 - **EvidenceItem table removed** — legacy rebuilt a keyword evidence index from
   chat history; the Milvus GitHub content index (semantic search over synced
   issues / PRs / CI logs) supersedes it in
-  `GET /api/devflow/repos/:id/memory/search`.
+  `GET /api/dev-flow/repos/:id/memory/search`.
 - **Search metadata filters not ported** — legacy `POST /api/search` (and the
   retrieval-test request) accepted structured entity metadata filters
   (label / path / module / state / start_date / end_date) applied to GitHub
-  issue/PR/CI documents; the port's `POST /api/devflow/knowledge/search` filters by
+  issue/PR/CI documents; the port's `POST /api/dev-flow/knowledge/search` filters by
   scope (kb / item / project) and `sourceType` instead. These filters were never
   surfaced in the legacy UI and do not map onto the Milvus source-prefix model.
 - **Streaming-only chat** — legacy also exposed a non-streaming `POST /api/chat`;
   the port streams SSE exclusively.
 - **`thinking_delta` second-LLM stream not ported** (documented in
-  `lib/devflow/analyze-stream.ts`).
+  `lib/dev-flow/analyze-stream.ts`).
 
 ---
 

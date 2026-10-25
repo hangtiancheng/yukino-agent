@@ -1,0 +1,69 @@
+import { prisma } from "@/lib/db";
+import {
+  WorkflowPlanRequestSchema,
+  agentNameForTaskType,
+  planWorkflow,
+} from "@/lib/dev-flow/agents/workflow";
+import { errorMessage, fail, failRaw, ok } from "@/lib/dev-flow/http";
+
+export { OPTIONS } from "@/lib/dev-flow/http";
+
+export async function POST(request: Request) {
+  try {
+    const parsed = WorkflowPlanRequestSchema.safeParse(
+      await request.json().catch(() => null),
+    );
+    if (!parsed.success) {
+      return await fail(400, "invalidRequest", {
+        detail: parsed.error.issues.map((i) => i.message).join(", "),
+      });
+    }
+    const { repoId, goal } = parsed.data;
+    const repo = await prisma.repository.findUnique({ where: { id: repoId } });
+    if (!repo) {
+      return await fail(404, "repoNotFound");
+    }
+
+    const planned = await planWorkflow(repoId, goal);
+    if (!planned) {
+      return await fail(404, "repoNotFound");
+    }
+
+    const run = await prisma.agentWorkflowRun.create({
+      data: {
+        repoId,
+        goal,
+        specJson: planned.spec,
+        status: "running",
+        tasks: {
+          create: planned.spec.claims.map((claim) => ({
+            taskId: claim.id,
+            agentName: agentNameForTaskType(claim.task_type),
+            taskType: claim.task_type,
+            claimJson: claim,
+            status: "pending",
+          })),
+        },
+      },
+      include: { tasks: { orderBy: { taskId: "asc" } } },
+    });
+
+    return ok(
+      {
+        runId: run.id,
+        spec: planned.spec,
+        generationMode: planned.generationMode,
+        violations: planned.violations,
+        tasks: run.tasks.map((task) => ({
+          taskId: task.taskId,
+          agentName: task.agentName,
+          taskType: task.taskType,
+          status: task.status,
+        })),
+      },
+      201,
+    );
+  } catch (e) {
+    return failRaw(500, errorMessage(e));
+  }
+}

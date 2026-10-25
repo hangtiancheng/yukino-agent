@@ -25,7 +25,7 @@ const DEFAULT_TOP_K = 5;
 const RERANK_CANDIDATE_LIMIT = 20;
 const MAX_CANDIDATE_LIMIT = 50;
 
-const DEVFLOW_SOURCE_PREFIX = "devflow:";
+const DEV_FLOW_SOURCE_PREFIX = "dev_flow:";
 
 function parseMetadata(raw: string): Record<string, unknown> {
   if (!raw) {
@@ -68,10 +68,10 @@ export async function retrieve(
   filter?: string,
 ): Promise<RetrievedDoc[]> {
   const vector = await embedText(query);
-  const excludeDevflow = filter === undefined;
+  const excludeDevFlow = filter === undefined;
   const rerank = rerankEnabled();
   const candidateLimit =
-    excludeDevflow || rerank
+    excludeDevFlow || rerank
       ? Math.min(
           Math.max(topK * 4, RERANK_CANDIDATE_LIMIT),
           MAX_CANDIDATE_LIMIT,
@@ -85,8 +85,8 @@ export async function retrieve(
   const denseIndex = buildStageIndex(denseHits);
   const bm25Index = buildStageIndex(bm25Hits);
   let docs = toDocs(hits);
-  if (excludeDevflow) {
-    docs = docs.filter((d) => !d.source.startsWith(DEVFLOW_SOURCE_PREFIX));
+  if (excludeDevFlow) {
+    docs = docs.filter((d) => !d.source.startsWith(DEV_FLOW_SOURCE_PREFIX));
   }
   const withStages = docs.map((doc) => {
     const denseRank = denseIndex.rankById.get(doc.id);

@@ -1,0 +1,56 @@
+import { z } from "zod/v4";
+
+import { prisma } from "@/lib/db";
+import {
+  createConversation,
+  listConversations,
+  toConversationSummary,
+} from "@/lib/dev-flow/conversations";
+import { errorMessage, fail, failRaw, ok } from "@/lib/dev-flow/http";
+
+export { OPTIONS } from "@/lib/dev-flow/http";
+
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
+const ConversationCreateSchema = z.object({
+  title: z.string().max(200).optional(),
+});
+
+export async function GET(_request: Request, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const repo = await prisma.repository.findUnique({ where: { id } });
+    if (!repo) {
+      return await fail(404, "repoNotFound");
+    }
+    const conversations = await listConversations(id);
+    return ok(conversations.map(toConversationSummary));
+  } catch (e) {
+    return failRaw(500, errorMessage(e));
+  }
+}
+
+export async function POST(request: Request, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const repo = await prisma.repository.findUnique({ where: { id } });
+    if (!repo) {
+      return await fail(404, "repoNotFound");
+    }
+
+    const parsed = ConversationCreateSchema.safeParse(
+      await request.json().catch(() => ({})),
+    );
+    if (!parsed.success) {
+      return await fail(400, "invalidRequest", {
+        detail: parsed.error.issues.map((i) => i.message).join(", "),
+      });
+    }
+    const conversation = await createConversation(id, parsed.data.title);
+    return ok(toConversationSummary(conversation), 201);
+  } catch (e) {
+    return failRaw(500, errorMessage(e));
+  }
+}

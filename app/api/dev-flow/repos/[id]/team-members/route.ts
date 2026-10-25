@@ -1,0 +1,57 @@
+import { prisma } from "@/lib/db";
+import { errorMessage, fail, failRaw, ok } from "@/lib/dev-flow/http";
+import {
+  TeamMemberCreateSchema,
+  createTeamMember,
+  listTeamMembers,
+  teamMemberView,
+} from "@/lib/dev-flow/team";
+
+export { OPTIONS } from "@/lib/dev-flow/http";
+
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
+export async function GET(_request: Request, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const repo = await prisma.repository.findUnique({ where: { id } });
+    if (!repo) {
+      return await fail(404, "repoNotFound");
+    }
+    const members = await listTeamMembers(id);
+    return ok(members.map(teamMemberView));
+  } catch (e) {
+    return failRaw(500, errorMessage(e));
+  }
+}
+
+export async function POST(request: Request, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const repo = await prisma.repository.findUnique({ where: { id } });
+    if (!repo) {
+      return await fail(404, "repoNotFound");
+    }
+
+    const parsed = TeamMemberCreateSchema.safeParse(
+      await request.json().catch(() => null),
+    );
+    if (!parsed.success) {
+      return await fail(400, "invalidRequest", {
+        detail: parsed.error.issues.map((i) => i.message).join(", "),
+      });
+    }
+    const outcome = await createTeamMember(id, parsed.data);
+    if (!outcome.ok) {
+      if (outcome.error === "duplicate") {
+        return await fail(409, "teamMemberExists");
+      }
+      return await fail(404, "teamMemberNotFound");
+    }
+    return ok(teamMemberView(outcome.member), 201);
+  } catch (e) {
+    return failRaw(500, errorMessage(e));
+  }
+}
