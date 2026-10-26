@@ -14,7 +14,7 @@ function isBrowser(): boolean {
 if (isBrowser() && !isInitialized()) {
   init({
     dsn: "/api/log",
-    projectId: "yukino-agent",
+    projectId: "yukino-dev-agent",
     debug: true,
     beforeSendBatch: (eventList) =>
       eventList.filter(

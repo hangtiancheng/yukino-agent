@@ -7,7 +7,7 @@ import {
 async function main() {
   const checkout =
     process.argv[2] ??
-    "/Users/hangtiancheng/github/yukino-agent/data/workspaces/0cea0ff1-de28-43af-9c5b-9e4f6e7b3cf9-sindresorhus__is";
+    "/Users/hangtiancheng/github/yukino-dev-agent/data/workspaces/0cea0ff1-de28-43af-9c5b-9e4f6e7b3cf9-sindresorhus__is";
 
   console.log("checkout:", checkout);
   const docs = await discoverProjectDocs(checkout, 500);

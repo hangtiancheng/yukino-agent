@@ -74,7 +74,7 @@ groups:
           description: "Garbage collection on {{ $labels.instance }} consumes more than 10% of wall clock time. Either allocation churn is excessive or the live set is close to the heap limit and V8 is collecting repeatedly."
 
       - alert: NodeCpuSaturated
-        expr: rate(process_cpu_seconds_total{job="yukino-agent"}[5m]) > 0.9
+        expr: rate(process_cpu_seconds_total{job="yukino-dev-agent"}[5m]) > 0.9
         for: 10m
         labels:
           severity: warning

@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/hangtiancheng/yukino-agent/main/lib/a2ui/prompt/schemas/catalog.json",
+  "$id": "https://raw.githubusercontent.com/hangtiancheng/yukino-dev-agent/main/lib/a2ui/prompt/schemas/catalog.json",
   "title": "A2UI shadcn Catalog",
   "description": "The basic A2UI catalog as implemented by packages/shadcn, extended with catalog entries for every additional shadcn/ui component family.",
-  "catalogId": "https://raw.githubusercontent.com/hangtiancheng/yukino-agent/main/lib/a2ui/prompt/schemas/catalog.json",
+  "catalogId": "https://raw.githubusercontent.com/hangtiancheng/yukino-dev-agent/main/lib/a2ui/prompt/schemas/catalog.json",
   "components": {
     "Text": {
       "type": "object",

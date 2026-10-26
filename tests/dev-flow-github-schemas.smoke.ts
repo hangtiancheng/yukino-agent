@@ -18,13 +18,13 @@ import {
   const repo = GitHubRepoSchema.parse({
     id: 186853261,
     node_id: "MDEwOlJlcG9zaXRvcnkxODY4NTMyNjE=",
-    name: "yukino-agent",
-    full_name: "hangtiancheng/yukino-agent",
+    name: "yukino-dev-agent",
+    full_name: "hangtiancheng/yukino-dev-agent",
     private: false,
     description: "AI intelligent OnCall assistant",
     default_branch: "main",
-    clone_url: "https://github.com/hangtiancheng/yukino-agent.git",
-    html_url: "https://github.com/hangtiancheng/yukino-agent",
+    clone_url: "https://github.com/hangtiancheng/yukino-dev-agent.git",
+    html_url: "https://github.com/hangtiancheng/yukino-dev-agent",
     stargazers_count: 42,
   });
   assert.equal(repo.id, 186853261);

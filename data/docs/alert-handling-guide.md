@@ -15,7 +15,7 @@ Resolution:
 Known targets and their scrape endpoints:
 
 - prometheus: http://localhost:9090/metrics (job=prometheus)
-- yukino-agent (Next.js): http://127.0.0.1:3000/api/metrics (job=yukino-agent)
+- yukino-dev-agent (Next.js): http://127.0.0.1:3000/api/metrics (job=yukino-dev-agent)
 
 # NodeHeapNearLimit
 
@@ -73,8 +73,8 @@ Alert Explanation: `nodejs_eventloop_lag_p99_seconds > 0.1` for 5 minutes. Callb
 
 Resolution:
 
-1. Query `nodejs_eventloop_lag_p99_seconds{job="yukino-agent"}`. Values consistently above 0.1s indicate a problem; compare against `nodejs_eventloop_lag_mean_seconds` to see whether it is a tail or the whole distribution.
-2. Check `rate(process_cpu_seconds_total{job="yukino-agent"}[5m])`. A rate near 1.0 means a single core is saturated.
+1. Query `nodejs_eventloop_lag_p99_seconds{job="yukino-dev-agent"}`. Values consistently above 0.1s indicate a problem; compare against `nodejs_eventloop_lag_mean_seconds` to see whether it is a tail or the whole distribution.
+2. Check `rate(process_cpu_seconds_total{job="yukino-dev-agent"}[5m])`. A rate near 1.0 means a single core is saturated.
 3. Check `yukino_node_eventloop_utilization` to separate "busy" from "blocked".
 4. Check `nodejs_active_handles_total` and `nodejs_active_requests`. A sudden spike may indicate a connection leak against Redis or MySQL.
 5. Search logs for long-running operations: large embedding batches, slow Redis vector searches, unindexed MySQL queries.
@@ -135,7 +135,7 @@ Alert Explanation: `time() - max by (project_id) (yukino_sentry_event_last_seen_
 Resolution:
 
 1. Check which event types stopped: `time() - yukino_sentry_event_last_seen_timestamp_seconds`. PV events arrive on every page load, so a stale PV timestamp with fresh Performance events is contradictory and indicates partial loss.
-2. Confirm the target is still up: `up{job="yukino-agent"}`.
+2. Confirm the target is still up: `up{job="yukino-dev-agent"}`.
 3. Confirm the endpoint answers: `GET /api/metrics` should return the exposition, and `POST /api/log` should return `{ "message": "OK" }`.
 4. Check `yukino_sentry_report_batches_total{outcome="invalid"}` for silent rejection.
 5. In the browser, the SDK drops oversized events client-side. `components/sentry-provider.tsx` filters events above 50KB to protect the 64KB fetch-keepalive body limit, so a single huge event will not wedge the queue but will never arrive either.
@@ -296,7 +296,7 @@ One Prometheus instance scrapes both agents. Homebrew config: `/opt/homebrew/etc
 
 Two bridges, one metric contract:
 
-- Next.js: `lib/metrics.ts`, job `yukino-agent`, `http://127.0.0.1:3000/api/metrics`.
+- Next.js: `lib/metrics.ts`, job `yukino-dev-agent`, `http://127.0.0.1:3000/api/metrics`.
 
 Both deliberately expose the same `yukino_sentry_*` metric names, labels and buckets, so a single rule file covers both jobs. Runtime metrics differ by necessity: the Node service exposes `yukino_node_*` plus `nodejs_*`, the Go service `yukino_go_*` plus `go_*`. Alerts named `Node*` are scoped to the Node job where the underlying metric is shared.
 

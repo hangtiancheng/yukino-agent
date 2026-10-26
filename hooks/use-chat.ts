@@ -74,7 +74,7 @@ interface OverlayState {
 }
 
 const MAX_HISTORIES = 50;
-const STORAGE_KEY = "yukino-agent-chat-histories";
+const STORAGE_KEY = "yukino-dev-agent-chat-histories";
 
 const chatMessageSchema = z.object({
   type: z.enum(["user", "assistant"]),

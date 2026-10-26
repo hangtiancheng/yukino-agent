@@ -1,6 +1,6 @@
 {
   "packageManager": "pnpm@12.10.1",
-  "name": "yukino-agent",
+  "name": "yukino-dev-agent",
   "version": "0.0.0",
   "private": true,
   "type": "module",

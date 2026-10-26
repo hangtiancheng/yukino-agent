@@ -127,7 +127,7 @@ async function connectAndList(conn: ResolvedConnection): Promise<{
       : // eslint-disable-next-line @typescript-eslint/no-deprecated
         new SSEClientTransport(url, { requestInit });
   const client = new Client(
-    { name: "yukino-agent", version: "1.0.0" },
+    { name: "yukino-dev-agent", version: "1.0.0" },
     { capabilities: {} },
   );
   await withTimeout(
